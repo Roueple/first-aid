@@ -1,0 +1,135 @@
+The issue is that **environment variables work differently in Electron** because of its multi-process architecture. Your `.env` file isn't being loaded in the renderer process (where your React/Firebase code runs).
+
+## Solutions:
+
+### **Option 1: Use Vite's Environment Variables (Recommended for Vite + Electron)**
+
+If you're using Vite, environment variables must be prefixed with `VITE_`:
+
+**1. Rename your `.env` variables:**
+```env
+# .env
+VITE_FIREBASE_API_KEY=your-api-key
+VITE_FIREBASE_AUTH_DOMAIN=your-auth-domain
+VITE_FIREBASE_PROJECT_ID=your-project-id
+VITE_FIREBASE_STORAGE_BUCKET=your-storage-bucket
+VITE_FIREBASE_MESSAGING_SENDER_ID=your-sender-id
+VITE_FIREBASE_APP_ID=your-app-id
+```
+
+**2. Access them in your code:**
+```typescript
+// firebase.ts
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
+};
+```
+
+**3. Add TypeScript definitions (optional):**
+```typescript
+// vite-env.d.ts or env.d.ts
+interface ImportMetaEnv {
+  readonly VITE_FIREBASE_API_KEY: string
+  readonly VITE_FIREBASE_AUTH_DOMAIN: string
+  readonly VITE_FIREBASE_PROJECT_ID: string
+  readonly VITE_FIREBASE_STORAGE_BUCKET: string
+  readonly VITE_FIREBASE_MESSAGING_SENDER_ID: string
+  readonly VITE_FIREBASE_APP_ID: string
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv
+}
+```
+
+---
+
+### **Option 2: Expose Environment Variables via Preload Script**
+
+If you need to use `process.env` variables:
+
+**1. In your preload script:**
+```typescript
+// preload.ts
+import { contextBridge } from 'electron';
+
+contextBridge.exposeInMainWorld('env', {
+  FIREBASE_API_KEY: process.env.FIREBASE_API_KEY,
+  FIREBASE_AUTH_DOMAIN: process.env.FIREBASE_AUTH_DOMAIN,
+  FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID,
+  FIREBASE_STORAGE_BUCKET: process.env.FIREBASE_STORAGE_BUCKET,
+  FIREBASE_MESSAGING_SENDER_ID: process.env.FIREBASE_MESSAGING_SENDER_ID,
+  FIREBASE_APP_ID: process.env.FIREBASE_APP_ID,
+});
+```
+
+**2. In your renderer (firebase.ts):**
+```typescript
+// Add type declaration
+declare global {
+  interface Window {
+    env: {
+      FIREBASE_API_KEY: string;
+      FIREBASE_AUTH_DOMAIN: string;
+      FIREBASE_PROJECT_ID: string;
+      FIREBASE_STORAGE_BUCKET: string;
+      FIREBASE_MESSAGING_SENDER_ID: string;
+      FIREBASE_APP_ID: string;
+    }
+  }
+}
+
+// Use it
+const firebaseConfig = {
+  apiKey: window.env.FIREBASE_API_KEY,
+  authDomain: window.env.FIREBASE_AUTH_DOMAIN,
+  projectId: window.env.FIREBASE_PROJECT_ID,
+  storageBucket: window.env.FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: window.env.FIREBASE_MESSAGING_SENDER_ID,
+  appId: window.env.FIREBASE_APP_ID
+};
+```
+
+**3. Load .env in main process:**
+```typescript
+// main.ts
+import dotenv from 'dotenv';
+dotenv.config();
+
+// Then create your window...
+```
+
+---
+
+### **Option 3: Use electron-vite or forge config**
+
+If you're using electron-forge or electron-vite, check their specific environment variable handling:
+
+```typescript
+// vite.config.ts
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+  // ... other config
+  define: {
+    'import.meta.env.VITE_FIREBASE_API_KEY': JSON.stringify(process.env.VITE_FIREBASE_API_KEY),
+  }
+});
+```
+
+---
+
+## Quick Checklist:
+
+- [ ] `.env` file is in the **root directory**
+- [ ] Variables are prefixed with `VITE_` (for Vite)
+- [ ] You're using `import.meta.env.VITE_*` not `process.env.*`
+- [ ] Restart your dev server after changing `.env`
+- [ ] `.env` is in `.gitignore` (for security)
+
+**Option 1 (Vite env variables)** is the simplest and most secure approach for Electron + Vite apps. Try that first!
