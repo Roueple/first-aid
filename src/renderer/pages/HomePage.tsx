@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import authService from '../../services/AuthService';
+import { seedSampleFindings } from '../../utils/seedData';
 
 function HomePage() {
   const [testResult, setTestResult] = useState<string>('');
@@ -60,6 +61,20 @@ function HomePage() {
     }
   };
 
+  const handleSeedData = async () => {
+    setTestResult('🌱 Seeding sample findings data...\n');
+    
+    try {
+      await seedSampleFindings();
+      setTestResult(prev => prev + '\n✅ Successfully added 10 sample findings to Firestore!');
+      setTestResult(prev => prev + '\n\n📊 You can now view them in the dashboard.');
+      setTestResult(prev => prev + '\n\n💡 Tip: Click "Go to Dashboard" to see the data.');
+    } catch (error: any) {
+      setTestResult(prev => prev + `\n\n❌ Error seeding data: ${error.message}`);
+      console.error('Seed error:', error);
+    }
+  };
+
   return (
     <div className="flex items-center justify-center min-h-screen p-8">
       <div className="text-center max-w-2xl">
@@ -101,18 +116,36 @@ function HomePage() {
           )}
         </div>
 
-        {/* Quick Test Button */}
-        <div className="mb-6">
+        {/* Navigation Buttons */}
+        <div className="mb-6 flex gap-3 justify-center flex-wrap">
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition font-semibold"
+          >
+            📊 Go to Dashboard
+          </button>
+          <button
+            onClick={() => navigate('/findings')}
+            className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition font-semibold"
+          >
+            📋 View Findings Table
+          </button>
+          <button
+            onClick={handleSeedData}
+            className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition font-semibold"
+          >
+            🌱 Add Sample Data
+          </button>
           <button
             onClick={runQuickTest}
             className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
           >
-            🧪 Run Auth Service Tests
+            🧪 Run Auth Tests
           </button>
-          <p className="text-xs text-gray-500 mt-2">
-            Test authentication service methods
-          </p>
         </div>
+        <p className="text-xs text-gray-500 mb-6">
+          Add sample data first, then view it in the dashboard
+        </p>
 
         {/* Test Results */}
         {testResult && (
