@@ -1,10 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { FindingFilters, DateRangeFilter } from '../types/filter.types';
 import { FindingSeverity, FindingStatus } from '../types/finding.types';
 
 interface FilterPanelProps {
   filters: FindingFilters;
   onFiltersChange: (filters: FindingFilters) => void;
+  // New schema props
+  availableSubholdings?: string[];
+  availableProcessAreas?: string[];
+  availableProjectTypes?: string[];
+  availablePrimaryTags?: string[];
+  // Backward compatibility
   availableLocations?: string[];
   availableCategories?: string[];
 }
@@ -25,27 +31,37 @@ interface FilterPanelProps {
 export const FilterPanel: React.FC<FilterPanelProps> = ({
   filters,
   onFiltersChange,
+  availableSubholdings = [],
+  availableProcessAreas = [],
+  availableProjectTypes = [],
+  availablePrimaryTags = [],
+  // Backward compatibility
   availableLocations = [],
   availableCategories = [],
 }) => {
   const [isExpanded, setIsExpanded] = useState(true);
 
-  // Severity options
-  const severityOptions: FindingSeverity[] = ['Critical', 'High', 'Medium', 'Low'];
+  // Priority options (was severity)
+  const priorityOptions: FindingSeverity[] = ['Critical', 'High', 'Medium', 'Low'];
 
   // Status options
   const statusOptions: FindingStatus[] = ['Open', 'In Progress', 'Closed', 'Deferred'];
 
-  // Handle severity toggle
-  const handleSeverityToggle = (severity: FindingSeverity) => {
-    const currentSeverities = filters.severity || [];
-    const newSeverities = currentSeverities.includes(severity)
-      ? currentSeverities.filter((s) => s !== severity)
-      : [...currentSeverities, severity];
+  // Use new field names, fallback to old for backward compatibility
+  const subholdings = availableSubholdings.length > 0 ? availableSubholdings : availableLocations;
+  const processAreas = availableProcessAreas.length > 0 ? availableProcessAreas : availableCategories;
+
+  // Handle priority toggle (was severity)
+  const handlePriorityToggle = (priority: FindingSeverity) => {
+    const currentPriorities = filters.priorityLevel || filters.severity || [];
+    const newPriorities = currentPriorities.includes(priority)
+      ? currentPriorities.filter((p) => p !== priority)
+      : [...currentPriorities, priority];
 
     onFiltersChange({
       ...filters,
-      severity: newSeverities.length > 0 ? newSeverities : undefined,
+      priorityLevel: newPriorities.length > 0 ? newPriorities : undefined,
+      severity: undefined, // Clear old field
     });
   };
 
@@ -62,29 +78,57 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
     });
   };
 
-  // Handle location toggle
-  const handleLocationToggle = (location: string) => {
-    const currentLocations = filters.location || [];
-    const newLocations = currentLocations.includes(location)
-      ? currentLocations.filter((l) => l !== location)
-      : [...currentLocations, location];
+  // Handle subholding toggle (was location)
+  const handleSubholdingToggle = (subholding: string) => {
+    const currentSubholdings = filters.subholding || filters.location || [];
+    const newSubholdings = currentSubholdings.includes(subholding)
+      ? currentSubholdings.filter((s) => s !== subholding)
+      : [...currentSubholdings, subholding];
 
     onFiltersChange({
       ...filters,
-      location: newLocations.length > 0 ? newLocations : undefined,
+      subholding: newSubholdings.length > 0 ? newSubholdings : undefined,
+      location: undefined, // Clear old field
     });
   };
 
-  // Handle category toggle
-  const handleCategoryToggle = (category: string) => {
-    const currentCategories = filters.category || [];
-    const newCategories = currentCategories.includes(category)
-      ? currentCategories.filter((c) => c !== category)
-      : [...currentCategories, category];
+  // Handle process area toggle (was category)
+  const handleProcessAreaToggle = (processArea: string) => {
+    const currentProcessAreas = filters.processArea || filters.category || [];
+    const newProcessAreas = currentProcessAreas.includes(processArea)
+      ? currentProcessAreas.filter((p) => p !== processArea)
+      : [...currentProcessAreas, processArea];
 
     onFiltersChange({
       ...filters,
-      category: newCategories.length > 0 ? newCategories : undefined,
+      processArea: newProcessAreas.length > 0 ? newProcessAreas : undefined,
+      category: undefined, // Clear old field
+    });
+  };
+
+  // Handle project type toggle
+  const handleProjectTypeToggle = (projectType: string) => {
+    const currentProjectTypes = filters.projectType || [];
+    const newProjectTypes = currentProjectTypes.includes(projectType)
+      ? currentProjectTypes.filter((p) => p !== projectType)
+      : [...currentProjectTypes, projectType];
+
+    onFiltersChange({
+      ...filters,
+      projectType: newProjectTypes.length > 0 ? newProjectTypes : undefined,
+    });
+  };
+
+  // Handle primary tag toggle
+  const handlePrimaryTagToggle = (tag: string) => {
+    const currentTags = filters.primaryTag || [];
+    const newTags = currentTags.includes(tag)
+      ? currentTags.filter((t) => t !== tag)
+      : [...currentTags, tag];
+
+    onFiltersChange({
+      ...filters,
+      primaryTag: newTags.length > 0 ? newTags : undefined,
     });
   };
 
@@ -116,10 +160,15 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
   // Check if any filters are active
   const hasActiveFilters = () => {
     return (
+      (filters.priorityLevel && filters.priorityLevel.length > 0) ||
       (filters.severity && filters.severity.length > 0) ||
       (filters.status && filters.status.length > 0) ||
+      (filters.subholding && filters.subholding.length > 0) ||
       (filters.location && filters.location.length > 0) ||
+      (filters.processArea && filters.processArea.length > 0) ||
       (filters.category && filters.category.length > 0) ||
+      (filters.projectType && filters.projectType.length > 0) ||
+      (filters.primaryTag && filters.primaryTag.length > 0) ||
       (filters.dateIdentified && (filters.dateIdentified.start || filters.dateIdentified.end))
     );
   };
@@ -182,24 +231,24 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
       {/* Filter Content */}
       {isExpanded && (
         <div className="p-4 space-y-6">
-          {/* Severity Filter */}
+          {/* Priority Filter (was Severity) */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Severity
+              Priority Level
             </label>
             <div className="space-y-2">
-              {severityOptions.map((severity) => (
+              {priorityOptions.map((priority) => (
                 <label
-                  key={severity}
+                  key={priority}
                   className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors"
                 >
                   <input
                     type="checkbox"
-                    checked={filters.severity?.includes(severity) || false}
-                    onChange={() => handleSeverityToggle(severity)}
+                    checked={(filters.priorityLevel || filters.severity)?.includes(priority) || false}
+                    onChange={() => handlePriorityToggle(priority)}
                     className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                   />
-                  <span className="text-sm text-gray-700">{severity}</span>
+                  <span className="text-sm text-gray-700">{priority}</span>
                 </label>
               ))}
             </div>
@@ -228,50 +277,100 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
             </div>
           </div>
 
-          {/* Location Filter */}
-          {availableLocations.length > 0 && (
+          {/* Subholding Filter (was Location) */}
+          {subholdings.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Location
+                Subholding
               </label>
               <div className="space-y-2 max-h-48 overflow-y-auto">
-                {availableLocations.map((location) => (
+                {subholdings.map((subholding) => (
                   <label
-                    key={location}
+                    key={subholding}
                     className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors"
                   >
                     <input
                       type="checkbox"
-                      checked={filters.location?.includes(location) || false}
-                      onChange={() => handleLocationToggle(location)}
+                      checked={(filters.subholding || filters.location)?.includes(subholding) || false}
+                      onChange={() => handleSubholdingToggle(subholding)}
                       className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                     />
-                    <span className="text-sm text-gray-700">{location}</span>
+                    <span className="text-sm text-gray-700">{subholding}</span>
                   </label>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Category Filter */}
-          {availableCategories.length > 0 && (
+          {/* Project Type Filter */}
+          {availableProjectTypes.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Category
+                Project Type
               </label>
               <div className="space-y-2 max-h-48 overflow-y-auto">
-                {availableCategories.map((category) => (
+                {availableProjectTypes.map((projectType) => (
                   <label
-                    key={category}
+                    key={projectType}
                     className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors"
                   >
                     <input
                       type="checkbox"
-                      checked={filters.category?.includes(category) || false}
-                      onChange={() => handleCategoryToggle(category)}
+                      checked={filters.projectType?.includes(projectType) || false}
+                      onChange={() => handleProjectTypeToggle(projectType)}
                       className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                     />
-                    <span className="text-sm text-gray-700">{category}</span>
+                    <span className="text-sm text-gray-700">{projectType}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Process Area Filter (was Category) */}
+          {processAreas.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Process Area
+              </label>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {processAreas.map((processArea) => (
+                  <label
+                    key={processArea}
+                    className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={(filters.processArea || filters.category)?.includes(processArea) || false}
+                      onChange={() => handleProcessAreaToggle(processArea)}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700">{processArea}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Primary Tag Filter */}
+          {availablePrimaryTags.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Primary Tag
+              </label>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {availablePrimaryTags.map((tag) => (
+                  <label
+                    key={tag}
+                    className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={filters.primaryTag?.includes(tag) || false}
+                      onChange={() => handlePrimaryTagToggle(tag)}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700">{tag}</span>
                   </label>
                 ))}
               </div>

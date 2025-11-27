@@ -63,35 +63,47 @@ export const FindingsPage: React.FC = () => {
     loadFindings();
   }, []);
 
-  // Extract unique locations and categories from findings
-  const availableLocations = useMemo(() => {
-    const locations = new Set(allFindings.map((f) => f.location));
-    return Array.from(locations).sort();
+  // Extract unique values from findings (NEW SCHEMA)
+  const availableSubholdings = useMemo(() => {
+    const subholdings = new Set(allFindings.map((f) => f.subholding));
+    return Array.from(subholdings).sort();
   }, [allFindings]);
 
-  const availableCategories = useMemo(() => {
-    const categories = new Set(allFindings.map((f) => f.category));
-    return Array.from(categories).sort();
+  const availableProcessAreas = useMemo(() => {
+    const processAreas = new Set(allFindings.map((f) => f.processArea));
+    return Array.from(processAreas).sort();
   }, [allFindings]);
 
-  // Apply filters and search to findings
+  const availableProjectTypes = useMemo(() => {
+    const projectTypes = new Set(allFindings.map((f) => f.projectType));
+    return Array.from(projectTypes).sort();
+  }, [allFindings]);
+
+  const availablePrimaryTags = useMemo(() => {
+    const tags = new Set(allFindings.map((f) => f.primaryTag));
+    return Array.from(tags).sort();
+  }, [allFindings]);
+
+  // Apply filters and search to findings (NEW SCHEMA)
   const filteredFindings = useMemo(() => {
     return allFindings.filter((finding) => {
-      // Search filter - search across title, description, and responsible person
+      // Search filter - search across title, description, and executor
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
-        const matchesTitle = finding.title.toLowerCase().includes(query);
-        const matchesDescription = finding.description.toLowerCase().includes(query);
-        const matchesResponsiblePerson = finding.responsiblePerson.toLowerCase().includes(query);
+        const matchesTitle = finding.findingTitle.toLowerCase().includes(query);
+        const matchesDescription = finding.findingDescription.toLowerCase().includes(query);
+        const matchesExecutor = finding.executor.toLowerCase().includes(query);
+        const matchesId = finding.id.toLowerCase().includes(query);
         
-        if (!matchesTitle && !matchesDescription && !matchesResponsiblePerson) {
+        if (!matchesTitle && !matchesDescription && !matchesExecutor && !matchesId) {
           return false;
         }
       }
 
-      // Severity filter
-      if (filters.severity && filters.severity.length > 0) {
-        if (!filters.severity.includes(finding.severity)) {
+      // Priority filter (was severity)
+      const priorityFilter = filters.priorityLevel || filters.severity;
+      if (priorityFilter && priorityFilter.length > 0) {
+        if (!priorityFilter.includes(finding.priorityLevel)) {
           return false;
         }
       }
@@ -103,16 +115,32 @@ export const FindingsPage: React.FC = () => {
         }
       }
 
-      // Location filter
-      if (filters.location && filters.location.length > 0) {
-        if (!filters.location.includes(finding.location)) {
+      // Subholding filter (was location)
+      const subholdingFilter = filters.subholding || filters.location;
+      if (subholdingFilter && subholdingFilter.length > 0) {
+        if (!subholdingFilter.includes(finding.subholding)) {
           return false;
         }
       }
 
-      // Category filter
-      if (filters.category && filters.category.length > 0) {
-        if (!filters.category.includes(finding.category)) {
+      // Process area filter (was category)
+      const processAreaFilter = filters.processArea || filters.category;
+      if (processAreaFilter && processAreaFilter.length > 0) {
+        if (!processAreaFilter.includes(finding.processArea)) {
+          return false;
+        }
+      }
+
+      // Project type filter
+      if (filters.projectType && filters.projectType.length > 0) {
+        if (!filters.projectType.includes(finding.projectType)) {
+          return false;
+        }
+      }
+
+      // Primary tag filter
+      if (filters.primaryTag && filters.primaryTag.length > 0) {
+        if (!filters.primaryTag.includes(finding.primaryTag)) {
           return false;
         }
       }
@@ -154,50 +182,50 @@ export const FindingsPage: React.FC = () => {
     console.log('Selected findings:', selected);
   }, []);
 
-  const handlePageChange = (page: number) => {
+  const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
     // Clear selection when changing pages
     setSelectedFindings([]);
-  };
+  }, []);
 
-  const handlePageSizeChange = (newPageSize: number) => {
+  const handlePageSizeChange = useCallback((newPageSize: number) => {
     setPageSize(newPageSize);
     // Reset to first page when changing page size
     setCurrentPage(1);
     // Clear selection when changing page size
     setSelectedFindings([]);
-  };
+  }, []);
 
-  const handleFiltersChange = (newFilters: FindingFilters) => {
+  const handleFiltersChange = useCallback((newFilters: FindingFilters) => {
     setFilters(newFilters);
     // Reset to first page when filters change
     setCurrentPage(1);
     // Clear selection when filters change
     setSelectedFindings([]);
-  };
+  }, []);
 
-  const handleSearch = (query: string) => {
+  const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
     // Reset to first page when search changes
     setCurrentPage(1);
     // Clear selection when search changes
     setSelectedFindings([]);
-  };
+  }, []);
 
-  const handleRowClick = (finding: Finding) => {
+  const handleRowClick = useCallback((finding: Finding) => {
     setSelectedFinding(finding);
-  };
+  }, []);
 
-  const handleCloseDetails = () => {
+  const handleCloseDetails = useCallback(() => {
     setSelectedFinding(null);
-  };
+  }, []);
 
-  const handleEdit = (finding: Finding) => {
+  const handleEdit = useCallback((finding: Finding) => {
     setEditingFinding(finding);
     setIsEditDialogOpen(true);
-  };
+  }, []);
 
-  const handleSaveEdit = async (id: string, data: UpdateFindingInput) => {
+  const handleSaveEdit = useCallback(async (id: string, data: UpdateFindingInput) => {
     try {
       await findingsService.updateFinding(id, data);
       
@@ -206,14 +234,14 @@ export const FindingsPage: React.FC = () => {
       
       if (updatedFinding) {
         // Update the finding in the local state
-        setAllFindings(allFindings.map(f => 
+        setAllFindings(prev => prev.map(f => 
           f.id === id ? updatedFinding : f
         ));
         
         // Update selected finding if it's the one being edited
-        if (selectedFinding?.id === id) {
-          setSelectedFinding(updatedFinding);
-        }
+        setSelectedFinding(current => 
+          current?.id === id ? updatedFinding : current
+        );
       }
       
       setIsEditDialogOpen(false);
@@ -222,19 +250,19 @@ export const FindingsPage: React.FC = () => {
       console.error('Error updating finding:', error);
       throw error;
     }
-  };
+  }, []);
 
-  const handleCloseEditDialog = () => {
+  const handleCloseEditDialog = useCallback(() => {
     setIsEditDialogOpen(false);
     setEditingFinding(null);
-  };
+  }, []);
 
   const handleDelete = (finding: Finding) => {
     console.log('Delete finding:', finding);
     // TODO: Implement delete functionality
     // In real implementation, this would call FindingsService.deleteFinding()
     setAllFindings(allFindings.filter(f => f.id !== finding.id));
-    alert(`Finding "${finding.title}" has been deleted (mock)`);
+    alert(`Finding "${finding.findingTitle}" has been deleted (mock)`);
   };
 
   return (
@@ -297,8 +325,10 @@ export const FindingsPage: React.FC = () => {
             <FilterPanel
               filters={filters}
               onFiltersChange={handleFiltersChange}
-              availableLocations={availableLocations}
-              availableCategories={availableCategories}
+              availableSubholdings={availableSubholdings}
+              availableProcessAreas={availableProcessAreas}
+              availableProjectTypes={availableProjectTypes}
+              availablePrimaryTags={availablePrimaryTags}
             />
           </div>
 

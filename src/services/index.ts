@@ -16,3 +16,13 @@ export type {
 
 export { FindingsService } from './FindingsService';
 export { default as findingsService } from './FindingsService';
+
+export { PseudonymizationService, pseudonymizationService } from './PseudonymizationService';
+export type {
+  PseudonymizeRequest,
+  PseudonymizeResponse,
+  DepseudonymizeRequest,
+  DepseudonymizeResponse,
+} from './PseudonymizationService';
+
+export { AuditService, auditService } from './AuditService';

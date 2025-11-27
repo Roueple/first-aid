@@ -14,6 +14,7 @@ export interface ChatMessageMetadata {
   sources?: string[]; // finding IDs
   suggestions?: string[];
   processingTime?: number;
+  isError?: boolean;
 }
 
 /**
@@ -76,6 +77,7 @@ export const ChatMessageMetadataSchema = z.object({
   sources: z.array(z.string()).optional(),
   suggestions: z.array(z.string()).optional(),
   processingTime: z.number().positive().optional(),
+  isError: z.boolean().optional(),
 });
 
 /**

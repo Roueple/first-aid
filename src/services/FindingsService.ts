@@ -14,6 +14,8 @@ import {
   FindingsResult,
   DEFAULT_PAGINATION,
 } from '../types/filter.types';
+import { calculateFindingTotal, calculatePriorityLevel } from '../types/finding.constants';
+import { auditService } from './AuditService';
 
 /**
  * FindingsService extends DatabaseService with specialized queries for findings
@@ -69,10 +71,10 @@ export class FindingsService extends DatabaseService<Finding> {
       return { filters: queryFilters };
     }
 
-    // Severity filter
+    // Priority level filter (was severity)
     if (filters.severity && filters.severity.length > 0) {
       queryFilters.push({
-        field: 'severity',
+        field: 'priorityLevel',
         operator: 'in',
         value: filters.severity,
       });
@@ -87,19 +89,19 @@ export class FindingsService extends DatabaseService<Finding> {
       });
     }
 
-    // Location filter
+    // Subholding filter (was location)
     if (filters.location && filters.location.length > 0) {
       queryFilters.push({
-        field: 'location',
+        field: 'subholding',
         operator: 'in',
         value: filters.location,
       });
     }
 
-    // Category filter
+    // Process area filter (was category)
     if (filters.category && filters.category.length > 0) {
       queryFilters.push({
-        field: 'category',
+        field: 'processArea',
         operator: 'in',
         value: filters.category,
       });
@@ -108,16 +110,16 @@ export class FindingsService extends DatabaseService<Finding> {
     // Department filter
     if (filters.department && filters.department.length > 0) {
       queryFilters.push({
-        field: 'department',
+        field: 'findingDepartment',
         operator: 'in',
         value: filters.department,
       });
     }
 
-    // Responsible person filter
+    // Executor filter (was responsiblePerson)
     if (filters.responsiblePerson && filters.responsiblePerson.length > 0) {
       queryFilters.push({
-        field: 'responsiblePerson',
+        field: 'executor',
         operator: 'in',
         value: filters.responsiblePerson,
       });
@@ -159,28 +161,28 @@ export class FindingsService extends DatabaseService<Finding> {
       }
     }
 
-    // Risk level filter
+    // Finding total filter (was riskLevel)
     if (filters.riskLevel) {
       if (filters.riskLevel.min !== undefined) {
         queryFilters.push({
-          field: 'riskLevel',
+          field: 'findingTotal',
           operator: '>=',
           value: filters.riskLevel.min,
         });
       }
       if (filters.riskLevel.max !== undefined) {
         queryFilters.push({
-          field: 'riskLevel',
+          field: 'findingTotal',
           operator: '<=',
           value: filters.riskLevel.max,
         });
       }
     }
 
-    // Tags filter (array-contains-any)
+    // Tags filter (array-contains-any) - now checks secondaryTags
     if (filters.tags && filters.tags.length > 0) {
       queryFilters.push({
-        field: 'tags',
+        field: 'secondaryTags',
         operator: 'array-contains-any',
         value: filters.tags,
       });
@@ -190,7 +192,7 @@ export class FindingsService extends DatabaseService<Finding> {
   }
 
   /**
-   * Client-side text search across title, description, and responsible person
+   * Client-side text search across title, description, executor, and other fields
    */
   private searchInFindings(findings: (Finding & { id: string })[], searchText: string): (Finding & { id: string })[] {
     if (!searchText || searchText.trim() === '') {
@@ -200,11 +202,13 @@ export class FindingsService extends DatabaseService<Finding> {
     const searchLower = searchText.toLowerCase().trim();
     
     return findings.filter((finding) => {
-      const titleMatch = finding.title.toLowerCase().includes(searchLower);
-      const descriptionMatch = finding.description.toLowerCase().includes(searchLower);
-      const responsiblePersonMatch = finding.responsiblePerson.toLowerCase().includes(searchLower);
+      const titleMatch = finding.findingTitle.toLowerCase().includes(searchLower);
+      const descriptionMatch = finding.findingDescription.toLowerCase().includes(searchLower);
+      const executorMatch = finding.executor.toLowerCase().includes(searchLower);
+      const projectMatch = finding.projectName.toLowerCase().includes(searchLower);
+      const departmentMatch = finding.findingDepartment.toLowerCase().includes(searchLower);
       
-      return titleMatch || descriptionMatch || responsiblePersonMatch;
+      return titleMatch || descriptionMatch || executorMatch || projectMatch || departmentMatch;
     });
   }
 
@@ -349,16 +353,32 @@ export class FindingsService extends DatabaseService<Finding> {
     // Validate input
     const validatedInput = CreateFindingSchema.parse(input);
 
+    // Calculate findingTotal and priorityLevel
+    const findingTotal = calculateFindingTotal(validatedInput.findingBobot, validatedInput.findingKadar);
+    const priorityLevel = calculatePriorityLevel(findingTotal);
+
     // Convert dates to Timestamps
     const data = {
       ...validatedInput,
+      findingTotal,
+      priorityLevel,
       dateIdentified: this.toTimestamp(validatedInput.dateIdentified),
       dateDue: validatedInput.dateDue ? this.toTimestamp(validatedInput.dateDue) : undefined,
-      tags: validatedInput.tags || [],
+      secondaryTags: validatedInput.secondaryTags || [],
       importBatch: validatedInput.originalSource, // Use originalSource as importBatch for now
+      modifiedBy: 'system', // Will be updated with actual user
     };
 
-    return this.create(data);
+    const findingId = await this.create(data);
+
+    // Log finding creation
+    await auditService.logFindingCreate(findingId, {
+      title: validatedInput.findingTitle,
+      priorityLevel,
+      status: validatedInput.status,
+    });
+
+    return findingId;
   }
 
   /**
@@ -381,7 +401,25 @@ export class FindingsService extends DatabaseService<Finding> {
       data.dateCompleted = this.toTimestamp(validatedInput.dateCompleted);
     }
 
-    return this.update(id, data);
+    // Recalculate findingTotal and priorityLevel if bobot or kadar changed
+    if (validatedInput.findingBobot !== undefined || validatedInput.findingKadar !== undefined) {
+      // Get current finding to get missing values
+      const currentFinding = await this.getById(id);
+      if (currentFinding) {
+        const bobot = validatedInput.findingBobot ?? currentFinding.findingBobot;
+        const kadar = validatedInput.findingKadar ?? currentFinding.findingKadar;
+        data.findingTotal = calculateFindingTotal(bobot, kadar);
+        data.priorityLevel = calculatePriorityLevel(data.findingTotal);
+      }
+    }
+
+    data.modifiedBy = 'system'; // Will be updated with actual user
+
+    await this.update(id, data);
+
+    // Log finding update with changed fields
+    const changedFields = Object.keys(validatedInput);
+    await auditService.logFindingUpdate(id, changedFields);
   }
 
   /**
@@ -401,7 +439,10 @@ export class FindingsService extends DatabaseService<Finding> {
    * Delete a finding
    */
   async deleteFinding(id: string): Promise<void> {
-    return this.delete(id);
+    await this.delete(id);
+
+    // Log finding deletion
+    await auditService.logFindingDelete(id);
   }
 }
 

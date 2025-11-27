@@ -7,18 +7,19 @@ import { FindingSeverity, FindingStatus } from './finding.types';
 export type SortDirection = 'asc' | 'desc';
 
 /**
- * Sort field options for findings
+ * Sort field options for findings (NEW SCHEMA)
  */
 export type FindingSortField = 
   | 'dateIdentified' 
   | 'dateDue' 
-  | 'dateCreated' 
-  | 'dateUpdated' 
-  | 'severity' 
+  | 'creationTimestamp'
+  | 'lastModifiedDate' 
+  | 'priorityLevel'
   | 'status' 
-  | 'location' 
-  | 'title'
-  | 'riskLevel';
+  | 'subholding'
+  | 'findingTitle'
+  | 'findingTotal'
+  | 'auditYear';
 
 /**
  * Date range filter
@@ -29,24 +30,57 @@ export interface DateRangeFilter {
 }
 
 /**
- * Finding filters interface
+ * Finding filters interface (NEW SCHEMA)
  */
 export interface FindingFilters {
-  severity?: FindingSeverity[];
+  // Priority (was severity)
+  priorityLevel?: FindingSeverity[];
   status?: FindingStatus[];
-  location?: string[];
-  category?: string[];
-  department?: string[];
-  responsiblePerson?: string[];
+  
+  // Organizational (new schema)
+  subholding?: string[];
+  projectType?: string[];
+  projectName?: string[];
+  findingDepartment?: string[];
+  
+  // Audit team
+  executor?: string[];
+  reviewer?: string[];
+  manager?: string[];
+  
+  // Classification
+  controlCategory?: string[];
+  processArea?: string[];
+  
+  // Dates
   dateIdentified?: DateRangeFilter;
   dateDue?: DateRangeFilter;
-  riskLevel?: {
+  auditYear?: number[];
+  
+  // Scoring
+  findingTotal?: {
     min?: number;
     max?: number;
   };
-  tags?: string[];
+  findingBobot?: number[];
+  findingKadar?: number[];
+  
+  // Tags
+  primaryTag?: string[];
+  secondaryTags?: string[];
+  
+  // Search
   searchText?: string;
   isOverdue?: boolean;
+  
+  // Backward compatibility (mapped internally)
+  severity?: FindingSeverity[]; // Maps to priorityLevel
+  location?: string[]; // Maps to subholding
+  category?: string[]; // Maps to processArea
+  department?: string[]; // Maps to findingDepartment
+  responsiblePerson?: string[]; // Maps to executor
+  riskLevel?: { min?: number; max?: number }; // Maps to findingTotal
+  tags?: string[]; // Maps to secondaryTags
 }
 
 /**
@@ -107,28 +141,64 @@ export const DateRangeFilterSchema = z.object({
 );
 
 /**
- * Zod schema for finding filters validation
+ * Zod schema for finding filters validation (NEW SCHEMA)
  */
 export const FindingFiltersSchema = z.object({
-  severity: z.array(z.enum(['Critical', 'High', 'Medium', 'Low'])).optional(),
+  // Priority
+  priorityLevel: z.array(z.enum(['Critical', 'High', 'Medium', 'Low'])).optional(),
   status: z.array(z.enum(['Open', 'In Progress', 'Closed', 'Deferred'])).optional(),
+  
+  // Organizational
+  subholding: z.array(z.string()).optional(),
+  projectType: z.array(z.string()).optional(),
+  projectName: z.array(z.string()).optional(),
+  findingDepartment: z.array(z.string()).optional(),
+  
+  // Audit team
+  executor: z.array(z.string()).optional(),
+  reviewer: z.array(z.string()).optional(),
+  manager: z.array(z.string()).optional(),
+  
+  // Classification
+  controlCategory: z.array(z.string()).optional(),
+  processArea: z.array(z.string()).optional(),
+  
+  // Dates
+  dateIdentified: DateRangeFilterSchema.optional(),
+  dateDue: DateRangeFilterSchema.optional(),
+  auditYear: z.array(z.number()).optional(),
+  
+  // Scoring
+  findingTotal: z.object({
+    min: z.number().min(1).max(20).optional(),
+    max: z.number().min(1).max(20).optional(),
+  }).optional(),
+  findingBobot: z.array(z.number().min(1).max(4)).optional(),
+  findingKadar: z.array(z.number().min(1).max(5)).optional(),
+  
+  // Tags
+  primaryTag: z.array(z.string()).optional(),
+  secondaryTags: z.array(z.string()).optional(),
+  
+  // Search
+  searchText: z.string().optional(),
+  isOverdue: z.boolean().optional(),
+  
+  // Backward compatibility
+  severity: z.array(z.enum(['Critical', 'High', 'Medium', 'Low'])).optional(),
   location: z.array(z.string()).optional(),
   category: z.array(z.string()).optional(),
   department: z.array(z.string()).optional(),
   responsiblePerson: z.array(z.string()).optional(),
-  dateIdentified: DateRangeFilterSchema.optional(),
-  dateDue: DateRangeFilterSchema.optional(),
   riskLevel: z.object({
-    min: z.number().min(1).max(10).optional(),
-    max: z.number().min(1).max(10).optional(),
+    min: z.number().min(1).max(20).optional(),
+    max: z.number().min(1).max(20).optional(),
   }).optional(),
   tags: z.array(z.string()).optional(),
-  searchText: z.string().optional(),
-  isOverdue: z.boolean().optional(),
 });
 
 /**
- * Zod schema for pagination validation
+ * Zod schema for pagination validation (NEW SCHEMA)
  */
 export const PaginationSchema = z.object({
   page: z.number().int().min(1, 'Page must be at least 1'),
@@ -136,13 +206,14 @@ export const PaginationSchema = z.object({
   sortBy: z.enum([
     'dateIdentified',
     'dateDue',
-    'dateCreated',
-    'dateUpdated',
-    'severity',
+    'creationTimestamp',
+    'lastModifiedDate',
+    'priorityLevel',
     'status',
-    'location',
-    'title',
-    'riskLevel',
+    'subholding',
+    'findingTitle',
+    'findingTotal',
+    'auditYear',
   ]).optional(),
   sortDirection: z.enum(['asc', 'desc']).optional(),
 });
@@ -157,12 +228,12 @@ export const SearchParamsSchema = z.object({
 });
 
 /**
- * Default pagination values
+ * Default pagination values (NEW SCHEMA)
  */
 export const DEFAULT_PAGINATION: Pagination = {
   page: 1,
   pageSize: 20,
-  sortBy: 'dateCreated',
+  sortBy: 'creationTimestamp',
   sortDirection: 'desc',
 };
 

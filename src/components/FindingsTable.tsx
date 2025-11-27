@@ -68,9 +68,9 @@ export const FindingsTable: React.FC<FindingsTableProps> = ({
     }
   };
 
-  // Helper function to get severity badge color
-  const getSeverityColor = (severity: string): string => {
-    switch (severity) {
+  // Helper function to get priority level badge color (replaces severity)
+  const getPriorityColor = (priority: string): string => {
+    switch (priority) {
       case 'Critical':
         return 'bg-red-100 text-red-800';
       case 'High':
@@ -100,7 +100,7 @@ export const FindingsTable: React.FC<FindingsTableProps> = ({
     }
   };
 
-  // Define columns for the table
+  // Define columns for the table (NEW SCHEMA)
   const columns = useMemo<ColumnDef<Finding>[]>(
     () => [
       // Selection column
@@ -137,9 +137,20 @@ export const FindingsTable: React.FC<FindingsTableProps> = ({
         enableSorting: false,
         size: 50,
       },
-      // Title column
+      // Finding ID column
       {
-        accessorKey: 'title',
+        accessorKey: 'id',
+        header: 'Finding ID',
+        cell: (info) => (
+          <div className="font-mono text-xs" title={info.getValue() as string}>
+            {info.getValue() as string}
+          </div>
+        ),
+        size: 120,
+      },
+      // Finding Title column (was 'title')
+      {
+        accessorKey: 'findingTitle',
         header: 'Title',
         cell: (info) => (
           <div className="max-w-xs truncate" title={info.getValue() as string}>
@@ -148,23 +159,39 @@ export const FindingsTable: React.FC<FindingsTableProps> = ({
         ),
         size: 250,
       },
-      // Severity column
+      // Priority Level column (was 'severity')
       {
-        accessorKey: 'severity',
-        header: 'Severity',
+        accessorKey: 'priorityLevel',
+        header: 'Priority',
         cell: (info) => {
-          const severity = info.getValue() as string;
+          const priority = info.getValue() as string;
           return (
             <span
-              className={`px-2 py-1 text-xs font-medium rounded-full ${getSeverityColor(
-                severity
+              className={`px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(
+                priority
               )}`}
             >
-              {severity}
+              {priority}
             </span>
           );
         },
         size: 100,
+      },
+      // Finding Total (Bobot × Kadar)
+      {
+        accessorKey: 'findingTotal',
+        header: 'Score',
+        cell: (info) => {
+          const total = info.getValue() as number;
+          const row = (info.row.original as Finding);
+          return (
+            <div className="flex items-center gap-1" title={`Bobot: ${row.findingBobot} × Kadar: ${row.findingKadar}`}>
+              <span className="font-medium">{total}</span>
+              <span className="text-gray-500 text-xs">/20</span>
+            </div>
+          );
+        },
+        size: 80,
       },
       // Status column
       {
@@ -184,17 +211,28 @@ export const FindingsTable: React.FC<FindingsTableProps> = ({
         },
         size: 120,
       },
-      // Location column
+      // Subholding column (was 'location')
       {
-        accessorKey: 'location',
-        header: 'Location',
+        accessorKey: 'subholding',
+        header: 'Subholding',
         cell: (info) => info.getValue() as string,
         size: 150,
       },
-      // Category column
+      // Project Type column
       {
-        accessorKey: 'category',
-        header: 'Category',
+        accessorKey: 'projectType',
+        header: 'Project Type',
+        cell: (info) => (
+          <div className="max-w-xs truncate" title={info.getValue() as string}>
+            {info.getValue() as string}
+          </div>
+        ),
+        size: 130,
+      },
+      // Project Name column
+      {
+        accessorKey: 'projectName',
+        header: 'Project',
         cell: (info) => (
           <div className="max-w-xs truncate" title={info.getValue() as string}>
             {info.getValue() as string}
@@ -202,12 +240,34 @@ export const FindingsTable: React.FC<FindingsTableProps> = ({
         ),
         size: 150,
       },
-      // Responsible Person column
+      // Process Area column (was 'category')
       {
-        accessorKey: 'responsiblePerson',
-        header: 'Responsible Person',
+        accessorKey: 'processArea',
+        header: 'Process Area',
+        cell: (info) => (
+          <div className="max-w-xs truncate" title={info.getValue() as string}>
+            {info.getValue() as string}
+          </div>
+        ),
+        size: 120,
+      },
+      // Executor column (was 'responsiblePerson')
+      {
+        accessorKey: 'executor',
+        header: 'Executor',
         cell: (info) => info.getValue() as string,
-        size: 180,
+        size: 150,
+      },
+      // Primary Tag column
+      {
+        accessorKey: 'primaryTag',
+        header: 'Primary Tag',
+        cell: (info) => (
+          <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">
+            {info.getValue() as string}
+          </span>
+        ),
+        size: 150,
       },
       // Date Identified column
       {
@@ -222,21 +282,6 @@ export const FindingsTable: React.FC<FindingsTableProps> = ({
         header: 'Date Due',
         cell: (info) => formatDate(info.getValue() as Timestamp),
         size: 130,
-      },
-      // Risk Level column
-      {
-        accessorKey: 'riskLevel',
-        header: 'Risk Level',
-        cell: (info) => {
-          const riskLevel = info.getValue() as number;
-          return (
-            <div className="flex items-center">
-              <span className="font-medium">{riskLevel}</span>
-              <span className="text-gray-500 text-xs ml-1">/10</span>
-            </div>
-          );
-        },
-        size: 100,
       },
     ],
     []

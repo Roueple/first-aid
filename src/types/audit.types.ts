@@ -14,7 +14,8 @@ export type AuditAction =
   | 'ai_query'
   | 'import'
   | 'report_generate'
-  | 'report_download';
+  | 'report_download'
+  | 'error';
 
 /**
  * Resource types that can be audited
@@ -25,7 +26,8 @@ export type ResourceType =
   | 'chat' 
   | 'user' 
   | 'pattern'
-  | 'session';
+  | 'session'
+  | 'system';
 
 /**
  * Audit log interface
@@ -84,8 +86,9 @@ export const AuditLogSchema = z.object({
     'import',
     'report_generate',
     'report_download',
+    'error',
   ]),
-  resourceType: z.enum(['finding', 'report', 'chat', 'user', 'pattern', 'session']),
+  resourceType: z.enum(['finding', 'report', 'chat', 'user', 'pattern', 'session', 'system']),
   resourceId: z.string().optional(),
   details: z.record(z.string(), z.any()),
   ipAddress: z.string().optional(),
@@ -108,8 +111,9 @@ export const CreateAuditLogSchema = z.object({
     'import',
     'report_generate',
     'report_download',
+    'error',
   ]),
-  resourceType: z.enum(['finding', 'report', 'chat', 'user', 'pattern', 'session']),
+  resourceType: z.enum(['finding', 'report', 'chat', 'user', 'pattern', 'session', 'system']),
   resourceId: z.string().optional(),
   details: z.record(z.string(), z.any()).optional(),
   ipAddress: z.string().optional(),
@@ -131,8 +135,9 @@ export const AuditLogFiltersSchema = z.object({
     'import',
     'report_generate',
     'report_download',
+    'error',
   ])).optional(),
-  resourceType: z.array(z.enum(['finding', 'report', 'chat', 'user', 'pattern', 'session'])).optional(),
+  resourceType: z.array(z.enum(['finding', 'report', 'chat', 'user', 'pattern', 'session', 'system'])).optional(),
   dateRange: z.object({
     start: z.date(),
     end: z.date(),

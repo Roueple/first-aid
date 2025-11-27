@@ -10,6 +10,7 @@ import {
   browserSessionPersistence,
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
+import { auditService } from './AuditService';
 
 /**
  * User interface representing authenticated user data
@@ -115,6 +116,9 @@ class AuthService {
       const user = this.mapFirebaseUser(userCredential.user);
       this.currentUser = user;
 
+      // Log successful login
+      await auditService.logLogin(user.uid, 'email');
+
       return user;
     } catch (error: any) {
       // Map Firebase error codes to user-friendly messages
@@ -130,8 +134,15 @@ class AuthService {
    */
   async signOut(): Promise<void> {
     try {
+      const userId = this.currentUser?.uid;
+      
       await firebaseSignOut(this.auth);
       this.currentUser = null;
+
+      // Log logout event
+      if (userId) {
+        await auditService.logLogout(userId);
+      }
     } catch (error: any) {
       console.error('Sign out error:', error);
       throw new Error('Failed to sign out. Please try again.');

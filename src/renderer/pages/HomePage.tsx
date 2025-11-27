@@ -131,6 +131,24 @@ function HomePage() {
             📋 View Findings Table
           </button>
           <button
+            onClick={() => navigate('/chat')}
+            className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition font-semibold"
+          >
+            💬 AI Chat Assistant
+          </button>
+          <button
+            onClick={() => navigate('/audit-logs')}
+            className="bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition font-semibold"
+          >
+            🔍 Audit Logs
+          </button>
+          <button
+            onClick={() => navigate('/settings')}
+            className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition font-semibold"
+          >
+            ⚙️ Settings
+          </button>
+          <button
             onClick={handleSeedData}
             className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition font-semibold"
           >
