@@ -15,6 +15,11 @@ export interface ChatMessageMetadata {
   suggestions?: string[];
   processingTime?: number;
   isError?: boolean;
+  errorCode?: string;
+  queryType?: 'simple' | 'complex' | 'hybrid';
+  executionTimeMs?: number;
+  findingsAnalyzed?: number;
+  tokensUsed?: number;
 }
 
 /**
@@ -78,6 +83,11 @@ export const ChatMessageMetadataSchema = z.object({
   suggestions: z.array(z.string()).optional(),
   processingTime: z.number().positive().optional(),
   isError: z.boolean().optional(),
+  errorCode: z.string().optional(),
+  queryType: z.enum(['simple', 'complex', 'hybrid']).optional(),
+  executionTimeMs: z.number().nonnegative().optional(),
+  findingsAnalyzed: z.number().int().nonnegative().optional(),
+  tokensUsed: z.number().int().nonnegative().optional(),
 });
 
 /**

@@ -289,11 +289,11 @@ export class DatabaseService<T extends DocumentData> {
   async create(data: Partial<T>): Promise<string> {
     return this.executeWithRetry(async () => {
       const now = Timestamp.now();
-      const docData = {
+      const docData = this.removeUndefined({
         ...data,
         dateCreated: now,
         dateUpdated: now,
-      };
+      });
 
       const docRef = await addDoc(this.collectionRef, docData);
       return docRef.id;
@@ -322,6 +322,32 @@ export class DatabaseService<T extends DocumentData> {
   }
 
   /**
+   * Remove undefined values from an object (recursively)
+   * Firestore doesn't accept undefined values
+   */
+  private removeUndefined(obj: any): any {
+    if (obj === null || obj === undefined) {
+      return obj;
+    }
+
+    if (Array.isArray(obj)) {
+      return obj.map(item => this.removeUndefined(item));
+    }
+
+    if (typeof obj === 'object' && obj.constructor === Object) {
+      const cleaned: any = {};
+      for (const key in obj) {
+        if (obj[key] !== undefined) {
+          cleaned[key] = this.removeUndefined(obj[key]);
+        }
+      }
+      return cleaned;
+    }
+
+    return obj;
+  }
+
+  /**
    * Update a document by ID
    * @param id - Document ID
    * @param data - Partial document data to update
@@ -330,10 +356,10 @@ export class DatabaseService<T extends DocumentData> {
   async update(id: string, data: Partial<T>): Promise<void> {
     return this.executeWithRetry(async () => {
       const docRef = doc(this.db, this.collectionName, id);
-      const updateData = {
+      const updateData = this.removeUndefined({
         ...data,
         dateUpdated: Timestamp.now(),
-      };
+      });
 
       await updateDoc(docRef, updateData);
     }, 'update');

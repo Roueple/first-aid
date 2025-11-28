@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import HomePage from './pages/HomePage';
@@ -11,6 +12,8 @@ import { ConnectionStatus } from '../components/ConnectionStatus';
 import { AuthGuard } from '../components/AuthGuard';
 import { NotificationSystem } from '../components/NotificationSystem';
 import { useErrorHandler } from '../hooks/useErrorHandler';
+import { initializeGemini } from '../services/GeminiService';
+import { AuthProvider } from '../contexts/AuthContext';
 
 // Create a client with optimized caching options
 // Implements Requirements 11.1, 11.3 - Performance and caching
@@ -45,13 +48,24 @@ function App() {
   // Initialize error handler
   useErrorHandler();
 
+  // Initialize Gemini on app startup
+  useEffect(() => {
+    initializeGemini();
+  }, []);
+
   return (
-    <QueryClientProvider client={queryClient}>
-      <Router>
-        <div className="min-h-screen bg-gray-50">
-          <ConnectionStatus />
-          <NotificationSystem />
-          <Routes>
+    <AuthProvider>
+      <QueryClientProvider client={queryClient}>
+        <Router
+          future={{
+            v7_startTransition: true,
+            v7_relativeSplatPath: true,
+          }}
+        >
+          <div className="min-h-screen bg-gray-50">
+            <ConnectionStatus />
+            <NotificationSystem />
+            <Routes>
             <Route path="/" element={<LoginPage />} />
             <Route 
               path="/home" 
@@ -101,10 +115,11 @@ function App() {
                 </AuthGuard>
               } 
             />
-          </Routes>
-        </div>
-      </Router>
-    </QueryClientProvider>
+            </Routes>
+          </div>
+        </Router>
+      </QueryClientProvider>
+    </AuthProvider>
   );
 }
 

@@ -26,3 +26,39 @@ export type {
 } from './PseudonymizationService';
 
 export { AuditService, auditService } from './AuditService';
+
+export { default as chatSessionService } from './ChatSessionService';
+export type { ChatSession, ChatMessage } from '../types/chat.types';
+
+export { 
+  QueryClassifier, 
+  queryClassifier,
+  SIMPLE_PATTERNS,
+  COMPLEX_PATTERNS,
+  HYBRID_PATTERNS,
+  PROJECT_TYPE_ALIASES as QUERY_CLASSIFIER_PROJECT_TYPE_ALIASES,
+  SEVERITY_ALIASES as QUERY_CLASSIFIER_SEVERITY_ALIASES,
+  STATUS_ALIASES as QUERY_CLASSIFIER_STATUS_ALIASES,
+} from './QueryClassifier';
+export type { IQueryClassifier } from './QueryClassifier';
+
+export { 
+  FilterExtractor, 
+  filterExtractor,
+} from './FilterExtractor';
+
+export {
+  ContextBuilder,
+  contextBuilder,
+} from './ContextBuilder';
+
+export {
+  ResponseFormatter,
+  responseFormatter,
+} from './ResponseFormatter';
+
+export {
+  QueryRouterService,
+  queryRouterService,
+} from './QueryRouterService';
+export type { IQueryRouterService } from './QueryRouterService';

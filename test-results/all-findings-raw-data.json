@@ -1,0 +1,433 @@
+[
+  {
+    "id": "I6OnnECnNIXOJEK00GAL",
+    "findingBobot": 3,
+    "findingTotal": 6,
+    "projectName": "Central Park Complex",
+    "manager": "Patricia Wong",
+    "managementResponse": "Training sessions scheduled for February 2024.",
+    "findingTitle": "Inadequate Employee Training on Data Privacy",
+    "reviewer": "Thomas Lee",
+    "projectType": "Mixed-Use Development",
+    "executor": "Maria Garcia",
+    "modifiedBy": "system",
+    "dateIdentified": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1705017600,
+      "nanoseconds": 0
+    },
+    "creationTimestamp": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1764066930,
+      "nanoseconds": 706000000
+    },
+    "dateDue": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1711843200,
+      "nanoseconds": 0
+    },
+    "findingKadar": 2,
+    "rootCause": "No formal training program and lack of compliance monitoring.",
+    "auditYear": 2024,
+    "findingDescription": "Staff handling personal data have not received GDPR/privacy training in the past 12 months.",
+    "controlCategory": "Preventive",
+    "lastModifiedDate": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1764066930,
+      "nanoseconds": 706000000
+    },
+    "importBatch": "manual-seed-2024",
+    "primaryTag": "Training & Development",
+    "processArea": "HR",
+    "impactDescription": "Risk of data privacy violations, regulatory fines, reputational damage.",
+    "secondaryTags": [
+      "Regulatory Compliance",
+      "Policy & Procedure"
+    ],
+    "originalSource": "Compliance Review 2024",
+    "recommendation": "Conduct mandatory data privacy training for all staff handling personal information.",
+    "status": "In Progress",
+    "findingDepartment": "HR Operations",
+    "subholding": "Jakarta Office",
+    "priorityLevel": "Medium"
+  },
+  {
+    "id": "NIh2qdOA41CFStVpa2Ea",
+    "executor": "John Doe",
+    "findingTotal": 20,
+    "dateIdentified": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1705276800,
+      "nanoseconds": 0
+    },
+    "primaryTag": "Access Control",
+    "modifiedBy": "system",
+    "priorityLevel": "Critical",
+    "notes": "Critical security issue requiring immediate attention.",
+    "subholding": "Jakarta Office",
+    "projectName": "Jakarta Tower",
+    "rootCause": "Lack of security policy enforcement and inadequate configuration management during initial setup.",
+    "importBatch": "manual-seed-2024",
+    "managementResponse": "Agreed. Will implement by end of Q1 2024.",
+    "secondaryTags": [
+      "Data Security",
+      "Database Management",
+      "Password Controls"
+    ],
+    "dateDue": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1707955200,
+      "nanoseconds": 0
+    },
+    "findingDescription": "Production database allows unrestricted access from multiple IP addresses without proper authentication mechanisms. This poses a significant security risk.",
+    "manager": "Bob Johnson",
+    "controlCategory": "Detective",
+    "projectType": "Office Building",
+    "findingBobot": 4,
+    "recommendation": "Implement IP whitelisting and multi-factor authentication for database access.",
+    "lastModifiedDate": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1764066930,
+      "nanoseconds": 551000000
+    },
+    "originalSource": "Q4 2023 Security Audit",
+    "status": "Open",
+    "creationTimestamp": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1764066930,
+      "nanoseconds": 551000000
+    },
+    "findingTitle": "Inadequate Access Controls in Production Database",
+    "findingDepartment": "IT Infrastructure",
+    "auditYear": 2024,
+    "impactDescription": "Potential unauthorized access to sensitive data, data breach risk, compliance violations.",
+    "actionPlan": "1. Review current access list\n2. Implement IP whitelisting\n3. Enable MFA\n4. Conduct security audit",
+    "processArea": "IT",
+    "evidence": [
+      "security-scan-report.pdf",
+      "access-log-analysis.xlsx"
+    ],
+    "reviewer": "Jane Smith",
+    "findingKadar": 5
+  },
+  {
+    "id": "OTPVhGrwLEQ8U7nDDQDi",
+    "status": "In Progress",
+    "findingDepartment": "Accounting",
+    "projectType": "Office Building",
+    "importBatch": "manual-seed-2024",
+    "managementResponse": "In progress. Draft procedures under review.",
+    "primaryTag": "Backup & Recovery",
+    "executor": "Sarah Johnson",
+    "subholding": "Jakarta Office",
+    "rootCause": "Absence of formal business continuity planning and documentation requirements.",
+    "priorityLevel": "High",
+    "processArea": "Finance",
+    "recommendation": "Develop and document comprehensive backup procedures with regular testing.",
+    "controlCategory": "Preventive",
+    "secondaryTags": [
+      "Financial Reporting",
+      "Document Control"
+    ],
+    "findingTotal": 12,
+    "modifiedBy": "system",
+    "findingBobot": 4,
+    "dateDue": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1710028800,
+      "nanoseconds": 0
+    },
+    "auditYear": 2024,
+    "findingKadar": 3,
+    "findingDescription": "No documented backup and recovery procedures exist for critical financial systems including ERP and accounting software.",
+    "dateIdentified": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1704844800,
+      "nanoseconds": 0
+    },
+    "impactDescription": "Risk of data loss, inability to recover from system failures, potential financial reporting delays.",
+    "reviewer": "Michael Brown",
+    "manager": "Alice Williams",
+    "actionPlan": "1. Document current backup process\n2. Define RPO/RTO requirements\n3. Test recovery procedures",
+    "originalSource": "Annual IT Audit 2024",
+    "lastModifiedDate": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1764066930,
+      "nanoseconds": 574000000
+    },
+    "projectName": "Jakarta Tower",
+    "creationTimestamp": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1764066930,
+      "nanoseconds": 574000000
+    },
+    "findingTitle": "Missing Backup Procedures for Financial Data"
+  },
+  {
+    "id": "ZZMwnkJbL0iVhH9R0BUB",
+    "reviewer": "Rachel Green",
+    "primaryTag": "Data Security",
+    "findingKadar": 4,
+    "dateDue": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1719705600,
+      "nanoseconds": 0
+    },
+    "findingDepartment": "Application Development",
+    "managementResponse": "Deferred to Q3 2024 due to resource constraints.",
+    "originalSource": "Network Security Scan",
+    "manager": "Steven Park",
+    "projectType": "Hotel",
+    "importBatch": "manual-seed-2024",
+    "findingTotal": 12,
+    "auditYear": 2024,
+    "rootCause": "Legacy applications not updated to modern security standards.",
+    "dateIdentified": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1705536000,
+      "nanoseconds": 0
+    },
+    "findingDescription": "Internal applications transmit sensitive data over unencrypted HTTP connections.",
+    "processArea": "IT",
+    "impactDescription": "Data interception risk, compliance violations, security breach potential.",
+    "projectName": "Medan Grand Hotel",
+    "creationTimestamp": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1764066930,
+      "nanoseconds": 732000000
+    },
+    "lastModifiedDate": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1764066930,
+      "nanoseconds": 732000000
+    },
+    "controlCategory": "Corrective",
+    "findingBobot": 3,
+    "status": "Deferred",
+    "recommendation": "Migrate all applications to HTTPS and disable HTTP access.",
+    "secondaryTags": [
+      "Application Controls",
+      "IT Infrastructure"
+    ],
+    "priorityLevel": "High",
+    "findingTitle": "Unencrypted Data Transmission",
+    "executor": "Daniel Kim",
+    "subholding": "Medan Branch",
+    "modifiedBy": "system"
+  },
+  {
+    "id": "fhvm8TgnuA1amBdieD5E",
+    "dateDue": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1703980800,
+      "nanoseconds": 0
+    },
+    "impactDescription": "Increased risk of unauthorized access through password compromise.",
+    "projectName": "Surabaya Shopping Center",
+    "dateIdentified": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1700006400,
+      "nanoseconds": 0
+    },
+    "creationTimestamp": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1764066930,
+      "nanoseconds": 756000000
+    },
+    "findingDescription": "Current password policy allows weak passwords and does not enforce regular changes.",
+    "reviewer": "Patricia Moore",
+    "actionPlan": "Policy updated and enforced via Active Directory.",
+    "processArea": "IT",
+    "status": "Closed",
+    "findingBobot": 3,
+    "executor": "Thomas Anderson",
+    "modifiedBy": "system",
+    "priorityLevel": "Medium",
+    "findingDepartment": "Security",
+    "controlCategory": "Preventive",
+    "auditYear": 2023,
+    "subholding": "Surabaya Branch",
+    "dateCompleted": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1703721600,
+      "nanoseconds": 0
+    },
+    "recommendation": "Implement strong password policy with complexity requirements and MFA.",
+    "primaryTag": "Password Controls",
+    "originalSource": "Security Audit Q4 2023",
+    "findingTotal": 6,
+    "findingKadar": 2,
+    "projectType": "Mall",
+    "findingTitle": "Weak Password Policy Implementation",
+    "importBatch": "manual-seed-2024",
+    "secondaryTags": [
+      "Access Control",
+      "Multi-Factor Authentication"
+    ],
+    "rootCause": "Outdated security policy not aligned with current best practices.",
+    "managementResponse": "Completed. New policy implemented across all systems.",
+    "manager": "James Wilson",
+    "lastModifiedDate": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1764066930,
+      "nanoseconds": 756000000
+    }
+  },
+  {
+    "id": "kEG9krcT41tvXXZ7mx8q",
+    "modifiedBy": "system",
+    "findingDescription": "Several third-party vendors lack proper due diligence documentation and risk assessments. Affects 12 out of 45 active vendors.",
+    "originalSource": "Procurement Audit 2024",
+    "rootCause": "Inadequate vendor onboarding process and lack of standardized documentation requirements.",
+    "primaryTag": "Vendor Management",
+    "processArea": "Procurement",
+    "priorityLevel": "Medium",
+    "manager": "Carol Martinez",
+    "reviewer": "David Wilson",
+    "creationTimestamp": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1764066930,
+      "nanoseconds": 654000000
+    },
+    "findingTitle": "Incomplete Vendor Due Diligence Documentation",
+    "dateDue": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1712275200,
+      "nanoseconds": 0
+    },
+    "importBatch": "manual-seed-2024",
+    "controlCategory": "Preventive",
+    "executor": "Lisa Anderson",
+    "lastModifiedDate": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1764066930,
+      "nanoseconds": 654000000
+    },
+    "secondaryTags": [
+      "Document Retention",
+      "Regulatory Compliance"
+    ],
+    "findingTotal": 6,
+    "dateIdentified": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1704412800,
+      "nanoseconds": 0
+    },
+    "recommendation": "Complete due diligence for all active vendors and establish ongoing review process.",
+    "impactDescription": "Increased vendor risk, potential compliance violations, reputational damage.",
+    "projectType": "Office Building",
+    "projectName": "Jakarta Tower",
+    "status": "Open",
+    "auditYear": 2024,
+    "findingKadar": 2,
+    "findingBobot": 3,
+    "subholding": "Jakarta Office",
+    "findingDepartment": "Vendor Relations",
+    "managementResponse": "Acknowledged. Prioritizing high-risk vendors first."
+  },
+  {
+    "id": "wEhAkDkLVpFQs2BdVDdO",
+    "originalSource": "Branch IT Assessment",
+    "findingTitle": "Outdated Software Versions in Use",
+    "controlCategory": "Corrective",
+    "importBatch": "manual-seed-2024",
+    "auditYear": 2024,
+    "findingKadar": 4,
+    "lastModifiedDate": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1764066930,
+      "nanoseconds": 605000000
+    },
+    "primaryTag": "Change Management",
+    "projectName": "Grand Surabaya Hotel",
+    "findingTotal": 12,
+    "processArea": "IT",
+    "recommendation": "Upgrade all systems to supported versions and implement patch management policy.",
+    "manager": "Budi Santoso",
+    "creationTimestamp": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1764066930,
+      "nanoseconds": 605000000
+    },
+    "findingBobot": 3,
+    "modifiedBy": "system",
+    "priorityLevel": "High",
+    "rootCause": "Lack of patch management policy and insufficient IT resources for regular updates.",
+    "status": "Open",
+    "findingDepartment": "IT Support",
+    "dateDue": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1709078400,
+      "nanoseconds": 0
+    },
+    "reviewer": "Siti Nurhaliza",
+    "projectType": "Hotel",
+    "dateIdentified": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1705708800,
+      "nanoseconds": 0
+    },
+    "secondaryTags": [
+      "IT Infrastructure",
+      "System Integration"
+    ],
+    "impactDescription": "Exposure to known security vulnerabilities, potential malware infections, compliance issues.",
+    "subholding": "Surabaya Branch",
+    "executor": "Ahmad Rahman",
+    "findingDescription": "Multiple workstations running unsupported operating system versions with known vulnerabilities. Affects approximately 25 workstations."
+  },
+  {
+    "id": "wrAeEhetfSJwoFHbokgi",
+    "rootCause": "Insufficient staffing and lack of system controls for dual authorization.",
+    "findingKadar": 5,
+    "findingTitle": "Lack of Segregation of Duties in Payment Processing",
+    "findingBobot": 4,
+    "findingTotal": 20,
+    "auditYear": 2024,
+    "subholding": "Bandung Branch",
+    "priorityLevel": "Critical",
+    "managementResponse": "Critical issue. Implementation in progress.",
+    "projectName": "Bandung Heights",
+    "controlCategory": "Preventive",
+    "manager": "Frank Thompson",
+    "actionPlan": "1. Define approval thresholds\n2. Update system workflows\n3. Train staff\n4. Monitor compliance",
+    "dateDue": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1705708800,
+      "nanoseconds": 0
+    },
+    "originalSource": "Financial Controls Review",
+    "reviewer": "Emily Davis",
+    "impactDescription": "High risk of fraud, unauthorized payments, financial loss.",
+    "projectType": "Apartment",
+    "secondaryTags": [
+      "Payment Authorization",
+      "Dual Authorization",
+      "Internal Control"
+    ],
+    "findingDepartment": "Accounts Payable",
+    "processArea": "Finance",
+    "primaryTag": "Segregation of Duties",
+    "executor": "Robert Chen",
+    "importBatch": "manual-seed-2024",
+    "dateIdentified": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1703030400,
+      "nanoseconds": 0
+    },
+    "lastModifiedDate": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1764066930,
+      "nanoseconds": 684000000
+    },
+    "findingDescription": "Single individuals can initiate, approve, and process payments without oversight. Critical control weakness.",
+    "recommendation": "Implement maker-checker controls for all payment transactions above threshold.",
+    "creationTimestamp": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1764066930,
+      "nanoseconds": 684000000
+    },
+    "modifiedBy": "system",
+    "status": "Open"
+  }
+]

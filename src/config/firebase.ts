@@ -1,6 +1,6 @@
 import { initializeApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth, connectAuthEmulator } from 'firebase/auth';
-import { getFirestore, Firestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { Firestore, connectFirestoreEmulator, initializeFirestore } from 'firebase/firestore';
 import { getFunctions, Functions, connectFunctionsEmulator } from 'firebase/functions';
 
 // Firebase configuration from environment variables
@@ -54,7 +54,13 @@ try {
 
   // Initialize services
   auth = getAuth(app);
-  db = getFirestore(app);
+
+  // Initialize Firestore with long polling to prevent QUIC timeout errors
+  // This is more reliable in Electron environments
+  db = initializeFirestore(app, {
+    experimentalForceLongPolling: true,
+  });
+
   functions = getFunctions(app);
 
   // Connect to emulators in development

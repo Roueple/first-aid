@@ -23,3 +23,6 @@ export * from './filter.types';
 
 // Audit log types
 export * from './audit.types';
+
+// Query Router types
+export * from './queryRouter.types';
