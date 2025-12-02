@@ -68,23 +68,33 @@ This will start:
 
 ```
 first-aid-system/
-├── src/
+├── src/                   # Application source code
 │   ├── main/              # Electron main process
-│   │   ├── main.ts        # Main entry point
-│   │   └── preload.ts     # Preload script
-│   └── renderer/          # React application
-│       ├── config/        # Configuration files
-│       ├── pages/         # Page components
-│       ├── App.tsx        # Root component
-│       ├── main.tsx       # React entry point
-│       └── index.html     # HTML template
-├── dist/                  # Build output
-├── package.json
-├── tsconfig.json          # TypeScript config (renderer)
-├── tsconfig.main.json     # TypeScript config (main)
-├── vite.config.ts         # Vite configuration
-└── tailwind.config.js     # TailwindCSS configuration
+│   ├── renderer/          # React application
+│   ├── components/        # Reusable components
+│   ├── services/          # Business logic
+│   ├── contexts/          # React contexts
+│   ├── hooks/             # Custom hooks
+│   ├── types/             # TypeScript types
+│   └── utils/             # Utility functions
+├── docs/                  # Task completion reports
+├── docs-archive/          # All documentation (organized)
+│   ├── 01-project-overview/
+│   ├── 02-setup-guides/
+│   ├── 03-testing-guides/
+│   └── ... (10 categories)
+├── functions/             # Firebase Cloud Functions
+├── scripts/               # Build and deployment scripts
+├── README.md              # This file
+├── DOCUMENTATION-INDEX.md # Documentation index
+├── PROJECT-STRUCTURE.md   # Detailed structure guide
+└── package.json           # Dependencies and scripts
 ```
+
+📚 **For complete documentation**, see:
+- **DOCUMENTATION-INDEX.md** - Find any documentation
+- **PROJECT-STRUCTURE.md** - Detailed project structure
+- **docs-archive/** - All organized documentation
 
 ## Development Guidelines
 
