@@ -286,6 +286,16 @@ class TransparentLogger {
     
     if (Object.keys(intent.filters).length > 0) {
       console.log('     %cExtracted Filters:', this.styles.DATA, intent.filters);
+      
+      // Highlight department filter specifically (uses Firestore query, not client-side)
+      if (intent.filters.department) {
+        console.log('     %c✅ Department Filter:', this.styles.SUCCESS, `"${intent.filters.department}" (Firestore native query)`);
+      }
+      
+      // Warn about keywords (uses client-side filtering)
+      if (intent.filters.keywords && intent.filters.keywords.length > 0) {
+        console.warn('     ⚠️ Keywords Filter:', intent.filters.keywords, '(client-side search - less efficient)');
+      }
     }
   }
 

@@ -83,6 +83,16 @@ Respond in JSON format:
   "confidence": 0.0-1.0
 }
 
+CRITICAL RULES FOR DEPARTMENT EXTRACTION:
+- Common departments: IT, HR, Finance, Accounting, Marketing, Sales, Operations, Legal, Procurement, Admin, Engineering, R&D
+- If user mentions a department name (e.g., "IT findings", "HR department", "Finance issues"), extract it to "department" field
+- Department names are case-insensitive but should be returned in proper case (e.g., "IT", "HR", "Finance")
+- DO NOT put department names in "keywords" - they belong in "department" field
+- Examples:
+  * "show me IT findings" → department: "IT", keywords: null
+  * "HR department issues 2024" → department: "HR", year: 2024, keywords: null
+  * "Finance critical findings" → department: "Finance", severity: ["Critical"], keywords: null
+
 Valid severity values: Critical, High, Medium, Low
 Valid status values: Open, In Progress, Closed, Deferred
 Valid project types: Hotel, Landed House, Apartment, School, University, Insurance, Hospital, Clinic, Mall, Office Building, Mixed-Use Development

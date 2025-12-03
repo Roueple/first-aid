@@ -71,12 +71,13 @@ export class FindingsService extends DatabaseService<Finding> {
       return { filters: queryFilters };
     }
 
-    // Priority level filter (was severity)
-    if (filters.severity && filters.severity.length > 0) {
+    // Priority level filter (check both new and legacy field names)
+    const severityFilter = filters.priorityLevel || filters.severity;
+    if (severityFilter && severityFilter.length > 0) {
       queryFilters.push({
         field: 'priorityLevel',
         operator: 'in',
-        value: filters.severity,
+        value: severityFilter,
       });
     }
 
@@ -89,39 +90,61 @@ export class FindingsService extends DatabaseService<Finding> {
       });
     }
 
-    // Subholding filter (was location)
-    if (filters.location && filters.location.length > 0) {
+    // Subholding filter (check both new and legacy field names)
+    const subholdingFilter = filters.subholding || filters.location;
+    if (subholdingFilter && subholdingFilter.length > 0) {
       queryFilters.push({
         field: 'subholding',
         operator: 'in',
-        value: filters.location,
+        value: subholdingFilter,
       });
     }
 
-    // Process area filter (was category)
-    if (filters.category && filters.category.length > 0) {
+    // Process area filter (check both new and legacy field names)
+    const processAreaFilter = filters.processArea || filters.category;
+    if (processAreaFilter && processAreaFilter.length > 0) {
       queryFilters.push({
         field: 'processArea',
         operator: 'in',
-        value: filters.category,
+        value: processAreaFilter,
       });
     }
 
-    // Department filter
-    if (filters.department && filters.department.length > 0) {
+    // Department filter (check both new and legacy field names)
+    const departmentFilter = filters.findingDepartment || filters.department;
+    if (departmentFilter && departmentFilter.length > 0) {
       queryFilters.push({
         field: 'findingDepartment',
         operator: 'in',
-        value: filters.department,
+        value: departmentFilter,
       });
     }
 
-    // Executor filter (was responsiblePerson)
-    if (filters.responsiblePerson && filters.responsiblePerson.length > 0) {
+    // Project type filter
+    if (filters.projectType && filters.projectType.length > 0) {
+      queryFilters.push({
+        field: 'projectType',
+        operator: 'in',
+        value: filters.projectType,
+      });
+    }
+
+    // Audit year filter
+    if (filters.auditYear && filters.auditYear.length > 0) {
+      queryFilters.push({
+        field: 'auditYear',
+        operator: 'in',
+        value: filters.auditYear,
+      });
+    }
+
+    // Executor filter (check both new and legacy field names)
+    const executorFilter = filters.executor || filters.responsiblePerson;
+    if (executorFilter && executorFilter.length > 0) {
       queryFilters.push({
         field: 'executor',
         operator: 'in',
-        value: filters.responsiblePerson,
+        value: executorFilter,
       });
     }
 
@@ -161,30 +184,32 @@ export class FindingsService extends DatabaseService<Finding> {
       }
     }
 
-    // Finding total filter (was riskLevel)
-    if (filters.riskLevel) {
-      if (filters.riskLevel.min !== undefined) {
+    // Finding total filter (check both new and legacy field names)
+    const riskLevelFilter = filters.findingTotal || filters.riskLevel;
+    if (riskLevelFilter) {
+      if (riskLevelFilter.min !== undefined) {
         queryFilters.push({
           field: 'findingTotal',
           operator: '>=',
-          value: filters.riskLevel.min,
+          value: riskLevelFilter.min,
         });
       }
-      if (filters.riskLevel.max !== undefined) {
+      if (riskLevelFilter.max !== undefined) {
         queryFilters.push({
           field: 'findingTotal',
           operator: '<=',
-          value: filters.riskLevel.max,
+          value: riskLevelFilter.max,
         });
       }
     }
 
-    // Tags filter (array-contains-any) - now checks secondaryTags
-    if (filters.tags && filters.tags.length > 0) {
+    // Tags filter (check both new and legacy field names)
+    const tagsFilter = filters.secondaryTags || filters.tags;
+    if (tagsFilter && tagsFilter.length > 0) {
       queryFilters.push({
         field: 'secondaryTags',
         operator: 'array-contains-any',
-        value: filters.tags,
+        value: tagsFilter,
       });
     }
 
@@ -193,6 +218,7 @@ export class FindingsService extends DatabaseService<Finding> {
 
   /**
    * Client-side text search across title, description, executor, and other fields
+   * Uses word boundary matching to avoid false positives (e.g., "IT" won't match "duties")
    */
   private searchInFindings(findings: (Finding & { id: string })[], searchText: string): (Finding & { id: string })[] {
     if (!searchText || searchText.trim() === '') {
@@ -201,14 +227,27 @@ export class FindingsService extends DatabaseService<Finding> {
 
     const searchLower = searchText.toLowerCase().trim();
     
+    // Create regex with word boundaries for each search term
+    // Split by spaces to handle multiple keywords
+    const searchTerms = searchLower.split(/\s+/).filter(term => term.length > 0);
+    const regexPatterns = searchTerms.map(term => {
+      // Escape special regex characters
+      const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      // Use word boundary \b for whole word matching
+      return new RegExp(`\\b${escapedTerm}`, 'i');
+    });
+    
     return findings.filter((finding) => {
-      const titleMatch = finding.findingTitle.toLowerCase().includes(searchLower);
-      const descriptionMatch = finding.findingDescription.toLowerCase().includes(searchLower);
-      const executorMatch = finding.executor.toLowerCase().includes(searchLower);
-      const projectMatch = finding.projectName.toLowerCase().includes(searchLower);
-      const departmentMatch = finding.findingDepartment.toLowerCase().includes(searchLower);
+      const searchableText = [
+        finding.findingTitle,
+        finding.findingDescription,
+        finding.executor,
+        finding.projectName,
+        finding.findingDepartment,
+      ].join(' ').toLowerCase();
       
-      return titleMatch || descriptionMatch || executorMatch || projectMatch || departmentMatch;
+      // All search terms must match (AND logic)
+      return regexPatterns.every(regex => regex.test(searchableText));
     });
   }
 
@@ -247,12 +286,16 @@ export class FindingsService extends DatabaseService<Finding> {
     // Apply client-side search if searchText is provided
     let filteredItems = itemsWithComputed;
     if (filters?.searchText) {
+      console.warn(`⚠️ CLIENT-SIDE FILTER: searchText="${filters.searchText}" (fetched ${itemsWithComputed.length} docs from Firestore)`);
       filteredItems = this.searchInFindings(itemsWithComputed, filters.searchText);
+      console.log(`   → Filtered to ${filteredItems.length} results`);
     }
 
     // Apply client-side overdue filter if specified
     if (filters?.isOverdue) {
+      console.warn(`⚠️ CLIENT-SIDE FILTER: isOverdue=true (processing ${filteredItems.length} docs)`);
       filteredItems = this.filterOverdue(filteredItems);
+      console.log(`   → Filtered to ${filteredItems.length} results`);
     }
 
     // Recalculate pagination if client-side filtering was applied

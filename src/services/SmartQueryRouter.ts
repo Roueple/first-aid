@@ -492,6 +492,7 @@ export class SmartQueryRouter {
 
     if (filters.department) {
       findingFilters.findingDepartment = [filters.department];
+      console.log(`✅ DEPARTMENT FILTER: Using Firestore query for department="${filters.department}"`);
     }
 
     if (filters.year) {
@@ -503,6 +504,7 @@ export class SmartQueryRouter {
     }
 
     if (filters.keywords && filters.keywords.length > 0) {
+      console.warn(`⚠️ KEYWORDS FILTER: Will use client-side search for keywords="${filters.keywords.join(' ')}"`);
       findingFilters.searchText = filters.keywords.join(' ');
     }
 

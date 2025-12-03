@@ -1,5 +1,7 @@
 import { ChatMessage as ChatMessageType } from '../types/chat.types';
 import { useNavigate } from 'react-router-dom';
+import { ChatResultsTable } from './ChatResultsTable';
+import { Finding } from '../types/finding.types';
 
 interface ChatMessageProps {
   message: ChatMessageType;
@@ -50,7 +52,13 @@ export function ChatMessage({ message }: ChatMessageProps) {
         >
           {/* Message Text with Markdown Support */}
           <div className={`text-[15px] leading-relaxed ${isUser ? '' : 'prose prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1'}`}>
-            <MessageContent content={message.content} isUser={isUser} />
+            <MessageContent 
+              content={message.content} 
+              isUser={isUser}
+              findings={message.metadata?.findings as Finding[] | undefined}
+              totalCount={message.metadata?.totalCount as number | undefined}
+              userQuery={message.metadata?.userQuery as string | undefined}
+            />
           </div>
 
           {/* Metadata for Assistant Messages */}
@@ -115,14 +123,23 @@ export function ChatMessage({ message }: ChatMessageProps) {
 
 /**
  * MessageContent Component
- * Renders message content with markdown support
+ * Renders message content with markdown support and table rendering
  */
 interface MessageContentProps {
   content: string;
   isUser: boolean;
+  findings?: Finding[];
+  totalCount?: number;
+  userQuery?: string;
 }
 
-function MessageContent({ content, isUser }: MessageContentProps) {
+function MessageContent({ content, isUser, findings, totalCount, userQuery }: MessageContentProps) {
+  // Check if content contains table marker
+  const hasTable = content.includes('[RENDER_TABLE]');
+  
+  // Split content by table marker if present
+  const parts = hasTable ? content.split('[RENDER_TABLE]') : [content];
+  
   // Simple markdown rendering for common patterns
   // This will be enhanced when react-markdown is available
   const renderContent = (text: string) => {
@@ -221,5 +238,25 @@ function MessageContent({ content, isUser }: MessageContentProps) {
     return <span dangerouslySetInnerHTML={{ __html: formatted }} />;
   };
 
+  // Render content with table if needed
+  if (hasTable && findings && findings.length > 0) {
+    return (
+      <div className="whitespace-pre-wrap break-words">
+        {/* Content before table */}
+        {parts[0] && renderContent(parts[0])}
+        
+        {/* Render table */}
+        <ChatResultsTable 
+          findings={findings}
+          totalCount={totalCount || findings.length}
+          queryText={userQuery || 'Query Results'}
+        />
+        
+        {/* Content after table */}
+        {parts[1] && renderContent(parts[1])}
+      </div>
+    );
+  }
+  
   return <div className="whitespace-pre-wrap break-words">{renderContent(content)}</div>;
 }

@@ -133,6 +133,8 @@ export interface QueryResponse {
   answer: string;
   /** Finding summaries (for simple and hybrid queries) */
   findings?: FindingSummary[];
+  /** Full findings for Excel export (not just summaries) */
+  fullFindings?: Finding[];
   /** Query execution metadata */
   metadata: QueryMetadata;
   /** Pagination info for large result sets */

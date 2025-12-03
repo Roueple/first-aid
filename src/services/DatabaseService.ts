@@ -252,7 +252,7 @@ export class DatabaseService<T extends DocumentData> {
   /**
    * Build a Firestore query from query options
    */
-  protected buildQuery(options: QueryOptions = {}): Query<DocumentData> {
+  protected buildQuery(options: QueryOptions = {}, logQuery = true): Query<DocumentData> {
     const constraints: QueryConstraint[] = [];
 
     // Add filters
@@ -278,7 +278,43 @@ export class DatabaseService<T extends DocumentData> {
       constraints.push(limit(options.limit));
     }
 
+    // Log the query in SQL-like format for debugging
+    if (logQuery) {
+      this.logQueryAsSql(options);
+    }
+
     return query(this.collectionRef, ...constraints);
+  }
+
+  /**
+   * Log Firestore query in SQL-like format for debugging
+   */
+  private logQueryAsSql(options: QueryOptions): void {
+    const parts: string[] = [`SELECT * FROM ${this.collectionName}`];
+    
+    // WHERE clause
+    if (options.filters && options.filters.length > 0) {
+      const conditions = options.filters.map(f => {
+        const value = typeof f.value === 'string' ? `"${f.value}"` : 
+                     Array.isArray(f.value) ? `[${f.value.map(v => typeof v === 'string' ? `"${v}"` : v).join(', ')}]` :
+                     f.value;
+        return `${f.field} ${f.operator} ${value}`;
+      });
+      parts.push(`WHERE ${conditions.join(' AND ')}`);
+    }
+    
+    // ORDER BY clause
+    if (options.sorts && options.sorts.length > 0) {
+      const sorts = options.sorts.map(s => `${s.field} ${s.direction.toUpperCase()}`);
+      parts.push(`ORDER BY ${sorts.join(', ')}`);
+    }
+    
+    // LIMIT clause
+    if (options.limit) {
+      parts.push(`LIMIT ${options.limit}`);
+    }
+    
+    console.log(`🔍 Firestore Query: ${parts.join(' ')}`);
   }
 
   /**

@@ -250,20 +250,63 @@ export class FilterExtractor {
 
   /**
    * Extract department from query
+   * Handles both explicit mentions ("IT department") and implicit mentions ("IT findings")
    * @param query - Lowercase query string
    * @returns Extracted department or undefined
    */
   private extractDepartment(query: string): string | undefined {
-    // Common department keywords
-    const departmentPatterns = [
-      /\b(?:in|from|at)\s+(?:the\s+)?([A-Z][A-Za-z\s&]+?)\s+(?:department|dept)\b/i,
-      /\b(?:department|dept):\s*([A-Za-z\s&]+)/i,
+    // Common department names (case-insensitive)
+    const commonDepartments = [
+      'IT', 'HR', 'Finance', 'Sales', 'Procurement', 'Legal',
+      'Marketing', 'Operations', 'Accounting', 'Admin', 'Administration',
+      'Engineering', 'R&D', 'Research', 'Development', 'Customer Service',
+      'Support', 'Logistics', 'Supply Chain', 'Quality', 'QA', 'QC',
+      'Production', 'Manufacturing', 'Warehouse', 'Security', 'Facilities',
+      'Maintenance', 'Compliance', 'Audit', 'Risk', 'Treasury', 'Tax',
+      'Payroll', 'Benefits', 'Training', 'Recruitment', 'Communications'
     ];
 
-    for (const pattern of departmentPatterns) {
+    // Pattern 1: Explicit department mention with "department" or "dept" keyword
+    const explicitPatterns = [
+      /\b(?:in|from|at|for)\s+(?:the\s+)?([A-Za-z][A-Za-z\s&]+?)\s+(?:department|dept)\b/i,
+      /\b(?:department|dept):\s*([A-Za-z\s&]+)/i,
+      /\b(?:department|dept)\s+(?:is|=|:)?\s*([A-Za-z\s&]+)/i,
+    ];
+
+    for (const pattern of explicitPatterns) {
       const match = query.match(pattern);
       if (match && match[1]) {
         return match[1].trim();
+      }
+    }
+
+    // Pattern 2: Implicit department mention (e.g., "IT findings", "HR issues", "show me Finance")
+    // Check if any common department name appears in the query
+    for (const dept of commonDepartments) {
+      // Use word boundaries to avoid partial matches
+      const regex = new RegExp(`\\b${dept}\\b`, 'i');
+      if (regex.test(query)) {
+        // Verify it's not part of another context (e.g., "IT system" might still mean IT department)
+        // For now, we'll accept any match as a department reference
+        return dept;
+      }
+    }
+
+    // Pattern 3: Department mentioned with context words
+    const contextPatterns = [
+      /\b(?:show|list|find|get|display)\s+(?:me\s+)?([A-Za-z]+)\s+(?:findings?|issues?|problems?)/i,
+      /\b([A-Za-z]+)\s+(?:findings?|issues?|problems?)\s+(?:in|from|for)/i,
+      /\b(?:in|from|for)\s+([A-Za-z]+)\s+(?:findings?|issues?|problems?)/i,
+    ];
+
+    for (const pattern of contextPatterns) {
+      const match = query.match(pattern);
+      if (match && match[1]) {
+        const candidate = match[1].trim();
+        // Check if the candidate is a known department
+        if (commonDepartments.some(d => d.toLowerCase() === candidate.toLowerCase())) {
+          return candidate;
+        }
       }
     }
 

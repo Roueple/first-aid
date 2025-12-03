@@ -28,6 +28,7 @@ import { Finding } from '../types/finding.types';
 import { FindingFilters } from '../types/filter.types';
 import { QueryClassifier } from './QueryClassifier';
 import { FilterExtractor } from './FilterExtractor';
+import { SmartFilterExtractor, smartFilterExtractor } from './SmartFilterExtractor';
 import { ContextBuilder } from './ContextBuilder';
 import { ResponseFormatter } from './ResponseFormatter';
 import findingsService from './FindingsService';
@@ -59,12 +60,14 @@ export interface IQueryRouterService {
 export class QueryRouterService implements IQueryRouterService {
   private classifier: QueryClassifier;
   private filterExtractor: FilterExtractor;
+  private smartFilterExtractor: SmartFilterExtractor;
   private contextBuilder: ContextBuilder;
   private responseFormatter: ResponseFormatter;
 
   constructor() {
     this.classifier = new QueryClassifier();
     this.filterExtractor = new FilterExtractor();
+    this.smartFilterExtractor = smartFilterExtractor;
     this.contextBuilder = new ContextBuilder();
     this.responseFormatter = new ResponseFormatter();
   }
@@ -185,8 +188,8 @@ export class QueryRouterService implements IQueryRouterService {
     options: QueryOptions
   ): Promise<QueryResponse | QueryErrorResponse> {
     try {
-      // Extract and validate filters
-      const extractedFilters = this.filterExtractor.extractWithPatterns(userQuery);
+      // Extract and validate filters using smart extraction (AI + patterns)
+      const extractedFilters = await this.smartFilterExtractor.extractWithHybrid(userQuery);
       const validation = this.filterExtractor.validateFilters(extractedFilters);
       
       if (!validation.valid) {
@@ -269,8 +272,8 @@ export class QueryRouterService implements IQueryRouterService {
         throw new Error('AI service is not configured');
       }
       
-      // Extract filters to find relevant context
-      const extractedFilters = this.filterExtractor.extractWithPatterns(userQuery);
+      // Extract filters to find relevant context using smart extraction
+      const extractedFilters = await this.smartFilterExtractor.extractWithHybrid(userQuery);
       const validation = this.filterExtractor.validateFilters(extractedFilters);
       
       // Get relevant findings for context
@@ -345,8 +348,8 @@ export class QueryRouterService implements IQueryRouterService {
     options: QueryOptions
   ): Promise<QueryResponse | QueryErrorResponse> {
     try {
-      // Step 1: Execute database query portion
-      const extractedFilters = this.filterExtractor.extractWithPatterns(userQuery);
+      // Step 1: Execute database query portion using smart extraction
+      const extractedFilters = await this.smartFilterExtractor.extractWithHybrid(userQuery);
       const validation = this.filterExtractor.validateFilters(extractedFilters);
       
       const findingFilters = this.convertToFindingFilters(validation.sanitizedFilters);
@@ -534,7 +537,7 @@ Please provide a comprehensive answer based on the findings data above. Include 
         // Try to get fallback data
         try {
           if (intent) {
-            const extractedFilters = this.filterExtractor.extractWithPatterns(userQuery);
+            const extractedFilters = await this.smartFilterExtractor.extractFilters(userQuery);
             const validation = this.filterExtractor.validateFilters(extractedFilters);
             const findingFilters = this.convertToFindingFilters(validation.sanitizedFilters);
             const result = await findingsService.getFindings(findingFilters, {

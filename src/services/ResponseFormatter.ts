@@ -40,32 +40,30 @@ export class ResponseFormatter {
     page: number = 1
   ): QueryResponse {
     const totalCount = findings.length;
-    const startIndex = (page - 1) * ResponseFormatter.PAGE_SIZE;
-    const endIndex = startIndex + ResponseFormatter.PAGE_SIZE;
-    const paginatedFindings = findings.slice(startIndex, endIndex);
     
-    // Convert findings to summaries
-    const findingSummaries = paginatedFindings.map(f => this.toFindingSummary(f));
+    // For chat display, we'll show table in UI component
+    // Just provide a summary text here
+    let answer = `Found **${totalCount}** finding${totalCount !== 1 ? 's' : ''} matching your criteria.\n\n`;
     
-    // Build answer text
-    let answer = this.buildSimpleAnswerText(findingSummaries, totalCount);
-    
-    // Add pagination info if needed
-    const pagination = totalCount > ResponseFormatter.PAGE_SIZE 
-      ? this.buildPaginationInfo(totalCount, page)
-      : undefined;
-    
-    if (pagination) {
-      answer += `\n\n📄 Showing page ${pagination.currentPage} of ${pagination.totalPages} (${totalCount} total results)`;
+    if (totalCount > 10) {
+      answer += `📊 Displaying first 10 results in table below. Download Excel to see all ${totalCount} findings.\n\n`;
     }
+    
+    // Add a marker for the UI to render the table
+    answer += `[RENDER_TABLE]`;
+    
+    // Convert findings to summaries (limit to 10 for display)
+    const displayFindings = findings.slice(0, 10);
+    const findingSummaries = displayFindings.map(f => this.toFindingSummary(f));
     
     return {
       type: 'simple',
       answer,
       findings: findingSummaries,
       metadata,
-      pagination
-    };
+      // Store all findings for Excel export (not just summaries)
+      fullFindings: findings,
+    } as any; // Type assertion to allow fullFindings
   }
 
   /**
@@ -118,35 +116,33 @@ export class ResponseFormatter {
     page: number = 1
   ): QueryResponse {
     const totalCount = findings.length;
-    const startIndex = (page - 1) * ResponseFormatter.PAGE_SIZE;
-    const endIndex = startIndex + ResponseFormatter.PAGE_SIZE;
-    const paginatedFindings = findings.slice(startIndex, endIndex);
-    
-    const findingSummaries = paginatedFindings.map(f => this.toFindingSummary(f));
     
     // Build separated sections
     let answer = '## 🔍 Database Results\n\n';
-    answer += this.buildSimpleAnswerText(findingSummaries, totalCount);
+    answer += `Found **${totalCount}** finding${totalCount !== 1 ? 's' : ''} matching your criteria.\n\n`;
     
-    // Add pagination info if needed
-    const pagination = totalCount > ResponseFormatter.PAGE_SIZE 
-      ? this.buildPaginationInfo(totalCount, page)
-      : undefined;
-    
-    if (pagination) {
-      answer += `\n\n📄 Page ${pagination.currentPage} of ${pagination.totalPages}`;
+    if (totalCount > 10) {
+      answer += `📊 Displaying first 10 results in table below. Download Excel to see all ${totalCount} findings.\n\n`;
     }
     
-    answer += '\n\n---\n\n## 🤖 AI Analysis\n\n';
+    // Add table marker
+    answer += `[RENDER_TABLE]\n\n`;
+    
+    answer += '---\n\n## 🤖 AI Analysis\n\n';
     answer += aiAnalysis;
+    
+    // Convert findings to summaries (limit to 10 for display)
+    const displayFindings = findings.slice(0, 10);
+    const findingSummaries = displayFindings.map(f => this.toFindingSummary(f));
     
     return {
       type: 'hybrid',
       answer,
       findings: findingSummaries,
       metadata,
-      pagination
-    };
+      // Store all findings for Excel export
+      fullFindings: findings,
+    } as any;
   }
 
   /**

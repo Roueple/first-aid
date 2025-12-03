@@ -190,6 +190,7 @@ export function ChatPage() {
       }
 
       // Add AI response to Firestore with metadata
+      // Store findings data for table rendering
       const finalSession = await chatSessionService.addMessage({
         sessionId: session.id,
         role: 'assistant',
@@ -200,6 +201,11 @@ export function ChatPage() {
           findingsAnalyzed: queryResponse.metadata.findingsAnalyzed,
           tokensUsed: queryResponse.metadata.tokensUsed,
           confidence: queryResponse.metadata.confidence,
+          // Store findings for table rendering
+          findings: queryResponse.fullFindings || [],
+          findingSummaries: queryResponse.findings || [],
+          totalCount: queryResponse.fullFindings?.length || queryResponse.findings?.length || 0,
+          userQuery: message,
         },
       });
       setCurrentSession(finalSession);
