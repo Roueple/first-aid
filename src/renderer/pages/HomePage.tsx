@@ -131,6 +131,12 @@ function HomePage() {
             📋 View Findings Table
           </button>
           <button
+            onClick={() => navigate('/audit-results')}
+            className="bg-teal-600 text-white px-6 py-3 rounded-lg hover:bg-teal-700 transition font-semibold"
+          >
+            📑 Audit Results
+          </button>
+          <button
             onClick={() => navigate('/chat')}
             className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition font-semibold"
           >

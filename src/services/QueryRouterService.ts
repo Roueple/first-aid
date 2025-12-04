@@ -24,14 +24,14 @@ import {
   QueryRouterError,
   QueryErrorResponse
 } from '../types/queryRouter.types';
-import { Finding } from '../types/finding.types';
+import { AuditResult } from './AuditResultService';
 import { FindingFilters } from '../types/filter.types';
 import { QueryClassifier } from './QueryClassifier';
 import { FilterExtractor } from './FilterExtractor';
 import { SmartFilterExtractor, smartFilterExtractor } from './SmartFilterExtractor';
 import { ContextBuilder } from './ContextBuilder';
 import { ResponseFormatter } from './ResponseFormatter';
-import findingsService from './FindingsService';
+import auditResultService from './AuditResultService';
 import { sendMessageToGemini, isGeminiConfigured } from './GeminiService';
 
 /**
@@ -199,15 +199,12 @@ export class QueryRouterService implements IQueryRouterService {
       // Convert to FindingFilters format
       const findingFilters = this.convertToFindingFilters(validation.sanitizedFilters);
       
-      // Query Firestore
+      // Query audit-results
       const page = options.page || 1;
-      const result = await findingsService.getFindings(findingFilters, {
-        page,
-        pageSize: 50,
-      });
+      const result = await this.queryAuditResults(findingFilters, page);
       
       // Requirement 3.4: Handle zero results
-      if (result.items.length === 0) {
+      if (result.length === 0) {
         const metadata = this.responseFormatter.buildMetadata(
           'simple',
           startTime,
@@ -218,7 +215,7 @@ export class QueryRouterService implements IQueryRouterService {
         
         return {
           type: 'simple',
-          answer: 'No findings match your search criteria. Try broadening your search by:\n' +
+          answer: 'No audit results match your search criteria. Try broadening your search by:\n' +
                   '- Removing some filters\n' +
                   '- Using different keywords\n' +
                   '- Expanding the date range',
@@ -231,14 +228,14 @@ export class QueryRouterService implements IQueryRouterService {
       const metadata = this.responseFormatter.buildMetadata(
         'simple',
         startTime,
-        result.items.length,
+        result.length,
         intent.confidence,
         extractedFilters
       );
       
       // Format response
       return this.responseFormatter.formatSimpleResults(
-        result.items,
+        result as any,
         metadata,
         page
       );
@@ -276,16 +273,13 @@ export class QueryRouterService implements IQueryRouterService {
       const extractedFilters = await this.smartFilterExtractor.extractWithHybrid(userQuery);
       const validation = this.filterExtractor.validateFilters(extractedFilters);
       
-      // Get relevant findings for context
+      // Get relevant audit results for context
       const findingFilters = this.convertToFindingFilters(validation.sanitizedFilters);
-      const allFindings = await findingsService.getFindings(findingFilters, {
-        page: 1,
-        pageSize: 100, // Get more for relevance selection
-      });
+      const allResults = await this.queryAuditResults(findingFilters, 1);
       
-      // Requirement 4.2: Select top 20 most relevant findings
+      // Requirement 4.2: Select top 20 most relevant audit results
       const relevantFindings = this.contextBuilder.selectRelevantFindings(
-        allFindings.items,
+        allResults as any,
         extractedFilters,
         20
       );
@@ -354,13 +348,10 @@ export class QueryRouterService implements IQueryRouterService {
       
       const findingFilters = this.convertToFindingFilters(validation.sanitizedFilters);
       const page = options.page || 1;
-      const result = await findingsService.getFindings(findingFilters, {
-        page,
-        pageSize: 50,
-      });
+      const result = await this.queryAuditResults(findingFilters, page);
       
       // Requirement 5.4: Handle zero results - skip AI analysis
-      if (result.items.length === 0) {
+      if (result.length === 0) {
         const metadata = this.responseFormatter.buildMetadata(
           'hybrid',
           startTime,
@@ -371,7 +362,7 @@ export class QueryRouterService implements IQueryRouterService {
         
         return {
           type: 'hybrid',
-          answer: 'No findings match your search criteria. Try broadening your search by:\n' +
+          answer: 'No audit results match your search criteria. Try broadening your search by:\n' +
                   '- Removing some filters\n' +
                   '- Using different keywords\n' +
                   '- Expanding the date range',
@@ -380,27 +371,27 @@ export class QueryRouterService implements IQueryRouterService {
         };
       }
       
-      // Step 2: Pass findings to AI for analysis
+      // Step 2: Pass audit results to AI for analysis
       if (!isGeminiConfigured()) {
         // Fallback to simple results if AI not available
         const metadata = this.responseFormatter.buildMetadata(
           'hybrid',
           startTime,
-          result.items.length,
+          result.length,
           intent.confidence,
           extractedFilters
         );
         
         return this.responseFormatter.formatSimpleResults(
-          result.items,
+          result as any,
           metadata,
           page
         );
       }
       
-      // Select relevant findings for AI context
+      // Select relevant audit results for AI context
       const relevantFindings = this.contextBuilder.selectRelevantFindings(
-        result.items,
+        result as any,
         extractedFilters,
         20
       );
@@ -424,7 +415,7 @@ export class QueryRouterService implements IQueryRouterService {
       const metadata = this.responseFormatter.buildMetadata(
         'hybrid',
         startTime,
-        result.items.length,
+        result.length,
         intent.confidence,
         extractedFilters,
         tokensUsed
@@ -432,7 +423,7 @@ export class QueryRouterService implements IQueryRouterService {
       
       // Requirement 5.3: Format with separated sections
       return this.responseFormatter.formatHybridResponse(
-        result.items,
+        result as any,
         aiAnalysis,
         metadata,
         page
@@ -448,6 +439,45 @@ export class QueryRouterService implements IQueryRouterService {
         intent
       );
     }
+  }
+
+  /**
+   * Query audit results with filters
+   */
+  private async queryAuditResults(filters: FindingFilters, page: number = 1): Promise<AuditResult[]> {
+    const pageSize = 50;
+    const queryFilters: any[] = [];
+
+    // Map filters to audit-results fields
+    if (filters.auditYear && filters.auditYear.length > 0) {
+      queryFilters.push({ field: 'year', operator: '==', value: filters.auditYear[0] });
+    }
+
+    if (filters.findingDepartment && filters.findingDepartment.length > 0) {
+      queryFilters.push({ field: 'department', operator: '==', value: filters.findingDepartment[0] });
+    }
+
+    const results = await auditResultService.getAll({
+      filters: queryFilters,
+      sorts: [{ field: 'year', direction: 'desc' }],
+    });
+
+    // Client-side filtering for text search
+    let filteredResults = results;
+    if (filters.searchText) {
+      const searchLower = filters.searchText.toLowerCase();
+      filteredResults = results.filter(r => 
+        r.projectName.toLowerCase().includes(searchLower) ||
+        r.department.toLowerCase().includes(searchLower) ||
+        r.riskArea.toLowerCase().includes(searchLower) ||
+        r.descriptions.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Pagination
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize;
+    return filteredResults.slice(start, end);
   }
 
   /**
@@ -540,11 +570,8 @@ Please provide a comprehensive answer based on the findings data above. Include 
             const extractedFilters = await this.smartFilterExtractor.extractFilters(userQuery);
             const validation = this.filterExtractor.validateFilters(extractedFilters);
             const findingFilters = this.convertToFindingFilters(validation.sanitizedFilters);
-            const result = await findingsService.getFindings(findingFilters, {
-              page: options.page || 1,
-              pageSize: 50,
-            });
-            fallbackData = result.items;
+            const result = await this.queryAuditResults(findingFilters, options.page || 1);
+            fallbackData = result as any;
           }
         } catch (fallbackError) {
           console.error('Failed to get fallback data:', fallbackError);

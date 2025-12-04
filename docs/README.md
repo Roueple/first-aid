@@ -1,49 +1,97 @@
 # FIRST-AID Documentation
 
-This folder contains comprehensive documentation for the FIRST-AID system development.
+Welcome to the FIRST-AID documentation folder.
 
-## Task Completion Reports
+---
 
-- **[Task 2 Completion Report](task-2-completion-report.md)** - Firebase Configuration and Initialization (✅ Complete)
+## 📚 Main Documentation Files
 
-## Project Documentation
+### Comprehensive Guides
+- **CONSOLIDATED-GUIDES.md** - All setup, installation, troubleshooting, and how-to guides in one place
+- **FEATURE-SUMMARIES.md** - Complete reference for all features with quick access
 
-Located in the root directory:
+### Archive
+- **ARCHIVE-INDEX.md** - Index of all consolidated documentation (what was moved where)
 
-### Core Documentation
-- **README.md** - Project overview and quick start guide
-- **SETUP.md** - Detailed setup instructions
-- **PROJECT-STATUS.md** - Current project status and next steps
-- **FIREBASE_SETUP.md** - Firebase configuration guide
+---
 
-### Design Documents
-- **FIRST-AID-Executive-Summary.md** - High-level project overview
-- **FIRST-AID-System-Architecture.md** - System architecture and design
-- **FIRST-AID-Component-Design.md** - Component specifications
-- **FIRST-AID-API-Specification.md** - API documentation
-- **FIRST-AID-Implementation-Plan.md** - Development roadmap
+## 🎯 Quick Access
 
-## Specification Files
+### I want to...
 
-Located in `.kiro/specs/first-aid-system/`:
+**Set up the project**  
+→ Open `CONSOLIDATED-GUIDES.md` → Setup & Installation
 
-- **requirements.md** - Detailed requirements specification
-- **design.md** - Technical design document
-- **tasks.md** - Implementation task breakdown with progress tracking
+**Understand a feature**  
+→ Open `FEATURE-SUMMARIES.md` → Find your feature
 
-## Quick Links
+**Import data**  
+→ Open `CONSOLIDATED-GUIDES.md` → Import & Data Management
 
-### Current Status
-- ✅ Task 1: Project Foundation - Complete
-- ✅ Task 2: Firebase Configuration - Complete
-- 🔄 Task 3: Authentication System - Next
+**Fix an issue**  
+→ Open `CONSOLIDATED-GUIDES.md` → Troubleshooting
 
-### Getting Started
-1. Review [SETUP.md](../SETUP.md) for environment setup
-2. Check [PROJECT-STATUS.md](../PROJECT-STATUS.md) for current status
-3. See [FIREBASE_SETUP.md](../FIREBASE_SETUP.md) for Firebase configuration
+**See what changed**  
+→ Open `ARCHIVE-INDEX.md` → Content Mapping
 
-### For Developers
-- Task completion reports document what was implemented and how
-- Design documents provide architectural guidance
-- Specification files contain detailed requirements and tasks
+---
+
+## 📁 Additional Documentation
+
+This folder may also contain:
+- Detailed feature implementation docs (e.g., `hybrid-rag-implementation.md`)
+- API reference documentation
+- Architecture diagrams
+- Task completion reports
+
+---
+
+## 🔍 Documentation Philosophy
+
+### Two Main Files
+1. **CONSOLIDATED-GUIDES.md** - How to do things (guides, setup, troubleshooting)
+2. **FEATURE-SUMMARIES.md** - What exists (features, capabilities, reference)
+
+### Benefits
+- ✅ Easy to find information
+- ✅ No duplicate content
+- ✅ Comprehensive coverage
+- ✅ Easy to maintain
+- ✅ Quick navigation
+
+---
+
+## 📝 For Maintainers
+
+### Adding New Content
+
+**New Guide/How-To**  
+→ Add to `CONSOLIDATED-GUIDES.md` in appropriate section
+
+**New Feature**  
+→ Add to `FEATURE-SUMMARIES.md` in appropriate section
+
+**Detailed Technical Doc**  
+→ Create new file in `docs/` folder and reference it in main files
+
+### Updating Content
+
+1. Update the relevant section in CONSOLIDATED-GUIDES.md or FEATURE-SUMMARIES.md
+2. If creating a new detailed doc, add reference in main files
+3. Update ARCHIVE-INDEX.md if consolidating old files
+
+---
+
+## ✅ Quality Standards
+
+All documentation should be:
+- ✅ Clear and concise
+- ✅ Well-organized with headers
+- ✅ Include code examples where relevant
+- ✅ Up to date with current implementation
+- ✅ Cross-referenced appropriately
+
+---
+
+**Start with**: `CONSOLIDATED-GUIDES.md` or `FEATURE-SUMMARIES.md`  
+**For history**: `ARCHIVE-INDEX.md`

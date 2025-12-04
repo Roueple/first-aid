@@ -19,7 +19,12 @@
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:rules": "firebase emulators:exec --only firestore 'npm test'",
-    "deploy:rules": "firebase deploy --only firestore:rules"
+    "deploy:rules": "firebase deploy --only firestore:rules",
+    "import:projects": "node scripts/import-projects-from-excel.mjs",
+    "import:audit-results": "node scripts/import-audit-results-from-excel.mjs",
+    "recalc:projects": "node scripts/recalculate-project-stats.mjs",
+    "migrate:projects": "node scripts/migrate-to-summary.mjs",
+    "test:hybrid-rag": "node test-hybrid-rag.mjs"
   },
   "keywords": [
     "audit",
@@ -45,6 +50,7 @@
     "@vitest/ui": "^4.0.12",
     "autoprefixer": "^10.4.20",
     "concurrently": "^9.1.2",
+    "dotenv": "^16.4.5",
     "electron": "^39.1.1",
     "electron-builder": "^25.1.8",
     "eslint": "^9.38.0",
@@ -70,12 +76,14 @@
     "@google/generative-ai": "^0.24.1",
     "@tanstack/react-query": "^5.90.10",
     "@tanstack/react-table": "^8.21.3",
+    "exceljs": "^4.4.0",
     "firebase": "^12.5.0",
+    "firebase-admin": "^13.6.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.21.0",
     "recharts": "^3.5.0",
-    "xlsx": "^0.18.5",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zod": "^4.1.12"
   },
   "overrides": {

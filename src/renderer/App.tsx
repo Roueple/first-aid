@@ -8,6 +8,7 @@ import { FindingsPage } from './pages/FindingsPage';
 import { ChatPage } from './pages/ChatPage';
 import { AuditLogsPage } from './pages/AuditLogsPage';
 import SettingsPage from './pages/SettingsPage';
+import { AuditResultsPage } from './pages/AuditResultsPage';
 import { ConnectionStatus } from '../components/ConnectionStatus';
 import { AuthGuard } from '../components/AuthGuard';
 import { NotificationSystem } from '../components/NotificationSystem';
@@ -104,6 +105,14 @@ function App() {
               element={
                 <AuthGuard>
                   <AuditLogsPage />
+                </AuthGuard>
+              } 
+            />
+            <Route 
+              path="/audit-results" 
+              element={
+                <AuthGuard>
+                  <AuditResultsPage />
                 </AuthGuard>
               } 
             />

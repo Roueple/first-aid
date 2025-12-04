@@ -18,9 +18,11 @@ import { dataMaskingService, MaskingToken, MaskingResult } from './DataMaskingSe
 import { intentRecognitionService, RecognizedIntent } from './IntentRecognitionService';
 import { ContextBuilder } from './ContextBuilder';
 import { ResponseFormatter } from './ResponseFormatter';
-import findingsService from './FindingsService';
+import auditResultService from './AuditResultService';
 import { sendMessageToGemini, isGeminiConfigured } from './GeminiService';
 import { transparentLogger } from './TransparentLogger';
+import { auditResultContextBuilder } from './AuditResultContextBuilder';
+import { auditResultAdapter } from './AuditResultAdapter';
 import { 
   QueryResponse, 
   QueryOptions,
@@ -29,7 +31,7 @@ import {
   QueryRouterError,
   ExtractedFilters
 } from '../types/queryRouter.types';
-import { Finding } from '../types/finding.types';
+import { AuditResult } from './AuditResultService';
 import { FindingFilters } from '../types/filter.types';
 
 export interface SmartQueryResult extends QueryResponse {
@@ -211,20 +213,17 @@ export class SmartQueryRouter {
     transparentLogger.substep('Querying database...');
     const dbStartTime = Date.now();
     
-    const result = await findingsService.getFindings(findingFilters, {
-      page,
-      pageSize: 50,
-    });
+    const result = await this.queryAuditResults(findingFilters, page);
     
     const dbDuration = Date.now() - dbStartTime;
-    transparentLogger.logDatabaseQuery(findingFilters, result.items.length, dbDuration);
+    transparentLogger.logDatabaseQuery(findingFilters, result.length, dbDuration);
 
-    if (result.items.length === 0) {
-      transparentLogger.warn('No findings found matching criteria');
+    if (result.length === 0) {
+      transparentLogger.warn('No audit results found matching criteria');
       const metadata = this.buildMetadata('simple', startTime, 0, intent);
       return {
         type: 'simple',
-        answer: 'No findings match your search criteria. Try:\n' +
+        answer: 'No audit results match your search criteria. Try:\n' +
                 '- Broadening your filters\n' +
                 '- Using different keywords\n' +
                 '- Expanding the date range',
@@ -233,9 +232,9 @@ export class SmartQueryRouter {
       };
     }
 
-    transparentLogger.success(`Found ${result.items.length} findings`);
-    const metadata = this.buildMetadata('simple', startTime, result.items.length, intent);
-    return this.responseFormatter.formatSimpleResults(result.items, metadata, page);
+    transparentLogger.success(`Found ${result.length} audit results`);
+    const metadata = this.buildMetadata('simple', startTime, result.length, intent);
+    return this.responseFormatter.formatSimpleResults(result as any, metadata, page);
   }
 
   /**
@@ -252,62 +251,61 @@ export class SmartQueryRouter {
       throw new Error('AI service not configured');
     }
 
-    // Get relevant findings for context
-    transparentLogger.substep('Retrieving findings for context...');
+    // Get relevant audit results for context
+    transparentLogger.substep('Retrieving audit results for context...');
     const findingFilters = this.convertToFindingFilters(intent.filters);
     const dbStartTime = Date.now();
     
-    const allFindings = await findingsService.getFindings(findingFilters, {
-      page: 1,
-      pageSize: 100,
-    });
+    const allResults = await this.queryAuditResults(findingFilters, 1);
     
     const dbDuration = Date.now() - dbStartTime;
-    transparentLogger.logDatabaseQuery(findingFilters, allFindings.items.length, dbDuration);
+    transparentLogger.logDatabaseQuery(findingFilters, allResults.length, dbDuration);
 
-    // Select most relevant findings
-    transparentLogger.substep('Selecting most relevant findings...');
-    const relevantFindings = this.contextBuilder.selectRelevantFindings(
-      allFindings.items,
+    // Use new hybrid RAG context builder
+    transparentLogger.substep('Building context with hybrid RAG...');
+    const contextStartTime = Date.now();
+    
+    const contextResult = await auditResultContextBuilder.buildContext(
+      maskedQuery,
+      allResults,
       intent.filters,
-      20
+      {
+        maxResults: 20,
+        maxTokens: 10000,
+        strategy: 'hybrid', // Use hybrid for complex queries
+      }
     );
-    transparentLogger.data('Selected findings', relevantFindings.length);
+    
+    const contextDuration = Date.now() - contextStartTime;
+    transparentLogger.success(`Context built in ${contextDuration}ms using ${contextResult.strategyUsed} strategy`);
+    transparentLogger.data('Selected audit results', contextResult.selectedResults.length);
+    transparentLogger.data('Average relevance', contextResult.metadata.averageRelevance.toFixed(2));
 
-    // Pseudonymize findings for AI context (SERVER MODE - session-based)
-    let findingsForContext = relevantFindings;
+    // Convert selected audit results to findings format for response
+    const relevantFindings = auditResultAdapter.convertManyToFindings(contextResult.selectedResults);
+
+    // Pseudonymize context for AI (SERVER MODE - session-based)
+    let contextForAI = contextResult.contextString;
     if (options.sessionId) {
       try {
         transparentLogger.substep('SERVER PSEUDONYMIZATION');
         const pseudoStartTime = Date.now();
         
-        const pseudoResult = await dataMaskingService.pseudonymizeFindings(
-          relevantFindings,
-          options.sessionId
-        );
+        // Pseudonymize the context string directly
+        contextForAI = await dataMaskingService.pseudonymizeText(contextForAI, options.sessionId);
         
         const pseudoDuration = Date.now() - pseudoStartTime;
-        findingsForContext = pseudoResult.pseudonymizedFindings;
-        
-        transparentLogger.logPseudonymization(
-          relevantFindings.length,
-          pseudoResult.mappingsCreated,
-          options.sessionId
-        );
-        transparentLogger.success(`Pseudonymization completed in ${pseudoDuration}ms`);
+        transparentLogger.success(`Context pseudonymization completed in ${pseudoDuration}ms`);
       } catch (error) {
-        transparentLogger.warn('Failed to pseudonymize findings, using original data', error);
+        transparentLogger.warn('Failed to pseudonymize context, using original data', error);
       }
     }
 
-    // Build context with pseudonymized findings
-    transparentLogger.substep('Building AI context...');
-    const context = this.contextBuilder.buildContext(findingsForContext, 10000);
-    const tokensUsed = this.contextBuilder.estimateTokens(context + maskedQuery);
-    transparentLogger.data('Context tokens', tokensUsed);
+    const tokensUsed = contextResult.estimatedTokens + auditResultContextBuilder.estimateTokens(maskedQuery);
+    transparentLogger.data('Total context tokens', tokensUsed);
 
     // Build AI prompt
-    const prompt = this.buildAIPrompt(intent, context);
+    const prompt = this.buildAIPrompt(intent, contextForAI);
 
     // Get AI response
     transparentLogger.substep('Sending to AI (Gemini)...');
@@ -358,26 +356,23 @@ export class SmartQueryRouter {
     maskedQuery: string,
     queryTokens: MaskingToken[]
   ): Promise<QueryResponse | QueryErrorResponse> {
-    // Step 1: Get filtered findings
+    // Step 1: Get filtered audit results
     transparentLogger.substep('Querying database...');
     const findingFilters = this.convertToFindingFilters(intent.filters);
     const page = options.page || 1;
     const dbStartTime = Date.now();
     
-    const result = await findingsService.getFindings(findingFilters, {
-      page,
-      pageSize: 50,
-    });
+    const result = await this.queryAuditResults(findingFilters, page);
     
     const dbDuration = Date.now() - dbStartTime;
-    transparentLogger.logDatabaseQuery(findingFilters, result.items.length, dbDuration);
+    transparentLogger.logDatabaseQuery(findingFilters, result.length, dbDuration);
 
-    if (result.items.length === 0) {
-      transparentLogger.warn('No findings found matching criteria');
+    if (result.length === 0) {
+      transparentLogger.warn('No audit results found matching criteria');
       const metadata = this.buildMetadata('hybrid', startTime, 0, intent);
       return {
         type: 'hybrid',
-        answer: 'No findings match your search criteria.',
+        answer: 'No audit results match your search criteria.',
         findings: [],
         metadata
       };
@@ -386,55 +381,56 @@ export class SmartQueryRouter {
     // Step 2: AI analysis if configured
     if (!isGeminiConfigured()) {
       transparentLogger.warn('AI not configured, returning database results only');
-      const metadata = this.buildMetadata('hybrid', startTime, result.items.length, intent);
-      return this.responseFormatter.formatSimpleResults(result.items, metadata, page);
+      const metadata = this.buildMetadata('hybrid', startTime, result.length, intent);
+      const findings = auditResultAdapter.convertManyToFindings(result);
+      return this.responseFormatter.formatSimpleResults(findings, metadata, page);
     }
 
-    // Select relevant findings for AI
-    transparentLogger.substep('Selecting findings for AI analysis...');
-    const relevantFindings = this.contextBuilder.selectRelevantFindings(
-      result.items,
+    // Use new hybrid RAG context builder
+    transparentLogger.substep('Building context with hybrid RAG...');
+    const contextStartTime = Date.now();
+    
+    const contextResult = await auditResultContextBuilder.buildContext(
+      maskedQuery,
+      result,
       intent.filters,
-      20
+      {
+        maxResults: 20,
+        maxTokens: 10000,
+        strategy: 'keyword', // Use keyword for hybrid (already filtered by DB)
+      }
     );
-    transparentLogger.data('Selected findings', relevantFindings.length);
+    
+    const contextDuration = Date.now() - contextStartTime;
+    transparentLogger.success(`Context built in ${contextDuration}ms using ${contextResult.strategyUsed} strategy`);
+    transparentLogger.data('Selected audit results', contextResult.selectedResults.length);
 
-    // Pseudonymize findings for AI context (SERVER MODE)
-    let findingsForContext = relevantFindings;
+    // Convert to findings format
+    const relevantFindings = auditResultAdapter.convertManyToFindings(contextResult.selectedResults);
+
+    // Pseudonymize context for AI (SERVER MODE)
+    let contextForAI = contextResult.contextString;
     if (options.sessionId) {
       try {
         transparentLogger.substep('SERVER PSEUDONYMIZATION');
         const pseudoStartTime = Date.now();
         
-        const pseudoResult = await dataMaskingService.pseudonymizeFindings(
-          relevantFindings,
-          options.sessionId
-        );
+        contextForAI = await dataMaskingService.pseudonymizeText(contextForAI, options.sessionId);
         
         const pseudoDuration = Date.now() - pseudoStartTime;
-        findingsForContext = pseudoResult.pseudonymizedFindings;
-        
-        transparentLogger.logPseudonymization(
-          relevantFindings.length,
-          pseudoResult.mappingsCreated,
-          options.sessionId
-        );
-        transparentLogger.success(`Pseudonymization completed in ${pseudoDuration}ms`);
+        transparentLogger.success(`Context pseudonymization completed in ${pseudoDuration}ms`);
       } catch (error) {
-        transparentLogger.warn('Failed to pseudonymize findings, using original data', error);
+        transparentLogger.warn('Failed to pseudonymize context, using original data', error);
       }
     }
 
-    // Build context with pseudonymized findings
-    transparentLogger.substep('Building AI context...');
-    const context = this.contextBuilder.buildContext(findingsForContext, 10000);
-    const tokensUsed = this.contextBuilder.estimateTokens(context + maskedQuery);
+    const tokensUsed = contextResult.estimatedTokens + auditResultContextBuilder.estimateTokens(maskedQuery);
     transparentLogger.data('Context tokens', tokensUsed);
 
     // Get AI analysis
     transparentLogger.substep('Sending to AI (Gemini)...');
     const aiStartTime = Date.now();
-    const prompt = this.buildAIPrompt(intent, context);
+    const prompt = this.buildAIPrompt(intent, contextForAI);
     const thinkingMode = options.thinkingMode || 'low';
     
     transparentLogger.logAIProcessing(tokensUsed, thinkingMode);
@@ -463,17 +459,64 @@ export class SmartQueryRouter {
     const metadata = this.buildMetadata(
       'hybrid',
       startTime,
-      result.items.length,
+      result.length,
       intent,
       tokensUsed
     );
 
+    // Convert all results to findings for response
+    const allFindings = auditResultAdapter.convertManyToFindings(result);
+
     return this.responseFormatter.formatHybridResponse(
-      result.items,
+      allFindings,
       aiAnalysis,
       metadata,
       page
     );
+  }
+
+  /**
+   * Query audit results with filters
+   */
+  private async queryAuditResults(filters: FindingFilters, page: number = 1): Promise<AuditResult[]> {
+    const pageSize = 50;
+    const queryFilters: any[] = [];
+
+    // Map filters to audit-results fields
+    if (filters.auditYear && filters.auditYear.length > 0) {
+      queryFilters.push({ field: 'year', operator: '==', value: filters.auditYear[0] });
+    }
+
+    if (filters.findingDepartment && filters.findingDepartment.length > 0) {
+      queryFilters.push({ field: 'department', operator: '==', value: filters.findingDepartment[0] });
+    }
+
+    if (filters.projectType && filters.projectType.length > 0) {
+      // Need to query projects first to get project names
+      // For now, skip this filter or implement project-based filtering
+    }
+
+    const results = await auditResultService.getAll({
+      filters: queryFilters,
+      sorts: [{ field: 'year', direction: 'desc' }],
+    });
+
+    // Client-side filtering for text search
+    let filteredResults = results;
+    if (filters.searchText) {
+      const searchLower = filters.searchText.toLowerCase();
+      filteredResults = results.filter(r => 
+        r.projectName.toLowerCase().includes(searchLower) ||
+        r.department.toLowerCase().includes(searchLower) ||
+        r.riskArea.toLowerCase().includes(searchLower) ||
+        r.descriptions.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Pagination
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize;
+    return filteredResults.slice(start, end);
   }
 
   /**
