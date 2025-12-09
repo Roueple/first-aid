@@ -20,6 +20,9 @@ export interface ChatMessageMetadata {
   executionTimeMs?: number;
   findingsAnalyzed?: number;
   tokensUsed?: number;
+  findingSummaries?: any[]; // Finding summaries for table rendering
+  totalCount?: number;
+  userQuery?: string;
 }
 
 /**

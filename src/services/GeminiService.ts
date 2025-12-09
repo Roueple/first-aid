@@ -88,8 +88,19 @@ export const sendMessageToGemini = async (
       
       // Create new chat session if it doesn't exist
       if (!chatSession) {
+        // Filter history to ensure it starts with a user message
+        // Gemini requires the first message to be from the user
+        let filteredHistory = conversationHistory;
+        const firstUserIndex = conversationHistory.findIndex(msg => msg.role === 'user');
+        
+        if (firstUserIndex > 0) {
+          // Skip any leading assistant messages
+          filteredHistory = conversationHistory.slice(firstUserIndex);
+          console.log(`⚠️ Skipped ${firstUserIndex} leading assistant messages from history`);
+        }
+        
         // Convert conversation history to Gemini format
-        const history: Content[] = conversationHistory.map(msg => ({
+        const history: Content[] = filteredHistory.map(msg => ({
           role: msg.role === 'user' ? 'user' : 'model',
           parts: [{ text: msg.content }],
         }));
@@ -144,4 +155,52 @@ export const clearChatSession = (sessionId: string): void => {
 export const clearAllChatSessions = (): void => {
   chatSessions.clear();
   console.log('🗑️ Cleared all chat sessions');
+};
+
+/**
+ * Generate a concise title for a chat session based on the first message
+ */
+export const generateSessionTitle = async (firstMessage: string): Promise<string> => {
+  if (!model) {
+    initializeGemini();
+    if (!model) {
+      return 'New Chat'; // Fallback if Gemini is not available
+    }
+  }
+
+  try {
+    const prompt = `Generate a concise, descriptive title (max 6 words) for a chat session that starts with this message: "${firstMessage}". 
+    
+Rules:
+- Maximum 6 words
+- No quotes or punctuation at the end
+- Capture the main topic or intent
+- Be specific but brief
+- Use title case
+
+Examples:
+"Show me all high priority findings" → "High Priority Findings Review"
+"Analyze project completion rates" → "Project Completion Analysis"
+"What are the common issues?" → "Common Issues Overview"
+
+Title:`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    let title = response.text().trim();
+    
+    // Clean up the title
+    title = title.replace(/^["']|["']$/g, ''); // Remove quotes
+    title = title.replace(/\.$/, ''); // Remove trailing period
+    
+    // Limit to 60 characters max
+    if (title.length > 60) {
+      title = title.substring(0, 57) + '...';
+    }
+    
+    return title || 'New Chat';
+  } catch (error) {
+    console.error('Error generating session title:', error);
+    return 'New Chat'; // Fallback on error
+  }
 };

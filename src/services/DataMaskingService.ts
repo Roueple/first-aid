@@ -24,7 +24,7 @@ import type { Finding } from '../types/finding.types';
 export interface MaskingToken {
   token: string;
   originalValue: string;
-  type: 'email' | 'phone' | 'name' | 'address' | 'id' | 'custom';
+  type: 'email' | 'phone' | 'name' | 'address' | 'id' | 'project' | 'custom';
 }
 
 export interface MaskingResult {
@@ -36,6 +36,8 @@ export type MaskingMode = 'local' | 'server';
 
 export class DataMaskingService {
   private tokenCounter = 0;
+  private projectMappings: Map<string, string> = new Map(); // projectName -> projectId
+  private reverseMappings: Map<string, string> = new Map(); // projectId -> projectName
 
   /**
    * Mask sensitive data in text (LOCAL MODE - fast, client-side)
@@ -239,6 +241,91 @@ export class DataMaskingService {
    */
   private escapeRegex(str: string): string {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  /**
+   * Register project name to ID mapping for pseudonymization
+   * Call this before sending data to LLM
+   * 
+   * @param projectName - Human-readable project name
+   * @param projectId - Firestore document ID or unique identifier
+   */
+  registerProjectMapping(projectName: string, projectId: string): void {
+    this.projectMappings.set(projectName, projectId);
+    this.reverseMappings.set(projectId, projectName);
+  }
+
+  /**
+   * Register multiple project mappings at once
+   * 
+   * @param mappings - Array of [projectName, projectId] tuples
+   */
+  registerProjectMappings(mappings: Array<[string, string]>): void {
+    for (const [projectName, projectId] of mappings) {
+      this.registerProjectMapping(projectName, projectId);
+    }
+  }
+
+  /**
+   * Replace project names with their IDs in text
+   * This prevents sensitive project names from being sent to LLM
+   * 
+   * @param text - Text containing project names
+   * @returns Text with project names replaced by IDs
+   */
+  pseudonymizeProjectNames(text: string): string {
+    let result = text;
+    
+    // Sort by length (longest first) to avoid partial replacements
+    const sortedProjects = Array.from(this.projectMappings.entries())
+      .sort((a, b) => b[0].length - a[0].length);
+
+    for (const [projectName, projectId] of sortedProjects) {
+      // Use word boundaries to avoid partial matches
+      const regex = new RegExp(`\\b${this.escapeRegex(projectName)}\\b`, 'gi');
+      result = result.replace(regex, projectId);
+    }
+
+    return result;
+  }
+
+  /**
+   * Replace project IDs with their names in text
+   * This restores human-readable names in LLM responses
+   * 
+   * @param text - Text containing project IDs
+   * @returns Text with IDs replaced by project names
+   */
+  depseudonymizeProjectNames(text: string): string {
+    let result = text;
+
+    // Sort by length (longest first) to avoid partial replacements
+    const sortedIds = Array.from(this.reverseMappings.entries())
+      .sort((a, b) => b[0].length - a[0].length);
+
+    for (const [projectId, projectName] of sortedIds) {
+      // Replace all occurrences of the project ID
+      const regex = new RegExp(this.escapeRegex(projectId), 'g');
+      result = result.replace(regex, projectName);
+    }
+
+    return result;
+  }
+
+  /**
+   * Clear all project mappings
+   * Call this when starting a new query session
+   */
+  clearProjectMappings(): void {
+    this.projectMappings.clear();
+    this.reverseMappings.clear();
+  }
+
+  /**
+   * Get current project mappings (for debugging)
+   */
+  getProjectMappings(): Map<string, string> {
+    return new Map(this.projectMappings);
   }
 
   /**

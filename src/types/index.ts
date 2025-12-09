@@ -26,3 +26,12 @@ export * from './audit.types';
 
 // Query Router types
 export * from './queryRouter.types';
+
+// Category types
+export * from './category.types';
+
+// Felix types
+export * from './felix.types';
+
+// DocAI types
+export * from './docAI.types';

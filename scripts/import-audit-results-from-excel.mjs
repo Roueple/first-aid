@@ -145,7 +145,7 @@ async function importAuditResults() {
   for (const row of data) {
     try {
       // Map Excel columns to audit result fields
-      const year = row['Year'] || '';
+      const year = parseInt(row['Year']) || 0; // Store as number
       const sh = row['SH'] || '';
       const projectName = row['Project Name'] || '';
       const department = row['Department'] || '';

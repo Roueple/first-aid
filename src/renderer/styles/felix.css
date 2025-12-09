@@ -1,0 +1,561 @@
+/* Felix AI Chat - Modern Dark Blue Theme */
+
+.felix-container {
+  display: flex;
+  height: 100vh;
+  background: linear-gradient(135deg, #0a1628 0%, #1a2942 100%);
+  color: #e8eef7;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+}
+
+/* Sidebar */
+.felix-sidebar {
+  width: 280px;
+  background: rgba(15, 23, 42, 0.9);
+  border-right: 1px solid rgba(59, 130, 246, 0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.felix-sidebar-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.felix-new-chat-btn {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s;
+}
+
+.felix-new-chat-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.felix-new-chat-btn span:first-child {
+  font-size: 1.25rem;
+  font-weight: 300;
+}
+
+.felix-sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem;
+}
+
+.felix-sidebar-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.felix-sidebar-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.felix-sidebar-content::-webkit-scrollbar-thumb {
+  background: rgba(59, 130, 246, 0.3);
+  border-radius: 3px;
+}
+
+.felix-sidebar-empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.felix-session-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.felix-session-item {
+  padding: 0.75rem 1rem;
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(59, 130, 246, 0.1);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.felix-session-item:hover {
+  background: rgba(30, 41, 59, 0.6);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.felix-session-item.active {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+.felix-session-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #e8eef7;
+  margin-bottom: 0.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.felix-session-meta {
+  font-size: 0.75rem;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Main Content */
+.felix-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Header */
+.felix-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 2rem;
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.felix-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.felix-sidebar-toggle {
+  width: 32px;
+  height: 32px;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 6px;
+  color: #60a5fa;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+}
+
+.felix-sidebar-toggle:hover {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.5);
+}
+
+.felix-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.felix-logo-icon {
+  width: 36px;
+  height: 36px;
+  background: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  object-fit: cover;
+  border: 2px solid rgba(59, 130, 246, 0.3);
+}
+
+.felix-logo-text {
+  font-size: 1.5rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.felix-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.felix-btn {
+  padding: 0.5rem 1rem;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 8px;
+  color: #60a5fa;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.felix-btn:hover {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.5);
+}
+
+/* Chat Area */
+.felix-chat-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.felix-chat-area::-webkit-scrollbar {
+  width: 8px;
+}
+
+.felix-chat-area::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.felix-chat-area::-webkit-scrollbar-thumb {
+  background: rgba(59, 130, 246, 0.3);
+  border-radius: 4px;
+}
+
+.felix-chat-area::-webkit-scrollbar-thumb:hover {
+  background: rgba(59, 130, 246, 0.5);
+}
+
+/* Welcome Screen */
+.felix-welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  gap: 2rem;
+}
+
+.felix-welcome-icon {
+  width: 120px;
+  height: 120px;
+  background: transparent;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  object-fit: cover;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+.felix-welcome h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0;
+  background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.felix-welcome p {
+  font-size: 1.125rem;
+  color: #94a3b8;
+  max-width: 500px;
+  margin: 0;
+}
+
+.felix-suggestions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  max-width: 800px;
+  width: 100%;
+}
+
+.felix-suggestion-card {
+  padding: 1rem;
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.felix-suggestion-card:hover {
+  background: rgba(30, 41, 59, 0.8);
+  border-color: rgba(59, 130, 246, 0.4);
+  transform: translateY(-2px);
+}
+
+.felix-suggestion-card h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #60a5fa;
+  margin: 0 0 0.5rem 0;
+}
+
+.felix-suggestion-card p {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin: 0;
+}
+
+/* Messages */
+.felix-message {
+  display: flex;
+  gap: 1rem;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.felix-message.user {
+  flex-direction: row-reverse;
+}
+
+.felix-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-weight: 600;
+  font-size: 1rem;
+  overflow: hidden;
+}
+
+.felix-avatar.assistant {
+  background: white;
+  border: 2px solid rgba(59, 130, 246, 0.3);
+  padding: 0;
+}
+
+.felix-avatar.user {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.felix-avatar-img {
+  width: 130%;
+  height: 130%;
+  object-fit: cover;
+  object-position: center 25%;
+}
+
+.felix-message-content {
+  flex: 1;
+  max-width: 70%;
+}
+
+.felix-message.user .felix-message-content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.felix-message-bubble {
+  padding: 1rem 1.25rem;
+  border-radius: 16px;
+  line-height: 1.6;
+  font-size: 0.9375rem;
+}
+
+.felix-message.assistant .felix-message-bubble {
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.felix-message.user .felix-message-bubble {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+}
+
+.felix-message-time {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 0.5rem;
+}
+
+/* Typing Indicator */
+.felix-typing {
+  display: flex;
+  gap: 0.5rem;
+  padding: 1rem 1.25rem;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 16px;
+  width: fit-content;
+}
+
+.felix-typing-dot {
+  width: 8px;
+  height: 8px;
+  background: #60a5fa;
+  border-radius: 50%;
+  animation: typing 1.4s infinite;
+}
+
+.felix-typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.felix-typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes typing {
+  0%, 60%, 100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-8px);
+  }
+}
+
+/* Input Area */
+.felix-input-area {
+  padding: 1.5rem 2rem;
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.felix-input-container {
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  gap: 1rem;
+  align-items: flex-end;
+}
+
+.felix-input-wrapper {
+  flex: 1;
+  position: relative;
+}
+
+.felix-input {
+  width: 100%;
+  padding: 1rem 1.25rem;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 12px;
+  color: #e8eef7;
+  font-size: 0.9375rem;
+  resize: none;
+  max-height: 150px;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.felix-input:focus {
+  outline: none;
+  border-color: rgba(59, 130, 246, 0.6);
+  background: rgba(30, 41, 59, 0.8);
+}
+
+.felix-input::placeholder {
+  color: #64748b;
+}
+
+.felix-send-btn {
+  padding: 1rem 1.5rem;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  border: none;
+  border-radius: 12px;
+  color: white;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.felix-send-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(59, 130, 246, 0.3);
+}
+
+.felix-send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Markdown Styling */
+.felix-message-bubble pre {
+  background: rgba(15, 23, 42, 0.8);
+  padding: 1rem;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 0.5rem 0;
+}
+
+.felix-message-bubble code {
+  background: rgba(15, 23, 42, 0.6);
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.875rem;
+}
+
+.felix-message-bubble pre code {
+  background: none;
+  padding: 0;
+}
+
+.felix-message-bubble ul,
+.felix-message-bubble ol {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.felix-message-bubble li {
+  margin: 0.25rem 0;
+}
+
+.felix-message-bubble strong {
+  color: #60a5fa;
+  font-weight: 600;
+}
+
+.felix-message-bubble a {
+  color: #60a5fa;
+  text-decoration: underline;
+}

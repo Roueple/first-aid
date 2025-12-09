@@ -106,10 +106,12 @@ export class SemanticSearchService {
 
   /**
    * Build searchable text from audit result
+   * Note: Excludes projectName to prevent data leakage to LLM embeddings
+   * Uses projectId instead for identification
    */
   private buildSearchableText(auditResult: AuditResult): string {
     return [
-      auditResult.projectName,
+      auditResult.projectId || 'UNKNOWN_PROJECT',
       auditResult.department,
       auditResult.riskArea,
       auditResult.descriptions,

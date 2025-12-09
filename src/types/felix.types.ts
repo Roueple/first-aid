@@ -1,0 +1,81 @@
+import { Timestamp } from 'firebase/firestore';
+
+/**
+ * Felix Session - Tracks user chat sessions
+ * Relationship: One session has many chats
+ */
+export interface FelixSession {
+  id?: string;
+  userId: string;
+  title?: string; // Auto-generated title based on first message
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  lastActivityAt: Timestamp;
+  isActive: boolean;
+  messageCount: number;
+  sessionMetadata?: {
+    deviceInfo?: string;
+    userAgent?: string;
+  };
+}
+
+/**
+ * Felix Chat - Stores individual chat messages
+ * Relationship: Many chats belong to one session
+ */
+export interface FelixChat {
+  id?: string;
+  sessionId: string; // Foreign key to felix_sessions
+  userId: string; // Denormalized for quick access
+  role: 'user' | 'assistant';
+  message: string;
+  timestamp: Timestamp;
+  
+  // AI Response metadata (for assistant messages)
+  responseTime?: number; // milliseconds
+  modelVersion?: string;
+  tokensUsed?: number;
+  
+  // Additional metadata
+  metadata?: Record<string, any>;
+}
+
+/**
+ * Create a new Felix session
+ */
+export const createFelixSession = (userId: string): Omit<FelixSession, 'id'> => {
+  const now = Timestamp.now();
+  return {
+    userId,
+    createdAt: now,
+    updatedAt: now,
+    lastActivityAt: now,
+    isActive: true,
+    messageCount: 0,
+  };
+};
+
+/**
+ * Create a new Felix chat entry
+ */
+export const createFelixChat = (
+  sessionId: string,
+  userId: string,
+  role: 'user' | 'assistant',
+  message: string,
+  options?: {
+    responseTime?: number;
+    modelVersion?: string;
+    tokensUsed?: number;
+    metadata?: Record<string, any>;
+  }
+): Omit<FelixChat, 'id'> => {
+  return {
+    sessionId,
+    userId,
+    role,
+    message,
+    timestamp: Timestamp.now(),
+    ...options,
+  };
+};

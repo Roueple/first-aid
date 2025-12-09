@@ -11,7 +11,7 @@ The `audit-results` collection has the following fields:
 | Field | Type | Description |
 |-------|------|-------------|
 | auditResultId | string | 6-digit unique identifier |
-| year | number | Audit year |
+| year | number | Audit year (stored as integer, e.g., 2024) |
 | sh | string | Subholding code |
 | projectName | string | Project name |
 | projectId | string | Linked project ID from projects table |

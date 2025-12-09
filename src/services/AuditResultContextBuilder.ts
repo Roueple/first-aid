@@ -11,7 +11,7 @@
  */
 
 import { AuditResult } from './AuditResultService';
-import { semanticSearchService, SemanticSearchResult } from './SemanticSearchService';
+import { semanticSearchService } from './SemanticSearchService';
 import { auditResultAdapter } from './AuditResultAdapter';
 import { ExtractedFilters } from '../types/queryRouter.types';
 
@@ -264,7 +264,7 @@ export class AuditResultContextBuilder {
     auditResults: AuditResult[],
     filters: ExtractedFilters,
     maxResults: number,
-    minThreshold: number
+    _minThreshold: number
   ): Promise<{ selectedResults: AuditResult[]; relevanceScores: number[] }> {
     console.log('🔀 Using hybrid selection (keyword + semantic)');
 
@@ -343,12 +343,13 @@ export class AuditResultContextBuilder {
 
   /**
    * Format audit result for context
+   * Note: Uses projectId instead of projectName to prevent data leakage to LLM
    */
   private formatAuditResult(auditResult: AuditResult, index: number): string {
     const priorityLevel = this.calculatePriority(auditResult.nilai);
 
     return `Audit Result ${index} [${auditResult.auditResultId}]:
-Project: ${auditResult.projectName}
+Project ID: ${auditResult.projectId}
 Year: ${auditResult.year}
 Department: ${auditResult.department}
 Risk Area: ${auditResult.riskArea}

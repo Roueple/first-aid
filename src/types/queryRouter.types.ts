@@ -36,8 +36,8 @@ export type QueryType = 'simple' | 'complex' | 'hybrid';
  * Structured filter parameters extracted from natural language queries
  */
 export interface ExtractedFilters {
-  /** Year filter (e.g., 2024) */
-  year?: number;
+  /** Year filter (e.g., "2024") - stored as string in Firestore */
+  year?: string;
   /** Project type filter */
   projectType?: ProjectType;
   /** Severity levels to include */
@@ -248,7 +248,7 @@ export const QueryTypeSchema = z.enum(['simple', 'complex', 'hybrid']);
  * Zod schema for ExtractedFilters
  */
 export const ExtractedFiltersSchema = z.object({
-  year: z.number().int().min(2000).max(2099).optional(),
+  year: z.string().regex(/^20\d{2}$/).optional(),
   projectType: z.enum([
     'Hotel', 'Landed House', 'Apartment', 'School', 'University',
     'Insurance', 'Hospital', 'Clinic', 'Mall', 'Office Building',

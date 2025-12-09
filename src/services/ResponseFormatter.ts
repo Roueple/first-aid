@@ -12,18 +12,17 @@ import {
   QueryResponse, 
   QueryMetadata, 
   FindingSummary,
-  PaginationInfo,
   QueryType 
 } from '../types/queryRouter.types';
 import { Finding } from '../types/finding.types';
-import { Timestamp } from 'firebase/firestore';
+
 
 /**
  * ResponseFormatter class for formatting query responses
  */
 export class ResponseFormatter {
-  private static readonly PAGE_SIZE = 50;
-  private static readonly MAX_FINDINGS_DISPLAY = 50;
+  // private static readonly PAGE_SIZE = 50;
+  // private static readonly MAX_FINDINGS_DISPLAY = 50;
 
   /**
    * Format simple query results
@@ -37,7 +36,7 @@ export class ResponseFormatter {
   formatSimpleResults(
     findings: Finding[], 
     metadata: QueryMetadata,
-    page: number = 1
+    _page: number = 1
   ): QueryResponse {
     const totalCount = findings.length;
     
@@ -88,7 +87,9 @@ export class ResponseFormatter {
     // Add source references section
     if (findings.length > 0) {
       answer += '\n\n---\n\n**📚 Source Findings Referenced:**\n\n';
-      answer += this.buildFindingReferencesList(findingSummaries);
+      answer += findingSummaries.map((summary, index) => {
+        return `${index + 1}. [${summary.id}] ${summary.title}`;
+      }).join('\n');
     }
     
     return {
@@ -113,7 +114,7 @@ export class ResponseFormatter {
     findings: Finding[],
     aiAnalysis: string,
     metadata: QueryMetadata,
-    page: number = 1
+    _page: number = 1
   ): QueryResponse {
     const totalCount = findings.length;
     
@@ -203,94 +204,7 @@ export class ResponseFormatter {
    * @param totalCount - Total number of findings
    * @returns Formatted answer text
    */
-  private buildSimpleAnswerText(summaries: FindingSummary[], totalCount: number): string {
-    if (summaries.length === 0) {
-      return 'No findings match your search criteria. Try broadening your search by:\n' +
-             '- Removing some filters\n' +
-             '- Using different keywords\n' +
-             '- Expanding the date range';
-    }
-    
-    let text = `Found ${totalCount} finding${totalCount !== 1 ? 's' : ''}:\n\n`;
-    
-    summaries.forEach((summary, index) => {
-      const severityEmoji = this.getSeverityEmoji(summary.severity);
-      const statusEmoji = this.getStatusEmoji(summary.status);
-      
-      text += `${index + 1}. **${summary.title}**\n`;
-      text += `   ${severityEmoji} ${summary.severity} | ${statusEmoji} ${summary.status} | `;
-      text += `${summary.projectType} | ${summary.year}\n`;
-      text += `   ID: ${summary.id}\n\n`;
-    });
-    
-    return text.trim();
-  }
-
-  /**
-   * Build finding references list
-   * Requirements: 4.5
-   * 
-   * @param summaries - Finding summaries
-   * @returns Formatted references list
-   */
-  private buildFindingReferencesList(summaries: FindingSummary[]): string {
-    return summaries.map((summary, index) => {
-      const severityEmoji = this.getSeverityEmoji(summary.severity);
-      return `${index + 1}. [${summary.id}] ${summary.title} (${severityEmoji} ${summary.severity})`;
-    }).join('\n');
-  }
-
-  /**
-   * Build pagination info
-   * Requirements: 3.5
-   * 
-   * @param totalCount - Total number of results
-   * @param currentPage - Current page number (1-indexed)
-   * @returns Pagination information
-   */
-  private buildPaginationInfo(totalCount: number, currentPage: number): PaginationInfo {
-    const totalPages = Math.ceil(totalCount / ResponseFormatter.PAGE_SIZE);
-    
-    return {
-      totalCount,
-      currentPage,
-      pageSize: ResponseFormatter.PAGE_SIZE,
-      totalPages,
-      hasMore: currentPage < totalPages
-    };
-  }
-
-  /**
-   * Get emoji for severity level
-   * 
-   * @param severity - Finding severity
-   * @returns Emoji representation
-   */
-  private getSeverityEmoji(severity: string): string {
-    switch (severity) {
-      case 'Critical': return '🔴';
-      case 'High': return '🟠';
-      case 'Medium': return '🟡';
-      case 'Low': return '🟢';
-      default: return '⚪';
-    }
-  }
-
-  /**
-   * Get emoji for status
-   * 
-   * @param status - Finding status
-   * @returns Emoji representation
-   */
-  private getStatusEmoji(status: string): string {
-    switch (status) {
-      case 'Open': return '📂';
-      case 'In Progress': return '⏳';
-      case 'Closed': return '✅';
-      case 'Deferred': return '⏸️';
-      default: return '❓';
-    }
-  }
+  // NOTE: Unused helper methods removed. Can be restored from git history if needed in future.
 }
 
 // Export singleton instance

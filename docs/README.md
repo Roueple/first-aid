@@ -44,6 +44,13 @@ This folder may also contain:
 - Architecture diagrams
 - Task completion reports
 
+### Database & Query Documentation
+- **firebase-query-guide.md** - Complete guide to Firebase Firestore queries with 10 common examples and LLM integration
+- **firebase-query-guide-summary.md** - Quick reference summary of the query guide
+- **firebase-query-flow-diagram.md** - Visual diagrams showing query flows and architecture
+- **firebase-query-cheatsheet.md** - Quick cheat sheet for common queries and patterns
+- **docai-database-schema.md** - Database schema documentation
+
 ---
 
 ## 🔍 Documentation Philosophy

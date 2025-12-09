@@ -91,7 +91,7 @@ export const FindingDetailsPanel: React.FC<FindingDetailsPanelProps> = ({
       resourceType: 'finding',
       resourceId: finding.id,
       details: { message: 'Finding created' },
-      timestamp: finding.dateCreated,
+      timestamp: finding.creationTimestamp,
     },
     {
       id: '2',
@@ -103,7 +103,7 @@ export const FindingDetailsPanel: React.FC<FindingDetailsPanelProps> = ({
         message: 'Status changed from Open to In Progress',
         changes: { status: { from: 'Open', to: 'In Progress' } }
       },
-      timestamp: finding.dateUpdated,
+      timestamp: finding.lastModifiedDate,
     },
   ];
 
@@ -201,16 +201,16 @@ export const FindingDetailsPanel: React.FC<FindingDetailsPanelProps> = ({
           <div className="space-y-6">
             {/* Title and Status */}
             <div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-3">{finding.title}</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-3">{finding.findingTitle}</h3>
               <div className="flex flex-wrap gap-2">
-                <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getSeverityColor(finding.severity)}`}>
-                  {finding.severity}
+                <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getSeverityColor(finding.priorityLevel)}`}>
+                  {finding.priorityLevel}
                 </span>
                 <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(finding.status)}`}>
                   {finding.status}
                 </span>
                 <span className="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800 border border-gray-200">
-                  Risk Level: {finding.riskLevel}/10
+                  Risk Level: {finding.findingTotal}/20
                 </span>
               </div>
             </div>
@@ -218,18 +218,20 @@ export const FindingDetailsPanel: React.FC<FindingDetailsPanelProps> = ({
             {/* Description */}
             <div>
               <h4 className="text-sm font-semibold text-gray-700 mb-2">Description</h4>
-              <p className="text-gray-900 leading-relaxed">{finding.description}</p>
+              <p className="text-gray-900 leading-relaxed">{finding.findingDescription}</p>
             </div>
 
             {/* Key Information Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <InfoField label="Category" value={finding.category} />
-              {finding.subcategory && <InfoField label="Subcategory" value={finding.subcategory} />}
-              <InfoField label="Location" value={finding.location} />
-              {finding.branch && <InfoField label="Branch" value={finding.branch} />}
-              {finding.department && <InfoField label="Department" value={finding.department} />}
-              <InfoField label="Responsible Person" value={finding.responsiblePerson} />
-              {finding.reviewerPerson && <InfoField label="Reviewer" value={finding.reviewerPerson} />}
+              <InfoField label="Process Area" value={finding.processArea} />
+              <InfoField label="Control Category" value={finding.controlCategory} />
+              <InfoField label="Subholding" value={finding.subholding} />
+              <InfoField label="Project Type" value={finding.projectType} />
+              <InfoField label="Project Name" value={finding.projectName} />
+              <InfoField label="Department" value={finding.findingDepartment} />
+              <InfoField label="Executor" value={finding.executor} />
+              <InfoField label="Reviewer" value={finding.reviewer} />
+              <InfoField label="Manager" value={finding.manager} />
             </div>
 
             {/* Dates */}
@@ -237,8 +239,8 @@ export const FindingDetailsPanel: React.FC<FindingDetailsPanelProps> = ({
               <InfoField label="Date Identified" value={formatDate(finding.dateIdentified)} />
               {finding.dateDue && <InfoField label="Due Date" value={formatDate(finding.dateDue)} />}
               {finding.dateCompleted && <InfoField label="Date Completed" value={formatDate(finding.dateCompleted)} />}
-              <InfoField label="Created" value={formatDate(finding.dateCreated)} />
-              <InfoField label="Last Updated" value={formatDate(finding.dateUpdated)} />
+              <InfoField label="Created" value={formatDate(finding.creationTimestamp)} />
+              <InfoField label="Last Updated" value={formatDate(finding.lastModifiedDate)} />
             </div>
 
             {/* Recommendation */}
@@ -282,11 +284,14 @@ export const FindingDetailsPanel: React.FC<FindingDetailsPanelProps> = ({
             )}
 
             {/* Tags */}
-            {finding.tags && finding.tags.length > 0 && (
+            {finding.secondaryTags && finding.secondaryTags.length > 0 && (
               <div>
                 <h4 className="text-sm font-semibold text-gray-700 mb-2">Tags</h4>
                 <div className="flex flex-wrap gap-2">
-                  {finding.tags.map((tag, index) => (
+                  <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">
+                    #{finding.primaryTag}
+                  </span>
+                  {finding.secondaryTags.map((tag: string, index: number) => (
                     <span
                       key={index}
                       className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
@@ -351,11 +356,11 @@ export const FindingDetailsPanel: React.FC<FindingDetailsPanelProps> = ({
               <div className="space-y-3">
                 {mockRelatedFindings.map((relatedFinding) => (
                   <div key={relatedFinding.id} className="bg-gray-50 p-4 rounded-lg border border-gray-200 hover:border-blue-300 cursor-pointer transition-colors">
-                    <h4 className="font-medium text-gray-900 mb-2">{relatedFinding.title}</h4>
-                    <p className="text-sm text-gray-600 mb-2">{relatedFinding.description}</p>
+                    <h4 className="font-medium text-gray-900 mb-2">{relatedFinding.findingTitle}</h4>
+                    <p className="text-sm text-gray-600 mb-2">{relatedFinding.findingDescription}</p>
                     <div className="flex gap-2">
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${getSeverityColor(relatedFinding.severity)}`}>
-                        {relatedFinding.severity}
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${getSeverityColor(relatedFinding.priorityLevel)}`}>
+                        {relatedFinding.priorityLevel}
                       </span>
                       <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(relatedFinding.status)}`}>
                         {relatedFinding.status}

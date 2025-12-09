@@ -324,7 +324,7 @@ class ErrorHandler {
   /**
    * Error type detection methods
    */
-  private isAuthenticationError(error: any, code: string, message: string): boolean {
+  private isAuthenticationError(_error: any, code: string, message: string): boolean {
     return (
       code.startsWith('auth/') ||
       message.includes('authentication') ||
@@ -334,7 +334,7 @@ class ErrorHandler {
     );
   }
 
-  private isNetworkError(error: any, code: string, message: string): boolean {
+  private isNetworkError(_error: any, code: string, message: string): boolean {
     return (
       code === 'network-request-failed' ||
       code === 'unavailable' ||
@@ -357,7 +357,7 @@ class ErrorHandler {
     );
   }
 
-  private isAIServiceError(error: any, code: string, message: string, context: ErrorContext): boolean {
+  private isAIServiceError(_error: any, _code: string, message: string, context: ErrorContext): boolean {
     return (
       context.operation.includes('chat') ||
       context.operation.includes('ai') ||
@@ -368,7 +368,7 @@ class ErrorHandler {
     );
   }
 
-  private isValidationError(error: any, code: string, message: string): boolean {
+  private isValidationError(_error: any, code: string, message: string): boolean {
     return (
       code === 'invalid-argument' ||
       code === 'failed-precondition' ||
@@ -378,7 +378,7 @@ class ErrorHandler {
     );
   }
 
-  private isPermissionError(error: any, code: string, message: string): boolean {
+  private isPermissionError(_error: any, code: string, message: string): boolean {
     return (
       code === 'permission-denied' ||
       message.includes('permission') ||
@@ -386,7 +386,7 @@ class ErrorHandler {
     );
   }
 
-  private isNotFoundError(error: any, code: string, message: string): boolean {
+  private isNotFoundError(_error: any, code: string, message: string): boolean {
     return (
       code === 'not-found' ||
       message.includes('not found') ||
@@ -394,7 +394,7 @@ class ErrorHandler {
     );
   }
 
-  private isTimeoutError(error: any, code: string, message: string): boolean {
+  private isTimeoutError(_error: any, code: string, message: string): boolean {
     return (
       code === 'deadline-exceeded' ||
       code === 'timeout' ||
@@ -403,7 +403,7 @@ class ErrorHandler {
     );
   }
 
-  private isRateLimitError(error: any, code: string, message: string): boolean {
+  private isRateLimitError(_error: any, code: string, message: string): boolean {
     return (
       code === 'resource-exhausted' ||
       code === 'too-many-requests' ||
@@ -439,7 +439,7 @@ class ErrorHandler {
     return 'Authentication failed. Please try again.';
   }
 
-  private getDatabaseErrorMessage(code: string, message: string): string {
+  private getDatabaseErrorMessage(code: string, _message: string): string {
     if (code === 'permission-denied') {
       return 'You do not have permission to access this data.';
     }
@@ -529,7 +529,7 @@ class ErrorHandler {
   /**
    * Attempt to recover from recoverable errors
    */
-  private async attemptRecovery(error: CategorizedError, context: ErrorContext): Promise<void> {
+  private async attemptRecovery(error: CategorizedError, _context: ErrorContext): Promise<void> {
     // Recovery strategies based on error category
     switch (error.category) {
       case ErrorCategory.NETWORK:

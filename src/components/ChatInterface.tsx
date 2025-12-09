@@ -2,6 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { ChatSession } from '../types/chat.types';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
+import BlurFade from './magicui/blur-fade';
+import ShinyButton from './magicui/shiny-button';
+import TypingAnimation from './magicui/typing-animation';
+import { Meteors } from './magicui/meteors';
 
 interface ChatInterfaceProps {
   sessions?: ChatSession[];
@@ -30,6 +34,7 @@ export function ChatInterface({
 }: ChatInterfaceProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
   // Auto-scroll to latest message when messages change or loading state changes
   useEffect(() => {
     scrollToBottom();
@@ -55,13 +60,22 @@ export function ChatInterface({
   };
 
   // Get suggestions from the last assistant message
-  const lastAssistantMessage = currentSession?.messages
-    .filter((msg) => msg.role === 'assistant')
-    .pop();
-  const suggestions = lastAssistantMessage?.metadata?.suggestions || [];
+  // const lastAssistantMessage = currentSession?.messages
+  //   .filter((msg) => msg.role === 'assistant')
+  //   .pop();
+  // const suggestions = lastAssistantMessage?.metadata?.suggestions || [];
+
+  const [inputValue, setInputValue] = useState('');
+
+  const handleSend = () => {
+    if (inputValue.trim() && onSendMessage) {
+      onSendMessage(inputValue);
+      setInputValue('');
+    }
+  };
 
   return (
-    <div className="flex h-screen bg-white text-gray-900 font-sans">
+    <div className="flex h-screen bg-white text-gray-900 font-sans overflow-hidden">
       {/* Session Sidebar - Minimalist */}
       <div
         className={`${sidebarOpen ? 'w-[280px] translate-x-0' : 'w-0 -translate-x-full opacity-0'
@@ -69,15 +83,13 @@ export function ChatInterface({
       >
         {/* Sidebar Header */}
         <div className="p-4 flex items-center justify-between">
-          <button
-            onClick={onNewSession}
-            className="flex-1 bg-gray-900 hover:bg-gray-800 text-white px-4 py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm font-medium shadow-sm"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            New Chat
-          </button>
+          <div className="flex-1">
+            <ShinyButton
+              text="New Chat"
+              onClick={onNewSession}
+              className="w-full justify-center bg-gray-900 text-white hover:bg-gray-800"
+            />
+          </div>
           <button
             onClick={() => setSidebarOpen(false)}
             className="md:hidden ml-2 p-2 text-gray-500 hover:bg-gray-200 rounded-lg"
@@ -98,19 +110,20 @@ export function ChatInterface({
               No history yet
             </div>
           ) : (
-            sessions.map((session) => (
-              <button
-                key={session.id}
-                onClick={() => onSessionSelect?.(session.id)}
-                className={`w-full text-left px-3 py-2.5 rounded-lg transition-colors group relative ${currentSession?.id === session.id
-                  ? 'bg-gray-200 text-gray-900'
-                  : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-              >
-                <p className="text-sm truncate pr-4">
-                  {session.title || 'Untitled Chat'}
-                </p>
-              </button>
+            sessions.map((session, idx) => (
+              <BlurFade key={session.id} delay={idx * 0.05} inView>
+                <button
+                  onClick={() => onSessionSelect?.(session.id)}
+                  className={`w-full text-left px-3 py-2.5 rounded-lg transition-colors group relative ${currentSession?.id === session.id
+                    ? 'bg-gray-200 text-gray-900'
+                    : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                >
+                  <p className="text-sm truncate pr-4">
+                    {session.title || 'Untitled Chat'}
+                  </p>
+                </button>
+              </BlurFade>
             ))
           )}
         </div>
@@ -147,34 +160,38 @@ export function ChatInterface({
         </div>
 
         {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto scroll-smooth">
-          <div className="max-w-3xl mx-auto px-4 pt-20 pb-32 min-h-full flex flex-col">
+        <div className="flex-1 overflow-y-auto scroll-smooth relative">
+          <div className="max-w-3xl mx-auto px-4 pt-20 pb-32 min-h-full flex flex-col relative z-10">
             {!currentSession || currentSession.messages.length === 0 ? (
               /* Empty State - Centered & Minimal */
-              <div className="flex-1 flex flex-col items-center justify-center text-center animate-fade-in">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-blue-500/20">
+              <div className="flex-1 flex flex-col items-center justify-center text-center relative overflow-hidden rounded-lg">
+                <Meteors number={20} />
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-blue-500/20 z-10">
                   <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
                 </div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-                  Hello, how can I help?
-                </h2>
-                <p className="text-gray-500 mb-8 max-w-md">
+                <TypingAnimation
+                  text="Hello, how can I help?"
+                  className="text-2xl font-semibold text-gray-900 mb-2 z-10"
+                  duration={50}
+                />
+                <p className="text-gray-500 mb-8 max-w-md z-10">
                   I can analyze your audit findings, identify risks, and help you find specific information.
                 </p>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-2xl">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-2xl z-10">
                   {exampleQuestions.map((question, index) => (
-                    <button
-                      key={index}
-                      onClick={() => handleExampleClick(question)}
-                      className="text-left p-4 rounded-xl bg-gray-50 border border-gray-100 hover:border-blue-200 hover:bg-blue-50/50 hover:shadow-sm transition-all duration-200 group"
-                    >
-                      <p className="text-sm text-gray-600 group-hover:text-blue-700 font-medium">
-                        {question}
-                      </p>
-                    </button>
+                    <BlurFade key={index} delay={0.5 + (index * 0.1)} inView>
+                      <button
+                        onClick={() => handleExampleClick(question)}
+                        className="w-full text-left p-4 rounded-xl bg-white/50 backdrop-blur-sm border border-gray-100 hover:border-blue-200 hover:bg-blue-50/50 hover:shadow-sm transition-all duration-200 group"
+                      >
+                        <p className="text-sm text-gray-600 group-hover:text-blue-700 font-medium">
+                          {question}
+                        </p>
+                      </button>
+                    </BlurFade>
                   ))}
                 </div>
               </div>
@@ -182,7 +199,13 @@ export function ChatInterface({
               /* Message List */
               <div className="space-y-6">
                 {currentSession.messages.map((msg) => (
-                  <ChatMessage key={msg.id} message={msg} />
+                  <BlurFade key={msg.id} delay={0.1} inView>
+                    <ChatMessage
+                      role={msg.role}
+                      content={msg.content}
+                      timestamp={msg.timestamp && 'toDate' in msg.timestamp ? (msg.timestamp as any).toDate() : new Date(msg.timestamp)}
+                    />
+                  </BlurFade>
                 ))}
                 {loading && <TypingIndicator />}
                 <div ref={messagesEndRef} className="h-4" />
@@ -192,12 +215,13 @@ export function ChatInterface({
         </div>
 
         {/* Input Area - Fixed Bottom */}
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white to-transparent pt-10 pb-6 px-4">
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white to-transparent pt-10 pb-6 px-4 z-20">
           <div className="max-w-3xl mx-auto">
             <ChatInput
-              onSendMessage={(msg) => onSendMessage?.(msg)}
-              loading={loading}
-              suggestions={suggestions}
+              value={inputValue}
+              onChange={setInputValue}
+              onSend={handleSend}
+              disabled={loading}
               placeholder="Ask anything..."
             />
             <p className="text-center text-xs text-gray-400 mt-3">
@@ -209,8 +233,6 @@ export function ChatInterface({
     </div>
   );
 }
-
-
 
 /**
  * TypingIndicator Component

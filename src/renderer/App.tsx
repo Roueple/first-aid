@@ -1,20 +1,9 @@
 import { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import HomePage from './pages/HomePage';
-import LoginPage from './pages/LoginPage';
-import DashboardPage from './pages/DashboardPage';
-import { FindingsPage } from './pages/FindingsPage';
-import { ChatPage } from './pages/ChatPage';
-import { AuditLogsPage } from './pages/AuditLogsPage';
-import SettingsPage from './pages/SettingsPage';
-import { AuditResultsPage } from './pages/AuditResultsPage';
-import { ConnectionStatus } from '../components/ConnectionStatus';
-import { AuthGuard } from '../components/AuthGuard';
-import { NotificationSystem } from '../components/NotificationSystem';
-import { useErrorHandler } from '../hooks/useErrorHandler';
-import { initializeGemini } from '../services/GeminiService';
 import { AuthProvider } from '../contexts/AuthContext';
+import FelixPage from './pages/FelixPage';
+import { initializeGemini } from '../services/GeminiService';
 
 // Create a client with optimized caching options
 // Implements Requirements 11.1, 11.3 - Performance and caching
@@ -46,17 +35,14 @@ const queryClient = new QueryClient({
 });
 
 function App() {
-  // Initialize error handler
-  useErrorHandler();
-
   // Initialize Gemini on app startup
   useEffect(() => {
     initializeGemini();
   }, []);
 
   return (
-    <AuthProvider>
-      <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
         <Router
           future={{
             v7_startTransition: true,
@@ -64,71 +50,14 @@ function App() {
           }}
         >
           <div className="min-h-screen bg-gray-50">
-            <ConnectionStatus />
-            <NotificationSystem />
             <Routes>
-            <Route path="/" element={<LoginPage />} />
-            <Route 
-              path="/home" 
-              element={
-                <AuthGuard>
-                  <HomePage />
-                </AuthGuard>
-              } 
-            />
-            <Route 
-              path="/dashboard" 
-              element={
-                <AuthGuard>
-                  <DashboardPage />
-                </AuthGuard>
-              } 
-            />
-            <Route 
-              path="/findings" 
-              element={
-                <AuthGuard>
-                  <FindingsPage />
-                </AuthGuard>
-              } 
-            />
-            <Route 
-              path="/chat" 
-              element={
-                <AuthGuard>
-                  <ChatPage />
-                </AuthGuard>
-              } 
-            />
-            <Route 
-              path="/audit-logs" 
-              element={
-                <AuthGuard>
-                  <AuditLogsPage />
-                </AuthGuard>
-              } 
-            />
-            <Route 
-              path="/audit-results" 
-              element={
-                <AuthGuard>
-                  <AuditResultsPage />
-                </AuthGuard>
-              } 
-            />
-            <Route 
-              path="/settings" 
-              element={
-                <AuthGuard>
-                  <SettingsPage />
-                </AuthGuard>
-              } 
-            />
+              <Route path="/felix" element={<FelixPage />} />
+              <Route path="*" element={<Navigate to="/felix" replace />} />
             </Routes>
           </div>
         </Router>
-      </QueryClientProvider>
-    </AuthProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
 

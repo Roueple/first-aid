@@ -9,7 +9,7 @@
  */
 
 import { AuditResult } from './AuditResultService';
-import { Finding, FindingSeverity, FindingStatus } from '../types/finding.types';
+import { Finding, FindingSeverity } from '../types/finding.types';
 import { Timestamp } from 'firebase/firestore';
 
 /**

@@ -32,7 +32,6 @@ class TransparentLogger {
   private logs: LogEntry[] = [];
   private stepStartTimes: Map<string, number> = new Map();
   private enabled: boolean = true;
-  private currentSessionId?: string;
 
   // Console styling
   private styles = {
@@ -55,8 +54,8 @@ class TransparentLogger {
   /**
    * Set current session ID for context
    */
-  setSessionId(sessionId: string) {
-    this.currentSessionId = sessionId;
+  setSessionId(_sessionId: string) {
+    // Reserved for future use
   }
 
   /**

@@ -125,6 +125,12 @@ Located in `docs/` folder:
 - **docs/smart-query-router-v2-integration.md** - Integration guide
 - **docs/smart-query-router-v2-flow.md** - Data flow diagrams
 
+### Domain Knowledge
+- **docs/indonesian-real-estate-domain-knowledge.md** - Indonesian real estate terminology integration
+  - PPJB, AJB, SHM, SHGB, IMB definitions
+  - Automatic term expansion for semantic search
+  - Enhanced query understanding
+
 ### Transparent Logging
 - **TRANSPARENT-LOGGING-COMPLETE.md** - Transparent logging integration
 - **TRANSPARENT-LOGGING-GUIDE.md** - User guide for transparent logging
@@ -215,7 +221,8 @@ Located in `docs/` folder:
 ### "I want to understand the query router"
 1. SMART-QUERY-ROUTER-V2-SUMMARY.md
 2. docs/smart-query-router-v2-flow.md
-3. TRANSPARENT-LOGGING-GUIDE.md
+3. docs/indonesian-real-estate-domain-knowledge.md
+4. TRANSPARENT-LOGGING-GUIDE.md
 
 ### "I want to understand data masking"
 1. UNIFIED-MASKING-INTEGRATION.md

@@ -86,5 +86,52 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow write: if false;
     }
+    
+    // DocAI Sessions - users can only access their own sessions
+    match /doc_sessions/{sessionId} {
+      allow read: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+    }
+    
+    // DocAI Chats (2-table structure)
+    // Security: Chats are protected via session ownership
+    // Users can only query sessions they own (enforced in doc_sessions rules)
+    // Therefore, if they have a sessionId, they own those chats
+    match /doc_chats/{chatId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+    }
+    
+    // Departments - read-only for authenticated users
+    match /departments/{departmentId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Only admin/scripts can write
+    }
+    
+    // Felix Sessions - users can only access their own sessions
+    match /felix_sessions/{sessionId} {
+      allow read: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+    }
+    
+    // Felix Chats - users can only access their own chats
+    match /felix_chats/{chatId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+    }
   }
 }

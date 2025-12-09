@@ -1,134 +1,80 @@
-import { useState, useRef, useEffect } from 'react';
+import React, { useRef, useEffect } from 'react';
 
 interface ChatInputProps {
-  onSendMessage: (message: string) => void;
-  loading?: boolean;
-  suggestions?: string[];
+  value: string;
+  onChange: (value: string) => void;
+  onSend: () => void;
+  disabled?: boolean;
   placeholder?: string;
 }
 
-/**
- * ChatInput Component
- * 
- * Chat input with auto-resize textarea, send button with loading state,
- * follow-up suggestions as clickable chips, and keyboard shortcuts.
- * 
- * Features:
- * - Auto-resize textarea (min 48px, max 120px)
- * - Enter to send, Shift+Enter for new line
- * - Loading state on send button
- * - Clickable suggestion chips
- * 
- * Requirements: 6.4
- */
-export function ChatInput({
-  onSendMessage,
-  loading = false,
-  suggestions = [],
-  placeholder = 'Ask a question about your audit findings...',
-}: ChatInputProps) {
-  const [message, setMessage] = useState('');
+export function ChatInput({ value, onChange, onSend, disabled, placeholder }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-resize textarea
   useEffect(() => {
-    const textarea = textareaRef.current;
-    if (textarea) {
-      // Reset height to auto to get the correct scrollHeight
-      textarea.style.height = 'auto';
-      // Set height based on scrollHeight, constrained by min/max
-      const newHeight = Math.min(Math.max(textarea.scrollHeight, 48), 120);
-      textarea.style.height = `${newHeight}px`;
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 150)}px`;
     }
-  }, [message]);
+  }, [value]);
 
-  const handleSendMessage = () => {
-    if (message.trim() && !loading) {
-      onSendMessage(message.trim());
-      setMessage('');
-
-      // Reset textarea height after sending
-      if (textareaRef.current) {
-        textareaRef.current.style.height = '48px';
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (!disabled && value.trim()) {
+        onSend();
       }
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Enter to send, Shift+Enter for new line
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
-
-  const handleSuggestionClick = (suggestion: string) => {
-    if (!loading) {
-      onSendMessage(suggestion);
-    }
-  };
-
   return (
-    <div className="w-full">
-      <div className="max-w-3xl mx-auto">
-        {/* Suggestion Chips */}
-        {suggestions.length > 0 && (
-          <div className="mb-4 animate-slide-up">
-            <div className="flex flex-wrap gap-2 justify-center">
-              {suggestions.map((suggestion, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleSuggestionClick(suggestion)}
-                  disabled={loading}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-white text-gray-600 text-sm rounded-full hover:bg-gray-50 hover:text-blue-600 transition-all shadow-sm border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <span className="max-w-xs truncate">{suggestion}</span>
-                  <svg className="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+    <div className="flex gap-3 items-end">
+      <div className="flex-1 relative">
+        <textarea
+          ref={textareaRef}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyPress={handleKeyPress}
+          placeholder={placeholder || 'Type your message...'}
+          disabled={disabled}
+          rows={1}
+          className="w-full px-5 py-4 pr-14 rounded-2xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none resize-none text-sm text-slate-700 placeholder:text-slate-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+          style={{ minHeight: '56px', maxHeight: '150px' }}
+        />
 
-        {/* Input Area */}
-        <div className="relative bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 transition-shadow hover:shadow-2xl hover:shadow-gray-200/50">
-          <textarea
-            ref={textareaRef}
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={placeholder}
-            disabled={loading}
-            rows={1}
-            className="w-full pl-6 pr-14 py-4 bg-transparent border-none focus:ring-0 resize-none disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 placeholder-gray-400 max-h-[200px] overflow-y-auto"
-            style={{ minHeight: '56px' }}
-          />
-
-          <div className="absolute right-2 bottom-2">
-            <button
-              onClick={handleSendMessage}
-              disabled={!message.trim() || loading}
-              className={`p-2 rounded-xl transition-all duration-200 ${message.trim() && !loading
-                ? 'bg-gray-900 text-white hover:bg-gray-800 shadow-md'
-                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                }`}
-              title="Send message"
-            >
-              {loading ? (
-                <svg className="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              ) : (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M12 5l7 7-7 7" />
-                </svg>
-              )}
-            </button>
-          </div>
+        {/* Character count or status */}
+        <div className="absolute right-4 bottom-4 text-xs text-slate-400 font-medium">
+          {value.length > 0 && `${value.length} chars`}
         </div>
       </div>
+
+      <button
+        onClick={onSend}
+        disabled={disabled || !value.trim()}
+        className="px-6 py-4 rounded-2xl font-semibold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-xl hover:shadow-indigo-500/20 active:scale-95 flex items-center gap-2"
+        style={{
+          background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+          minHeight: '56px',
+        }}
+      >
+        {disabled ? (
+          <>
+            <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>Sending...</span>
+          </>
+        ) : (
+          <>
+            <span>Send</span>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
+          </>
+        )}
+      </button>
     </div>
   );
 }
+

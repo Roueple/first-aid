@@ -10,7 +10,7 @@ export interface ConnectionMonitor {
 }
 
 class FirebaseConnectionMonitor {
-  private status: ConnectionStatus = 'connecting';
+  private status: ConnectionStatus = 'connected'; // Start optimistically
   private lastChecked: Date | null = null;
   private listeners = new Set<(status: ConnectionStatus) => void>();
   private unsubscribe: (() => void) | null = null;

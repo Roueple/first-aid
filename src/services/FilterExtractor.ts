@@ -152,20 +152,20 @@ export class FilterExtractor {
    * Extract year from query
    * Handles 4-digit years and relative references
    * @param query - Lowercase query string
-   * @returns Extracted year or undefined
+   * @returns Extracted year as string or undefined
    */
-  private extractYear(query: string): number | undefined {
+  private extractYear(query: string): string | undefined {
     const currentYear = new Date().getFullYear();
 
     // Check for relative year references
     if (/\b(this year|current year)\b/i.test(query)) {
-      return currentYear;
+      return String(currentYear);
     }
     if (/\b(last year|previous year)\b/i.test(query)) {
-      return currentYear - 1;
+      return String(currentYear - 1);
     }
     if (/\b(next year)\b/i.test(query)) {
-      return currentYear + 1;
+      return String(currentYear + 1);
     }
 
     // Extract 4-digit year (2000-2099)
@@ -173,7 +173,7 @@ export class FilterExtractor {
     if (yearMatch) {
       const year = parseInt(yearMatch[1], 10);
       if (year >= 2000 && year <= 2099) {
-        return year;
+        return String(year);
       }
     }
 
@@ -374,7 +374,8 @@ export class FilterExtractor {
 
     // Validate year
     if (filters.year !== undefined) {
-      if (filters.year >= 2000 && filters.year <= 2099) {
+      const yearNum = parseInt(filters.year, 10);
+      if (yearNum >= 2000 && yearNum <= 2099) {
         sanitizedFilters.year = filters.year;
       } else {
         errors.push(`Invalid year: ${filters.year}. Must be between 2000 and 2099.`);

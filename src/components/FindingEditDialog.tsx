@@ -87,17 +87,17 @@ export const FindingEditDialog: React.FC<FindingEditDialogProps> = ({
       };
 
       setFormData({
-        title: finding.title || '',
-        description: finding.description || '',
-        severity: finding.severity || 'Medium',
+        title: finding.findingTitle || '',
+        description: finding.findingDescription || '',
+        severity: finding.priorityLevel || 'Medium',
         status: finding.status || 'Open',
-        category: finding.category || '',
-        subcategory: finding.subcategory || '',
-        location: finding.location || '',
-        branch: finding.branch || '',
-        department: finding.department || '',
-        responsiblePerson: finding.responsiblePerson || '',
-        reviewerPerson: finding.reviewerPerson || '',
+        category: finding.processArea || '',
+        subcategory: finding.controlCategory || '',
+        location: finding.subholding || '',
+        branch: finding.projectType || '',
+        department: finding.findingDepartment || '',
+        responsiblePerson: finding.executor || '',
+        reviewerPerson: finding.reviewer || '',
         dateIdentified: formatDate(finding.dateIdentified),
         dateDue: formatDate(finding.dateDue),
         dateCompleted: formatDate(finding.dateCompleted),
@@ -105,8 +105,8 @@ export const FindingEditDialog: React.FC<FindingEditDialogProps> = ({
         managementResponse: finding.managementResponse || '',
         actionPlan: finding.actionPlan || '',
         evidence: finding.evidence?.join('\n') || '',
-        tags: finding.tags?.join(', ') || '',
-        riskLevel: finding.riskLevel || 5,
+        tags: finding.secondaryTags?.join(', ') || '',
+        riskLevel: finding.findingTotal || 5,
       });
       setErrors({});
       setHasChanges(false);
@@ -207,17 +207,15 @@ export const FindingEditDialog: React.FC<FindingEditDialogProps> = ({
 
     try {
       const updateData: UpdateFindingInput = {
-        title: formData.title.trim(),
-        description: formData.description.trim(),
-        severity: formData.severity,
+        findingTitle: formData.title.trim(),
+        findingDescription: formData.description.trim(),
         status: formData.status,
-        category: formData.category.trim(),
-        subcategory: formData.subcategory.trim() || undefined,
-        location: formData.location.trim(),
-        branch: formData.branch.trim() || undefined,
-        department: formData.department.trim() || undefined,
-        responsiblePerson: formData.responsiblePerson.trim(),
-        reviewerPerson: formData.reviewerPerson.trim() || undefined,
+        processArea: formData.category.trim(),
+        controlCategory: formData.subcategory.trim() as any || undefined,
+        subholding: formData.location.trim(),
+        findingDepartment: formData.department.trim() || undefined,
+        executor: formData.responsiblePerson.trim(),
+        reviewer: formData.reviewerPerson.trim() || undefined,
         dateIdentified: Timestamp.fromDate(new Date(formData.dateIdentified)),
         dateDue: formData.dateDue ? Timestamp.fromDate(new Date(formData.dateDue)) : undefined,
         dateCompleted: formData.dateCompleted ? Timestamp.fromDate(new Date(formData.dateCompleted)) : undefined,
@@ -225,8 +223,7 @@ export const FindingEditDialog: React.FC<FindingEditDialogProps> = ({
         managementResponse: formData.managementResponse.trim() || undefined,
         actionPlan: formData.actionPlan.trim() || undefined,
         evidence: formData.evidence.trim() ? formData.evidence.split('\n').map(e => e.trim()).filter(e => e) : undefined,
-        tags: formData.tags.trim() ? formData.tags.split(',').map(t => t.trim()).filter(t => t) : undefined,
-        riskLevel: formData.riskLevel,
+        secondaryTags: formData.tags.trim() ? formData.tags.split(',').map(t => t.trim()).filter(t => t) : undefined,
       };
 
       await onSave(finding.id, updateData);

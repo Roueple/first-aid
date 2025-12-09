@@ -49,10 +49,10 @@ const calculateTrends = (
   ).length;
 
   const currentHighRisk = currentFindings.filter(
-    (f) => f.severity === 'Critical' || f.severity === 'High'
+    (f) => f.priorityLevel === 'Critical' || f.priorityLevel === 'High'
   ).length;
   const previousHighRisk = previousFindings.filter(
-    (f) => f.severity === 'Critical' || f.severity === 'High'
+    (f) => f.priorityLevel === 'Critical' || f.priorityLevel === 'High'
   ).length;
 
   // Use the computed isOverdue field from FindingsService

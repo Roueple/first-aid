@@ -60,6 +60,16 @@ export class AuditService {
     resourceId?: string,
     details?: Record<string, any>
   ): Promise<LogAuditEventResponse> {
+    // Skip audit logging in development to avoid CORS errors
+    if (import.meta.env.DEV) {
+      console.log('🔍 Audit event (dev mode):', { action, resourceType, resourceId, details });
+      return {
+        success: true,
+        logId: 'dev-mode',
+        timestamp: new Date().toISOString()
+      };
+    }
+
     try {
       const logAuditEvent = httpsCallable<LogAuditEventRequest, LogAuditEventResponse>(
         this.functions,
@@ -347,7 +357,7 @@ export class AuditService {
    * @param errorDetails - Details about the error
    */
   async logError(
-    userId: string,
+    _userId: string,
     operation: string,
     errorDetails: Record<string, any>
   ): Promise<void> {

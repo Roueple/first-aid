@@ -19,6 +19,19 @@ describe('DashboardPage', () => {
       highRisk: { value: 0, isPositive: false },
       overdue: { value: 15, isPositive: false },
     },
+    riskDistribution: [
+      { name: 'Critical', value: 5, color: '#ef4444' },
+      { name: 'High', value: 12, color: '#f97316' },
+      { name: 'Medium', value: 28, color: '#eab308' },
+      { name: 'Low', value: 105, color: '#22c55e' },
+    ],
+    locationSummary: [
+      { location: 'Jakarta Head Office', count: 50 },
+      { location: 'Surabaya Branch', count: 30 },
+      { location: 'Bandung Branch', count: 25 },
+      { location: 'Medan Branch', count: 20 },
+      { location: 'Bali Branch', count: 25 },
+    ],
   };
 
   beforeEach(() => {

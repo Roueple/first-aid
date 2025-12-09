@@ -2,6 +2,20 @@
 
 An Electron-based desktop application for managing audit findings with AI-powered chat capabilities, pattern detection, and privacy-protected processing.
 
+## Key Features
+
+- **AI-Powered Chat** - Natural language queries with Gemini AI integration
+- **Indonesian Real Estate Domain Knowledge** - Built-in understanding of 200+ Indonesian real estate terms
+  - Comprehensive dictionary covering all business units (Landed House, Apartment, Hotel, Hospital, Clinic, School, University)
+  - Automatic term expansion for semantic search (PPJB, AJB, SHM, IMB, IGD, RevPAR, UKT, etc.)
+  - Intelligent fallback for unknown terms
+- **Smart Query Router** - Automatically routes queries to SQL, RAG, or hybrid search based on intent
+- **Semantic Search** - Finds relevant findings even without exact text matches
+- **Data Masking & Privacy** - Automatic pseudonymization of sensitive data
+- **Audit Results Management** - Track and analyze audit findings across projects
+- **Excel Import/Export** - Seamless data import and export capabilities
+- **Real-time Collaboration** - Firebase-powered real-time updates
+
 ## Tech Stack
 
 - **Frontend**: React 18 + TypeScript

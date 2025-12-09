@@ -14,9 +14,8 @@
  * All recognized as the same intent: Critical severity findings from 2024
  */
 
-import { dataMaskingService, MaskingToken, MaskingResult } from './DataMaskingService';
+import { dataMaskingService, MaskingToken } from './DataMaskingService';
 import { intentRecognitionService, RecognizedIntent } from './IntentRecognitionService';
-import { ContextBuilder } from './ContextBuilder';
 import { ResponseFormatter } from './ResponseFormatter';
 import auditResultService from './AuditResultService';
 import { sendMessageToGemini, isGeminiConfigured } from './GeminiService';
@@ -40,11 +39,11 @@ export interface SmartQueryResult extends QueryResponse {
 }
 
 export class SmartQueryRouter {
-  private contextBuilder: ContextBuilder;
+  // private contextBuilder: ContextBuilder;
   private responseFormatter: ResponseFormatter;
 
   constructor() {
-    this.contextBuilder = new ContextBuilder();
+    // this.contextBuilder = new ContextBuilder();
     this.responseFormatter = new ResponseFormatter();
   }
 
@@ -188,6 +187,12 @@ export class SmartQueryRouter {
       return options.forceQueryType;
     }
 
+    // ✅ FIX: If has keywords, ALWAYS use hybrid (semantic search + filters)
+    // This fixes the zero-results issue where keywords were only client-side filtered
+    if (intent.filters.keywords && intent.filters.keywords.length > 0) {
+      return 'hybrid';
+    }
+
     // If requires analysis, use complex or hybrid
     if (intent.requiresAnalysis) {
       // If filters are specific, use hybrid (filter + analyze)
@@ -245,7 +250,7 @@ export class SmartQueryRouter {
     startTime: number,
     options: QueryOptions,
     maskedQuery: string,
-    queryTokens: MaskingToken[]
+    _queryTokens: MaskingToken[]
   ): Promise<QueryResponse | QueryErrorResponse> {
     if (!isGeminiConfigured()) {
       throw new Error('AI service not configured');
@@ -260,6 +265,9 @@ export class SmartQueryRouter {
     
     const dbDuration = Date.now() - dbStartTime;
     transparentLogger.logDatabaseQuery(findingFilters, allResults.length, dbDuration);
+
+    // Register project mappings for pseudonymization
+    this.registerProjectMappings(allResults);
 
     // Use new hybrid RAG context builder
     transparentLogger.substep('Building context with hybrid RAG...');
@@ -284,8 +292,12 @@ export class SmartQueryRouter {
     // Convert selected audit results to findings format for response
     const relevantFindings = auditResultAdapter.convertManyToFindings(contextResult.selectedResults);
 
-    // Pseudonymize context for AI (SERVER MODE - session-based)
-    let contextForAI = contextResult.contextString;
+    // Pseudonymize project names in context (LOCAL - prevents project names from reaching LLM)
+    transparentLogger.substep('PROJECT NAME PSEUDONYMIZATION');
+    let contextForAI = dataMaskingService.pseudonymizeProjectNames(contextResult.contextString);
+    transparentLogger.success(`Project names replaced with IDs`);
+
+    // Additional server-side pseudonymization if needed (for other sensitive data)
     if (options.sessionId) {
       try {
         transparentLogger.substep('SERVER PSEUDONYMIZATION');
@@ -318,6 +330,11 @@ export class SmartQueryRouter {
     const aiDuration = Date.now() - aiStartTime;
     transparentLogger.success(`AI processing completed in ${aiDuration}ms`);
 
+    // Depseudonymize project names in AI response (LOCAL - restore human-readable names)
+    transparentLogger.substep('PROJECT NAME DEPSEUDONYMIZATION');
+    aiResponse = dataMaskingService.depseudonymizeProjectNames(aiResponse);
+    transparentLogger.success(`Project IDs replaced with names`);
+
     // Depseudonymize AI response (SERVER MODE)
     if (options.sessionId) {
       try {
@@ -333,6 +350,9 @@ export class SmartQueryRouter {
         transparentLogger.warn('Failed to depseudonymize AI response', error);
       }
     }
+
+    // Clear project mappings after use
+    dataMaskingService.clearProjectMappings();
 
     // Build metadata
     const metadata = this.buildMetadata(
@@ -354,7 +374,7 @@ export class SmartQueryRouter {
     startTime: number,
     options: QueryOptions,
     maskedQuery: string,
-    queryTokens: MaskingToken[]
+    _queryTokens: MaskingToken[]
   ): Promise<QueryResponse | QueryErrorResponse> {
     // Step 1: Get filtered audit results
     transparentLogger.substep('Querying database...');
@@ -386,9 +406,17 @@ export class SmartQueryRouter {
       return this.responseFormatter.formatSimpleResults(findings, metadata, page);
     }
 
+    // Register project mappings for pseudonymization
+    this.registerProjectMappings(result);
+
     // Use new hybrid RAG context builder
     transparentLogger.substep('Building context with hybrid RAG...');
     const contextStartTime = Date.now();
+    
+    // ✅ FIX: Use semantic search for keyword queries to find relevant results
+    // even when exact text match fails
+    const hasKeywords = intent.filters.keywords && intent.filters.keywords.length > 0;
+    const strategy = hasKeywords ? 'semantic' : 'keyword';
     
     const contextResult = await auditResultContextBuilder.buildContext(
       maskedQuery,
@@ -397,7 +425,7 @@ export class SmartQueryRouter {
       {
         maxResults: 20,
         maxTokens: 10000,
-        strategy: 'keyword', // Use keyword for hybrid (already filtered by DB)
+        strategy, // Use semantic for keyword queries, keyword for others
       }
     );
     
@@ -405,11 +433,12 @@ export class SmartQueryRouter {
     transparentLogger.success(`Context built in ${contextDuration}ms using ${contextResult.strategyUsed} strategy`);
     transparentLogger.data('Selected audit results', contextResult.selectedResults.length);
 
-    // Convert to findings format
-    const relevantFindings = auditResultAdapter.convertManyToFindings(contextResult.selectedResults);
+    // Pseudonymize project names in context (LOCAL - prevents project names from reaching LLM)
+    transparentLogger.substep('PROJECT NAME PSEUDONYMIZATION');
+    let contextForAI = dataMaskingService.pseudonymizeProjectNames(contextResult.contextString);
+    transparentLogger.success(`Project names replaced with IDs`);
 
-    // Pseudonymize context for AI (SERVER MODE)
-    let contextForAI = contextResult.contextString;
+    // Additional server-side pseudonymization if needed (for other sensitive data)
     if (options.sessionId) {
       try {
         transparentLogger.substep('SERVER PSEUDONYMIZATION');
@@ -439,6 +468,11 @@ export class SmartQueryRouter {
     const aiDuration = Date.now() - aiStartTime;
     transparentLogger.success(`AI processing completed in ${aiDuration}ms`);
 
+    // Depseudonymize project names in AI response (LOCAL - restore human-readable names)
+    transparentLogger.substep('PROJECT NAME DEPSEUDONYMIZATION');
+    aiAnalysis = dataMaskingService.depseudonymizeProjectNames(aiAnalysis);
+    transparentLogger.success(`Project IDs replaced with names`);
+
     // Depseudonymize AI response (SERVER MODE)
     if (options.sessionId) {
       try {
@@ -454,6 +488,9 @@ export class SmartQueryRouter {
         transparentLogger.warn('Failed to depseudonymize AI analysis', error);
       }
     }
+
+    // Clear project mappings after use
+    dataMaskingService.clearProjectMappings();
 
     // Build metadata
     const metadata = this.buildMetadata(
@@ -473,6 +510,23 @@ export class SmartQueryRouter {
       metadata,
       page
     );
+  }
+
+  /**
+   * Register project name to ID mappings for pseudonymization
+   * This prevents project names from being sent to LLM
+   */
+  private registerProjectMappings(auditResults: AuditResult[]): void {
+    const mappings: Array<[string, string]> = [];
+    
+    for (const result of auditResults) {
+      if (result.projectName && result.projectId) {
+        mappings.push([result.projectName, result.projectId]);
+      }
+    }
+    
+    dataMaskingService.registerProjectMappings(mappings);
+    transparentLogger.data('Project mappings registered', mappings.length);
   }
 
   /**
@@ -603,7 +657,7 @@ Be accurate and complete in your response.`;
     error: unknown,
     startTime: number,
     userQuery: string,
-    options: QueryOptions
+    _options: QueryOptions
   ): QueryErrorResponse {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     

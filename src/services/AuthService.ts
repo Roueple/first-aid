@@ -1,5 +1,6 @@
 import {
   signInWithEmailAndPassword,
+  signInAnonymously,
   signOut as firebaseSignOut,
   onAuthStateChanged,
   User as FirebaseUser,
