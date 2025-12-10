@@ -1,14 +1,30 @@
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import FelixSessionService from './FelixSessionService';
 import FelixChatService from './FelixChatService';
+import { FelixQueryService } from './FelixQueryService';
+
+export interface QueryResult {
+  success: boolean;
+  message: string;
+  results?: any[];
+  resultsCount: number;
+  excelBuffer?: ArrayBuffer;
+  excelFilename?: string;
+  needsConfirmation: boolean;
+}
 
 /**
  * Felix AI Service - Modern AI chat assistant
  * Uses Google Gemini 3 Pro Preview (most intelligent model)
  * Integrates with session and chat history management
+ * 
+ * Supports two modes:
+ * 1. Chat Mode: General conversation
+ * 2. Filter Mode: Database queries ONLY - no general AI responses
  */
 export class FelixService {
   private ai: GoogleGenAI;
+  private queryService: FelixQueryService;
 
   constructor() {
     const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
@@ -17,28 +33,65 @@ export class FelixService {
     }
 
     this.ai = new GoogleGenAI({ apiKey });
+    this.queryService = new FelixQueryService();
   }
 
   /**
    * Send a message to Felix and get a response (with session management)
+   * In filter mode, ONLY queries the database - no general AI responses
    */
   async chat(
     message: string,
     userId: string,
-    sessionId?: string
-  ): Promise<{ response: string; sessionId: string }> {
+    sessionId?: string,
+    mode: 'chat' | 'filter' = 'chat'
+  ): Promise<{ response: string; sessionId: string; queryResult?: QueryResult }> {
     const startTime = Date.now();
 
     try {
       // Get or create session
       const activeSessionId = sessionId || await FelixSessionService.getOrCreateSession(userId);
 
-      // Get conversation history from database
-      const history = await FelixChatService.getFormattedHistory(activeSessionId, 10);
-
       // Save user message
       await FelixChatService.addUserMessage(activeSessionId, userId, message);
       await FelixSessionService.incrementMessageCount(activeSessionId);
+
+      // If in filter mode, use query service (database only)
+      if (mode === 'filter') {
+        const queryResult = await this.queryService.processQuery(message, userId);
+        
+        // Save assistant response
+        await FelixChatService.addAssistantResponse(
+          activeSessionId,
+          userId,
+          queryResult.message,
+          {
+            responseTime: Date.now() - startTime,
+            modelVersion: 'felix-query-service',
+            metadata: {
+              resultsCount: queryResult.resultsCount,
+              needsConfirmation: queryResult.needsConfirmation,
+            }
+          }
+        );
+        await FelixSessionService.incrementMessageCount(activeSessionId);
+
+        // Auto-generate title from first message if needed
+        const session = await FelixSessionService.getById(activeSessionId);
+        if (session && !session.title && session.messageCount === 2) {
+          const title = this.generateTitle(message);
+          await FelixSessionService.updateTitle(activeSessionId, title);
+        }
+
+        return { 
+          response: queryResult.message, 
+          sessionId: activeSessionId,
+          queryResult 
+        };
+      }
+
+      // Get conversation history from database
+      const history = await FelixChatService.getFormattedHistory(activeSessionId, 10);
 
       // Build conversation contents
       const contents: any[] = [];
@@ -140,12 +193,14 @@ export class FelixService {
 
   /**
    * Stream a response from Felix (for real-time typing effect with session management)
+   * In filter mode, ONLY queries the database - no general AI responses
    */
   async *streamChat(
     message: string,
     userId: string,
-    sessionId?: string
-  ): AsyncGenerator<string, { sessionId: string }> {
+    sessionId?: string,
+    mode: 'chat' | 'filter' = 'chat'
+  ): AsyncGenerator<string, { sessionId: string; queryResult?: QueryResult }> {
     const startTime = Date.now();
     let fullResponse = '';
 
@@ -153,12 +208,52 @@ export class FelixService {
       // Get or create session
       const activeSessionId = sessionId || await FelixSessionService.getOrCreateSession(userId);
 
-      // Get conversation history from database
-      const history = await FelixChatService.getFormattedHistory(activeSessionId, 10);
-
       // Save user message
       await FelixChatService.addUserMessage(activeSessionId, userId, message);
       await FelixSessionService.incrementMessageCount(activeSessionId);
+
+      // If in filter mode, use query service (database only, no streaming)
+      if (mode === 'filter') {
+        const queryResult = await this.queryService.processQuery(message, userId);
+        
+        // Yield the response in chunks for streaming effect
+        const words = queryResult.message.split(' ');
+        for (let i = 0; i < words.length; i++) {
+          const chunk = (i === 0 ? '' : ' ') + words[i];
+          fullResponse += chunk;
+          yield chunk;
+        }
+
+        const responseTime = Date.now() - startTime;
+
+        // Save assistant response
+        await FelixChatService.addAssistantResponse(
+          activeSessionId,
+          userId,
+          queryResult.message,
+          {
+            responseTime,
+            modelVersion: 'felix-query-service',
+            metadata: {
+              resultsCount: queryResult.resultsCount,
+              needsConfirmation: queryResult.needsConfirmation,
+            }
+          }
+        );
+        await FelixSessionService.incrementMessageCount(activeSessionId);
+
+        // Auto-generate title from first message if needed
+        const session = await FelixSessionService.getById(activeSessionId);
+        if (session && !session.title && session.messageCount === 2) {
+          const title = this.generateTitle(message);
+          await FelixSessionService.updateTitle(activeSessionId, title);
+        }
+
+        return { sessionId: activeSessionId, queryResult };
+      }
+
+      // Get conversation history from database
+      const history = await FelixChatService.getFormattedHistory(activeSessionId, 10);
 
       // Build conversation contents
       const contents: any[] = [];

@@ -7,31 +7,36 @@ import authService from '../../services/AuthService';
 import '../styles/felix.css';
 
 // Dr. Felix logo - use the image you provided
-const felixLogo = '/felix-logo.png';
+// const felixLogo = '/felix-logo.png';
 
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  queryResult?: {
+    resultsCount: number;
+    excelBuffer?: ArrayBuffer | Uint8Array;
+    excelFilename?: string;
+  };
 }
 
-const SUGGESTIONS = [
+const QUERY_SUGGESTIONS = [
   {
-    title: '💡 Ask anything',
-    description: 'I can help with questions, explanations, and ideas'
+    title: '🔍 Show all IT findings 2024',
+    description: 'show all IT findings 2024'
   },
   {
-    title: '📊 Analyze data',
-    description: 'Get insights and understand patterns'
+    title: '📊 Findings with high score',
+    description: 'show all findings where nilai >= 10'
   },
   {
-    title: '✍️ Write content',
-    description: 'Create text, summaries, or documentation'
+    title: '📅 Findings by year and code',
+    description: 'dep = IT, year 2024, code = F'
   },
   {
-    title: '🔍 Research topics',
-    description: 'Learn about any subject in depth'
+    title: '🏢 Complex query',
+    description: 'findings with bobot >= 5 and kadar < 3'
   }
 ];
 
@@ -156,7 +161,8 @@ export default function FelixPage() {
       const stream = felixService.streamChat(
         userMessage.content,
         currentUser.uid,
-        currentSessionId || undefined
+        currentSessionId || undefined,
+        'filter'
       );
 
       for await (const chunk of stream) {
@@ -168,11 +174,29 @@ export default function FelixPage() {
               : msg
           ));
         } else if (chunk && typeof chunk === 'object' && 'sessionId' in chunk) {
-          // Final return value with sessionId
+          // Final return value with sessionId and optional queryResult
+          const result = chunk as { sessionId: string; queryResult?: any };
+          
           // Set session ID if this was the first message (session just created)
           if (!currentSessionId) {
-            setCurrentSessionId((chunk as { sessionId: string }).sessionId);
-            console.log('🆕 Started new Felix session:', (chunk as { sessionId: string }).sessionId);
+            setCurrentSessionId(result.sessionId);
+            console.log('🆕 Started new Felix session:', result.sessionId);
+          }
+
+          // If there's a query result with Excel data, attach it to the message
+          if (result.queryResult?.excelBuffer) {
+            setMessages(prev => prev.map(msg => 
+              msg.id === assistantMessageId 
+                ? { 
+                    ...msg, 
+                    queryResult: {
+                      resultsCount: result.queryResult.resultsCount,
+                      excelBuffer: result.queryResult.excelBuffer,
+                      excelFilename: result.queryResult.excelFilename
+                    }
+                  }
+                : msg
+            ));
           }
         }
       }
@@ -201,7 +225,7 @@ export default function FelixPage() {
     }
   };
 
-  const handleSuggestionClick = (suggestion: typeof SUGGESTIONS[0]) => {
+  const handleSuggestionClick = (suggestion: typeof QUERY_SUGGESTIONS[0]) => {
     setInput(suggestion.description);
     inputRef.current?.focus();
   };
@@ -224,6 +248,27 @@ export default function FelixPage() {
       await loadUserSessions();
     } catch (error) {
       console.error('Error creating new chat:', error);
+    }
+  };
+
+  const handleDownloadExcel = (excelBuffer: ArrayBuffer | Uint8Array, filename: string) => {
+    try {
+      const buffer = excelBuffer instanceof Uint8Array 
+        ? new Uint8Array(excelBuffer) 
+        : new Uint8Array(excelBuffer);
+      const blob = new Blob([buffer], { 
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading Excel:', error);
     }
   };
 
@@ -336,11 +381,15 @@ export default function FelixPage() {
             >
               {showSidebar ? '◀' : '▶'}
             </button>
+            <div className="felix-title">
+              <span className="felix-icon">🔍</span>
+              <span>Felix Query Assistant</span>
+            </div>
           </div>
           <div className="felix-actions">
             {messages.length > 0 && (
               <button className="felix-btn" onClick={handleNewChat}>
-                New Chat
+                New Query
               </button>
             )}
           </div>
@@ -352,10 +401,10 @@ export default function FelixPage() {
           <div className="felix-welcome">
             <div>
               <h1>Hello, {currentUser?.displayName || currentUser?.email?.split('@')[0] || 'there'}!</h1>
-              <p>How can I help you today?</p>
+              <p>Query the audit database with natural language</p>
             </div>
             <div className="felix-suggestions">
-              {SUGGESTIONS.map((suggestion, index) => (
+              {QUERY_SUGGESTIONS.map((suggestion, index) => (
                 <div 
                   key={index}
                   className="felix-suggestion-card"
@@ -384,6 +433,19 @@ export default function FelixPage() {
                       </div>
                     )}
                   </div>
+                  {message.queryResult?.excelBuffer && (
+                    <div className="felix-excel-download">
+                      <button 
+                        className="felix-download-btn"
+                        onClick={() => handleDownloadExcel(
+                          message.queryResult!.excelBuffer!,
+                          message.queryResult!.excelFilename || 'results.xlsx'
+                        )}
+                      >
+                        📥 Download Excel ({message.queryResult.resultsCount} results)
+                      </button>
+                    </div>
+                  )}
                   <div className="felix-message-time">
                     {formatTime(message.timestamp)}
                   </div>
@@ -413,7 +475,7 @@ export default function FelixPage() {
             <textarea
               ref={inputRef}
               className="felix-input"
-              placeholder="Ask anything..."
+              placeholder='Query the database (e.g., "show all IT findings 2024")'
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
