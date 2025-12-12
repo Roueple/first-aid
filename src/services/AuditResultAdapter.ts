@@ -69,7 +69,7 @@ export class AuditResultAdapter {
 
       // Finding details
       findingTitle: auditResult.riskArea,
-      findingDescription: auditResult.descriptions,
+      findingDescription: auditResult.description,
       rootCause: `Risk identified in ${auditResult.riskArea}`,
       impactDescription: `Impact score: ${auditResult.nilai}`,
       recommendation: `Address ${auditResult.code} findings in ${auditResult.department}`,
@@ -161,7 +161,7 @@ export class AuditResultAdapter {
       auditResult.projectName,
       auditResult.department,
       auditResult.riskArea,
-      auditResult.descriptions,
+      auditResult.description,
       auditResult.code,
       auditResult.sh,
     ].filter(Boolean).join(' ');
@@ -296,7 +296,7 @@ Project: ${auditResult.projectName}
 Year: ${auditResult.year}
 Department: ${auditResult.department}
 Risk Area: ${auditResult.riskArea}
-Description: ${auditResult.descriptions}
+Description: ${auditResult.description}
 Code: ${auditResult.code}
 Severity: ${priorityLevel} (Score: ${auditResult.nilai} = Bobot ${auditResult.bobot} × Kadar ${auditResult.kadar})
 Subholding: ${auditResult.sh}

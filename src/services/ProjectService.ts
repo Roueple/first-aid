@@ -209,6 +209,9 @@ export class ProjectService extends DatabaseService<Project> {
 
   /**
    * Recalculate finding counts for a project from audit-results
+   * Counts based on code field:
+   * - Finding: code starts with 'F' (but not 'NF')
+   * - Non-Finding: code starts with 'NF'
    */
   async recalculateProjectStats(projectId: string): Promise<void> {
     const project = await this.getById(projectId);
@@ -229,12 +232,13 @@ export class ProjectService extends DatabaseService<Project> {
     let nonFinding = 0;
     
     auditResults.forEach((result: any) => {
-      const code = result.code || '';
-      // Check if code starts with 'F' (Finding) or 'NF' (Non-Finding)
-      if (code.toUpperCase().startsWith('F') && !code.toUpperCase().startsWith('NF')) {
-        finding++;
-      } else if (code.toUpperCase().startsWith('NF')) {
+      const code = (result.code || '').toUpperCase();
+      
+      // Check if code starts with 'NF' first (more specific)
+      if (code.startsWith('NF')) {
         nonFinding++;
+      } else if (code.startsWith('F')) {
+        finding++;
       }
     });
 

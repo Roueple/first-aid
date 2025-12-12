@@ -37,7 +37,7 @@ function auditResultsToExcelData(results: AuditResult[]): any[] {
     'Project ID': result.projectId || '',
     'Department': result.department,
     'Risk Area': result.riskArea,
-    'Description': result.descriptions,
+    'Description': result.description,
     'Code': result.code,
     'Bobot': result.bobot,
     'Kadar': result.kadar,

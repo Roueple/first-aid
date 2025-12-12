@@ -21,7 +21,9 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src/renderer'),
+      '@': path.resolve(__dirname, './src'),
+      '@/components/ui': path.resolve(__dirname, './src/components/ui'),
+      '@/lib': path.resolve(__dirname, './src/lib'),
     },
   },
   server: {

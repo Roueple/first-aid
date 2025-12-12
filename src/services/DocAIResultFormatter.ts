@@ -38,7 +38,7 @@ export function formatResultsAsText(
     const year = String(r.year);
     const dept = truncate(r.department, 15);
     const nilai = String(r.nilai).padStart(2);
-    const desc = truncate(r.descriptions, 35);
+    const desc = truncate(r.description, 35);
     
     text += `${no} | ${project} | ${year} | ${dept} | ${nilai} | ${desc}\n`;
   }
@@ -78,7 +78,7 @@ export function formatResultsAsExcel(
     'Nama Proyek': r.projectName,
     Departemen: r.department,
     'Area Risiko': r.riskArea,
-    Deskripsi: r.descriptions,
+    Deskripsi: r.description,
     Kode: r.code,
     Bobot: r.bobot,
     Kadar: r.kadar,

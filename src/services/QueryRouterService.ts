@@ -33,6 +33,7 @@ import { ContextBuilder } from './ContextBuilder';
 import { ResponseFormatter } from './ResponseFormatter';
 import auditResultService from './AuditResultService';
 import { sendMessageToGemini, isGeminiConfigured } from './GeminiService';
+import { Finding } from '../types/finding.types';
 
 /**
  * QueryRouterService interface
@@ -470,7 +471,7 @@ export class QueryRouterService implements IQueryRouterService {
         r.projectName.toLowerCase().includes(searchLower) ||
         r.department.toLowerCase().includes(searchLower) ||
         r.riskArea.toLowerCase().includes(searchLower) ||
-        r.descriptions.toLowerCase().includes(searchLower)
+        r.description.toLowerCase().includes(searchLower)
       );
     }
 

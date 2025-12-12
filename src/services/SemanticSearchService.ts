@@ -114,7 +114,7 @@ export class SemanticSearchService {
       auditResult.projectId || 'UNKNOWN_PROJECT',
       auditResult.department,
       auditResult.riskArea,
-      auditResult.descriptions,
+      auditResult.description,
       auditResult.code,
     ].filter(Boolean).join(' ');
   }

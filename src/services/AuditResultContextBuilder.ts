@@ -353,7 +353,7 @@ Project ID: ${auditResult.projectId}
 Year: ${auditResult.year}
 Department: ${auditResult.department}
 Risk Area: ${auditResult.riskArea}
-Description: ${auditResult.descriptions}
+Description: ${auditResult.description}
 Code: ${auditResult.code}
 Severity: ${priorityLevel} (Score: ${auditResult.nilai})
 Subholding: ${auditResult.sh}

@@ -119,6 +119,21 @@ export class FelixSessionService extends DatabaseService<FelixSession> {
   }
 
   /**
+   * Delete a session and its associated chats
+   */
+  async deleteSession(sessionId: string): Promise<void> {
+    // Import FelixChatService dynamically to avoid circular dependency
+    const { default: FelixChatService } = await import('./FelixChatService');
+    
+    // Delete all chats in this session
+    await FelixChatService.deleteSessionChats(sessionId);
+    
+    // Delete the session itself
+    await this.delete(sessionId);
+    console.log(`🗑️ Deleted Felix session: ${sessionId}`);
+  }
+
+  /**
    * Delete old inactive sessions (cleanup)
    */
   async deleteOldSessions(daysOld: number = 30): Promise<number> {

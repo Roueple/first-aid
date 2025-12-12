@@ -563,7 +563,7 @@ export class SmartQueryRouter {
         r.projectName.toLowerCase().includes(searchLower) ||
         r.department.toLowerCase().includes(searchLower) ||
         r.riskArea.toLowerCase().includes(searchLower) ||
-        r.descriptions.toLowerCase().includes(searchLower)
+        r.description.toLowerCase().includes(searchLower)
       );
     }
 

@@ -16,7 +16,7 @@ export interface AuditResult {
   projectId: string | null;
   department: string;
   riskArea: string;
-  descriptions: string;
+  description: string; // Note: singular, matches Firestore field name
   code: string;
   bobot: number;
   kadar: number;

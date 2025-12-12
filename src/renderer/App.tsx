@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '../contexts/AuthContext';
 import FelixPage from './pages/FelixPage';
 import { initializeGemini } from '../services/GeminiService';
+import './styles/felix.css';
 
 // Create a client with optimized caching options
 // Implements Requirements 11.1, 11.3 - Performance and caching
@@ -49,7 +50,7 @@ function App() {
             v7_relativeSplatPath: true,
           }}
         >
-          <div className="min-h-screen bg-gray-50">
+          <div className="min-h-screen">
             <Routes>
               <Route path="/felix" element={<FelixPage />} />
               <Route path="*" element={<Navigate to="/felix" replace />} />

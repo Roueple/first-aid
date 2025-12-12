@@ -1,13 +1,19 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { felixService } from '../../services/FelixService';
 import FelixSessionService from '../../services/FelixSessionService';
 import FelixChatService from '../../services/FelixChatService';
 import { useAuth } from '../../contexts/AuthContext';
 import authService from '../../services/AuthService';
-import '../styles/felix.css';
+import FelixResultsTable from '../../components/FelixResultsTable';
+import { AuditResultsTable } from '../../components/AuditResultsTable';
+import { CatAnimation } from '../../components/ui/cat-animation';
+import { FelixVanishInput } from '../../components/ui/felix-vanish-input';
+import { PanelLeftClose, PanelLeft, Plus, Download, Copy, ChevronUp, MessageSquare, Trash2, Database, X } from 'lucide-react';
 
-// Dr. Felix logo - use the image you provided
-// const felixLogo = '/felix-logo.png';
+interface ProjectSuggestion {
+  name: string;
+  score: number;
+}
 
 interface Message {
   id: string;
@@ -16,29 +22,15 @@ interface Message {
   timestamp: Date;
   queryResult?: {
     resultsCount: number;
+    results?: any[];
+    table?: string;
     excelBuffer?: ArrayBuffer | Uint8Array;
     excelFilename?: string;
+    needsConfirmation?: boolean;
+    suggestions?: ProjectSuggestion[];
+    originalQuery?: string;
   };
 }
-
-const QUERY_SUGGESTIONS = [
-  {
-    title: '🔍 Show all IT findings 2024',
-    description: 'show all IT findings 2024'
-  },
-  {
-    title: '📊 Findings with high score',
-    description: 'show all findings where nilai >= 10'
-  },
-  {
-    title: '📅 Findings by year and code',
-    description: 'dep = IT, year 2024, code = F'
-  },
-  {
-    title: '🏢 Complex query',
-    description: 'findings with bobot >= 5 and kadar < 3'
-  }
-];
 
 export default function FelixPage() {
   const { currentUser } = useAuth();
@@ -48,12 +40,12 @@ export default function FelixPage() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [sessions, setSessions] = useState<any[]>([]);
-  const [showSidebar, setShowSidebar] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [showAuditTable, setShowAuditTable] = useState(false);
   const chatAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-authenticate with test credentials if not logged in
   useEffect(() => {
     const autoAuth = async () => {
       if (!currentUser && !isAuthenticating) {
@@ -70,14 +62,12 @@ export default function FelixPage() {
     autoAuth();
   }, [currentUser, isAuthenticating]);
 
-  // Load user sessions when authenticated (but don't create a new session yet)
   useEffect(() => {
     if (currentUser) {
       loadUserSessions();
     }
   }, [currentUser]);
 
-  // Deactivate all sessions when component unmounts (page closes)
   useEffect(() => {
     return () => {
       if (currentUser && currentSessionId) {
@@ -105,7 +95,6 @@ export default function FelixPage() {
 
   const loadUserSessions = async () => {
     if (!currentUser) return;
-    
     try {
       const userSessions = await FelixSessionService.getUserSessions(currentUser.uid, 10);
       setSessions(userSessions);
@@ -114,28 +103,27 @@ export default function FelixPage() {
     }
   };
 
-  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (chatAreaRef.current) {
       chatAreaRef.current.scrollTop = chatAreaRef.current.scrollHeight;
     }
   }, [messages, isLoading]);
 
-  // Auto-resize textarea
   useEffect(() => {
     if (inputRef.current) {
       inputRef.current.style.height = 'auto';
-      inputRef.current.style.height = inputRef.current.scrollHeight + 'px';
+      inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 120) + 'px';
     }
   }, [input]);
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading || !currentUser) return;
+  const handleSend = async (query?: string) => {
+    const messageContent = query || input.trim();
+    if (!messageContent || isLoading || !currentUser) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: input.trim(),
+      content: messageContent,
       timestamp: new Date()
     };
 
@@ -145,7 +133,6 @@ export default function FelixPage() {
     setIsStreaming(true);
 
     try {
-      // Create assistant message placeholder
       const assistantMessageId = (Date.now() + 1).toString();
       let assistantContent = '';
 
@@ -156,54 +143,58 @@ export default function FelixPage() {
         timestamp: new Date()
       }]);
 
-      // Stream the response with session management
-      // Session will be created on first message if currentSessionId is null
       const stream = felixService.streamChat(
         userMessage.content,
         currentUser.uid,
-        currentSessionId || undefined,
-        'filter'
+        currentSessionId || undefined
       );
 
-      for await (const chunk of stream) {
-        if (typeof chunk === 'string') {
-          assistantContent += chunk;
+      let result: { sessionId: string; queryResult?: any } | undefined;
+      let done = false;
+      
+      while (!done) {
+        const { value, done: isDone } = await stream.next();
+        done = isDone || false;
+        
+        if (!done && typeof value === 'string') {
+          assistantContent += value;
           setMessages(prev => prev.map(msg => 
             msg.id === assistantMessageId 
               ? { ...msg, content: assistantContent }
               : msg
           ));
-        } else if (chunk && typeof chunk === 'object' && 'sessionId' in chunk) {
-          // Final return value with sessionId and optional queryResult
-          const result = chunk as { sessionId: string; queryResult?: any };
-          
-          // Set session ID if this was the first message (session just created)
-          if (!currentSessionId) {
-            setCurrentSessionId(result.sessionId);
-            console.log('🆕 Started new Felix session:', result.sessionId);
-          }
-
-          // If there's a query result with Excel data, attach it to the message
-          if (result.queryResult?.excelBuffer) {
-            setMessages(prev => prev.map(msg => 
-              msg.id === assistantMessageId 
-                ? { 
-                    ...msg, 
-                    queryResult: {
-                      resultsCount: result.queryResult.resultsCount,
-                      excelBuffer: result.queryResult.excelBuffer,
-                      excelFilename: result.queryResult.excelFilename
-                    }
-                  }
-                : msg
-            ));
-          }
+        } else if (done && value) {
+          result = value as { sessionId: string; queryResult?: any };
         }
       }
 
-      // Reload sessions list
-      await loadUserSessions();
+      if (result) {
+        if (!currentSessionId) {
+          setCurrentSessionId(result.sessionId);
+        }
 
+        if (result.queryResult) {
+          setMessages(prev => prev.map(msg => 
+            msg.id === assistantMessageId 
+              ? { 
+                  ...msg, 
+                  queryResult: {
+                    resultsCount: result.queryResult.resultsCount,
+                    results: result.queryResult.results,
+                    table: result.queryResult.table || 'audit-results',
+                    excelBuffer: result.queryResult.excelBuffer,
+                    excelFilename: result.queryResult.excelFilename,
+                    needsConfirmation: result.queryResult.needsConfirmation,
+                    suggestions: result.queryResult.suggestions,
+                    originalQuery: result.queryResult.originalQuery
+                  }
+                }
+              : msg
+          ));
+        }
+      }
+
+      await loadUserSessions();
     } catch (error) {
       console.error('Error sending message:', error);
       setMessages(prev => [...prev, {
@@ -225,26 +216,15 @@ export default function FelixPage() {
     }
   };
 
-  const handleSuggestionClick = (suggestion: typeof QUERY_SUGGESTIONS[0]) => {
-    setInput(suggestion.description);
-    inputRef.current?.focus();
-  };
-
   const handleNewChat = async () => {
     if (!currentUser) return;
-    
     try {
-      // Deactivate current session if it exists
       if (currentSessionId) {
         await FelixSessionService.deactivateSession(currentSessionId);
       }
-
-      // Clear UI state - new session will be created when first message is sent
       setCurrentSessionId(null);
       setMessages([]);
       setInput('');
-
-      // Reload sessions list
       await loadUserSessions();
     } catch (error) {
       console.error('Error creating new chat:', error);
@@ -274,27 +254,75 @@ export default function FelixPage() {
 
   const handleLoadSession = async (sessionId: string) => {
     try {
-      // Deactivate current session if it exists
       if (currentSessionId) {
         await FelixSessionService.deactivateSession(currentSessionId);
       }
-
-      // Load the selected session
       setCurrentSessionId(sessionId);
       await loadSessionMessages(sessionId);
-      
-      // Update activity timestamp
       await FelixSessionService.updateActivity(sessionId);
     } catch (error) {
       console.error('Error loading session:', error);
     }
   };
 
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
+  const handleCopyMessage = (content: string) => {
+    navigator.clipboard.writeText(content);
+  };
+
+  const handleConfirmProject = async (projectName: string, originalQuery: string) => {
+    if (!currentUser || !currentSessionId) return;
+    
+    setIsLoading(true);
+    try {
+      const result = await felixService.executeConfirmedQuery(
+        originalQuery,
+        projectName,
+        currentUser.uid,
+        currentSessionId
+      );
+
+      if (result.queryResult) {
+        const assistantMessage: Message = {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: result.queryResult.message,
+          timestamp: new Date(),
+          queryResult: {
+            resultsCount: result.queryResult.resultsCount,
+            results: result.queryResult.results,
+            table: result.queryResult.table || 'audit-results',
+            excelBuffer: result.queryResult.excelBuffer,
+            excelFilename: result.queryResult.excelFilename
+          }
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+      }
+    } catch (error) {
+      console.error('Error executing confirmed query:', error);
+      setMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        timestamp: new Date()
+      }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteSession = async (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!currentUser) return;
+    try {
+      await FelixSessionService.deleteSession(sessionId);
+      if (currentSessionId === sessionId) {
+        setCurrentSessionId(null);
+        setMessages([]);
+      }
+      await loadUserSessions();
+    } catch (error) {
+      console.error('Error deleting session:', error);
+    }
   };
 
   const formatSessionDate = (timestamp: any) => {
@@ -312,188 +340,240 @@ export default function FelixPage() {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
-  // Show loading state while authenticating
   if (isAuthenticating || !currentUser) {
     return (
-      <div className="felix-container">
-        <div className="felix-main">
-          <div className="felix-welcome">
-            <div className="felix-welcome-icon">F</div>
-            <div>
-              <h1>Authenticating...</h1>
-              <p>Please wait while we set up your session</p>
-            </div>
-          </div>
+      <div className="felix-page felix-loading">
+        <div className="felix-loading-content">
+          <span className="felix-loading-icon">🔐</span>
+          <p>Authenticating...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="felix-container">
+    <div className={`felix-page ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
       {/* Sidebar */}
-      {showSidebar && (
-        <div className="felix-sidebar">
-          <div className="felix-sidebar-header">
-            <button className="felix-new-chat-btn" onClick={handleNewChat}>
-              <span>+</span>
-              <span>New Chat</span>
-            </button>
-          </div>
-          <div className="felix-sidebar-content">
+      <aside className={`felix-sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
+        <div className="felix-sidebar-header">
+          <button className="felix-new-chat-btn" onClick={handleNewChat}>
+            <Plus size={18} />
+            <span>New chat</span>
+          </button>
+          <button 
+            className="felix-sidebar-toggle" 
+            onClick={() => setSidebarOpen(false)}
+            title="Close sidebar"
+          >
+            <PanelLeftClose size={18} />
+          </button>
+        </div>
+        
+        <div className="felix-sidebar-content">
+          <button 
+            className="felix-data-btn"
+            onClick={() => setShowAuditTable(true)}
+            title="View all audit results"
+          >
+            <Database size={16} />
+            <span>All Audit Data</span>
+          </button>
+          
+          <div className="felix-sidebar-label">Recent</div>
+          <div className="felix-history-list">
             {sessions.length === 0 ? (
-              <div className="felix-sidebar-empty">
-                <p>No chat history yet</p>
-              </div>
+              <div className="felix-history-empty">No chat history yet</div>
             ) : (
-              <div className="felix-session-list">
-                {sessions.map((session) => (
-                  <div
-                    key={session.id}
-                    className={`felix-session-item ${session.id === currentSessionId ? 'active' : ''}`}
+              sessions.map((session) => (
+                <div
+                  key={session.id}
+                  className={`felix-history-item ${session.id === currentSessionId ? 'active' : ''}`}
+                >
+                  <button
+                    className="felix-history-item-btn"
                     onClick={() => handleLoadSession(session.id)}
                   >
-                    <div className="felix-session-title">
-                      {session.title || 'New Chat'}
+                    <MessageSquare size={16} className="felix-history-icon" />
+                    <div className="felix-history-info">
+                      <div className="felix-history-title">{session.title || 'New Chat'}</div>
+                      <div className="felix-history-meta">{formatSessionDate(session.lastActivityAt)}</div>
                     </div>
-                    <div className="felix-session-meta">
-                      <span>{session.messageCount || 0} messages</span>
-                      <span>•</span>
-                      <span>{formatSessionDate(session.lastActivityAt)}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  </button>
+                  <button 
+                    className="felix-delete-btn"
+                    onClick={(e) => handleDeleteSession(session.id, e)}
+                    title="Delete chat"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))
             )}
           </div>
         </div>
+      </aside>
+
+      {/* Sidebar Toggle (when closed) */}
+      {!sidebarOpen && (
+        <button 
+          className="felix-sidebar-open-btn"
+          onClick={() => setSidebarOpen(true)}
+          title="Open sidebar"
+        >
+          <PanelLeft size={20} />
+        </button>
       )}
 
       {/* Main Content */}
       <div className="felix-main">
-        {/* Header */}
-        <div className="felix-header">
-          <div className="felix-header-left">
-            <button 
-              className="felix-sidebar-toggle"
-              onClick={() => setShowSidebar(!showSidebar)}
-              title={showSidebar ? 'Hide sidebar' : 'Show sidebar'}
-            >
-              {showSidebar ? '◀' : '▶'}
-            </button>
-            <div className="felix-title">
-              <span className="felix-icon">🔍</span>
-              <span>Felix Query Assistant</span>
+        <div className="felix-content" ref={chatAreaRef}>
+          {messages.length === 0 ? (
+            /* Welcome Screen */
+            <div className="felix-welcome">
+              <CatAnimation size={140} className="felix-cat" />
+              <h1 className="felix-greeting">
+                Hello {currentUser?.displayName || currentUser?.email?.split('@')[0] || 'User'}, What can Felix do for you?
+              </h1>
+              <div className="w-full max-w-2xl px-4">
+                <FelixVanishInput 
+                  onSubmit={handleSend}
+                  disabled={isLoading}
+                />
+              </div>
             </div>
-          </div>
-          <div className="felix-actions">
-            {messages.length > 0 && (
-              <button className="felix-btn" onClick={handleNewChat}>
-                New Query
-              </button>
-            )}
-          </div>
-        </div>
+          ) : (
+            /* Chat View */
+            <>
+              <div className="felix-messages">
+                {messages.map((message) => (
+                  <div key={message.id} className={`felix-message ${message.role}`}>
+                    {message.role === 'user' ? (
+                      <div className="felix-user-message">{message.content}</div>
+                    ) : (
+                      <div className="felix-assistant-message">
+                        {message.content ? (
+                          <div className="felix-message-text">{message.content}</div>
+                        ) : isStreaming ? (
+                          <div className="felix-typing">
+                            <span></span><span></span><span></span>
+                          </div>
+                        ) : null}
+                        
+                        {message.queryResult?.needsConfirmation && message.queryResult.suggestions && (
+                          <div className="felix-confirmation">
+                            <div className="felix-suggestions">
+                              {message.queryResult.suggestions.map((suggestion, idx) => (
+                                <button
+                                  key={idx}
+                                  className="felix-suggestion-btn"
+                                  onClick={() => handleConfirmProject(
+                                    suggestion.name,
+                                    message.queryResult!.originalQuery || ''
+                                  )}
+                                  disabled={isLoading}
+                                >
+                                  <span className="felix-suggestion-name">{suggestion.name}</span>
+                                  <span className="felix-suggestion-score">
+                                    {Math.round(suggestion.score * 100)}% match
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
 
-        {/* Chat Area */}
-        <div className="felix-chat-area" ref={chatAreaRef}>
-        {messages.length === 0 ? (
-          <div className="felix-welcome">
-            <div>
-              <h1>Hello, {currentUser?.displayName || currentUser?.email?.split('@')[0] || 'there'}!</h1>
-              <p>Query the audit database with natural language</p>
-            </div>
-            <div className="felix-suggestions">
-              {QUERY_SUGGESTIONS.map((suggestion, index) => (
-                <div 
-                  key={index}
-                  className="felix-suggestion-card"
-                  onClick={() => handleSuggestionClick(suggestion)}
-                >
-                  <h3>{suggestion.title}</h3>
-                  <p>{suggestion.description}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <>
-            {messages.map((message) => (
-              <div key={message.id} className={`felix-message ${message.role}`}>
-                <div className={`felix-avatar ${message.role}`}>
-                  {message.role === 'assistant' ? 'A' : 'U'}
-                </div>
-                <div className="felix-message-content">
-                  <div className="felix-message-bubble">
-                    {message.content || (
-                      <div className="felix-typing">
-                        <div className="felix-typing-dot"></div>
-                        <div className="felix-typing-dot"></div>
-                        <div className="felix-typing-dot"></div>
+                        {message.queryResult?.results && message.queryResult.results.length > 0 && (
+                          <div className="felix-results">
+                            <FelixResultsTable 
+                              results={message.queryResult.results}
+                              table={message.queryResult.table || 'audit-results'}
+                              maxRows={20}
+                            />
+                          </div>
+                        )}
+                        
+                        {(message.content || message.queryResult?.excelBuffer) && !message.queryResult?.needsConfirmation && (
+                          <div className="felix-message-actions">
+                            {message.content && (
+                              <button 
+                                className="felix-action-btn"
+                                onClick={() => handleCopyMessage(message.content)}
+                              >
+                                <Copy size={14} /> Copy
+                              </button>
+                            )}
+                            {message.queryResult?.excelBuffer && (
+                              <button
+                                className="felix-action-btn felix-download"
+                                onClick={() => handleDownloadExcel(
+                                  message.queryResult!.excelBuffer!,
+                                  message.queryResult!.excelFilename || 'results.xlsx'
+                                )}
+                              >
+                                <Download size={14} /> Download Excel
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
-                  {message.queryResult?.excelBuffer && (
-                    <div className="felix-excel-download">
-                      <button 
-                        className="felix-download-btn"
-                        onClick={() => handleDownloadExcel(
-                          message.queryResult!.excelBuffer!,
-                          message.queryResult!.excelFilename || 'results.xlsx'
-                        )}
-                      >
-                        📥 Download Excel ({message.queryResult.resultsCount} results)
-                      </button>
+                ))}
+                
+                {isLoading && !isStreaming && (
+                  <div className="felix-message assistant">
+                    <div className="felix-assistant-message">
+                      <div className="felix-typing">
+                        <span></span><span></span><span></span>
+                      </div>
                     </div>
-                  )}
-                  <div className="felix-message-time">
-                    {formatTime(message.timestamp)}
                   </div>
-                </div>
+                )}
               </div>
-            ))}
-            {isLoading && !isStreaming && (
-              <div className="felix-message assistant">
-                <div className="felix-avatar assistant">A</div>
-                <div className="felix-message-content">
-                  <div className="felix-typing">
-                    <div className="felix-typing-dot"></div>
-                    <div className="felix-typing-dot"></div>
-                    <div className="felix-typing-dot"></div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-        </div>
 
-        {/* Input Area */}
-        <div className="felix-input-area">
-        <div className="felix-input-container">
-          <div className="felix-input-wrapper">
-            <textarea
-              ref={inputRef}
-              className="felix-input"
-              placeholder='Query the database (e.g., "show all IT findings 2024")'
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              rows={1}
-              disabled={isLoading}
-            />
-          </div>
-          <button 
-            className="felix-send-btn"
-            onClick={handleSend}
-            disabled={!input.trim() || isLoading}
-          >
-            <span>Send</span>
-            <span>→</span>
-          </button>
-        </div>
+              {/* Bottom Input */}
+              <div className="felix-bottom-input">
+                <div className="felix-input-container">
+                  <textarea
+                    ref={inputRef}
+                    className="felix-input"
+                    placeholder="How can I help you today?"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    rows={1}
+                    disabled={isLoading}
+                  />
+                  <div className="felix-input-actions">
+                    <button 
+                      className="felix-send-btn"
+                      onClick={() => handleSend()}
+                      disabled={!input.trim() || isLoading}
+                    >
+                      <ChevronUp size={18} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
+
+      {/* Audit Results Modal */}
+      {showAuditTable && (
+        <div className="felix-modal-overlay" onClick={() => setShowAuditTable(false)}>
+          <div className="felix-modal" onClick={(e) => e.stopPropagation()}>
+            <button 
+              className="felix-modal-close"
+              onClick={() => setShowAuditTable(false)}
+            >
+              <X size={20} />
+            </button>
+            <AuditResultsTable />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
