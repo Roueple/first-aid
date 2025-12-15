@@ -91,6 +91,11 @@ COMMON TAGS (for audit-results.tags field):
 - Estate: IPL, Tunggakan air, Serah Terima
 - HR: Kontrak kerja, BPJS, Asuransi, Clearance sheet
 
+SUBHOLDING (SH) CODES:
+- SH1, SH2, SH3A, SH3B, SH4 (always uppercase)
+- Use "sh" field to filter by subholding
+- Example: {"field": "sh", "operator": "==", "value": "SH1"}
+
 PROJECT INITIALS EXAMPLES:
 - HRJ = Hotel Raffles Jakarta
 - CLPK = Citraland Pekanbaru
@@ -163,8 +168,8 @@ Return ONLY the JSON object.`;
           : f
       );
 
-      // Execute query
-      const results = await this.executeQuery(filters, targetTable);
+      // Execute query with original user query for context
+      const results = await this.executeQuery(filters, targetTable, originalQuery);
       const { excelBuffer, excelFilename } = await this.generateExcel(results, targetTable, userIntent);
 
       const message = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -238,10 +243,12 @@ ${this.describeFilters(filters)}
       await FelixChatService.addUserMessage(activeSessionId, userId, message);
       await FelixSessionService.incrementMessageCount(activeSessionId);
 
-      // Process query through Gemini
-      const queryResult = await this.processQuery(message);
+      // Process query through Gemini with session context
+      const queryResult = await this.processQuery(message, activeSessionId);
 
-      // Save assistant response
+      // Save assistant response with compact summary for context
+      const compactMessage = this.createCompactContextMessage(queryResult);
+      
       await FelixChatService.addAssistantResponse(
         activeSessionId,
         userId,
@@ -252,6 +259,7 @@ ${this.describeFilters(filters)}
           metadata: {
             resultsCount: queryResult.resultsCount,
             filters: queryResult.filters,
+            compactContext: compactMessage, // For LLM context
           }
         }
       );
@@ -293,8 +301,8 @@ ${this.describeFilters(filters)}
       await FelixChatService.addUserMessage(activeSessionId, userId, message);
       await FelixSessionService.incrementMessageCount(activeSessionId);
 
-      // Process query
-      const queryResult = await this.processQuery(message);
+      // Process query with session context
+      const queryResult = await this.processQuery(message, activeSessionId);
 
       // Stream the response word by word for typing effect
       const words = queryResult.message.split(' ');
@@ -303,7 +311,9 @@ ${this.describeFilters(filters)}
         yield chunk;
       }
 
-      // Save assistant response
+      // Save assistant response with compact summary for context
+      const compactMessage = this.createCompactContextMessage(queryResult);
+      
       await FelixChatService.addAssistantResponse(
         activeSessionId,
         userId,
@@ -314,6 +324,7 @@ ${this.describeFilters(filters)}
           metadata: {
             resultsCount: queryResult.resultsCount,
             filters: queryResult.filters,
+            compactContext: compactMessage, // For LLM context
           }
         }
       );
@@ -366,13 +377,54 @@ ${this.describeFilters(filters)}
   /**
    * Core query processing - uses Gemini to understand intent, extract filters, and execute query
    */
-  private async processQuery(query: string): Promise<QueryResult> {
+  private async processQuery(query: string, sessionId?: string): Promise<QueryResult> {
     try {
+      // Get conversation history for context
+      let conversationContext = '';
+      if (sessionId) {
+        try {
+          const history = await FelixChatService.getSessionChats(sessionId, 6);
+          if (history && history.length > 0) {
+            // Format last 3 exchanges (6 messages) for context
+            // Use compact context for assistant messages to avoid overwhelming the LLM
+            conversationContext = '\n\nCONVERSATION HISTORY (for context):\n' + 
+              history.map(msg => {
+                if (msg.role === 'user') {
+                  return `USER: ${msg.message}`;
+                } else {
+                  // Use compact context if available, otherwise truncate
+                  const compactContext = msg.metadata?.compactContext;
+                  if (compactContext) {
+                    return `ASSISTANT: ${compactContext}`;
+                  }
+                  // Fallback: truncate long messages
+                  const truncated = msg.message.length > 200 
+                    ? msg.message.substring(0, 200) + '...' 
+                    : msg.message;
+                  return `ASSISTANT: ${truncated}`;
+                }
+              }).join('\n');
+            console.log(`📜 Using ${history.length} messages from conversation history for context`);
+          }
+        } catch (error) {
+          console.warn('Failed to get conversation history:', error);
+        }
+      }
+
       const prompt = `You are a database query assistant for an audit findings system.
 
 ${this.TABLE_SCHEMA}
+${conversationContext}
 
 USER QUERY: "${query}"
+
+IMPORTANT CONTEXT RULES:
+- If the conversation history shows a previous query with filters (department, year, project, code), and the current query is a refinement or follow-up, YOU MUST MAINTAIN ALL PREVIOUS FILTERS unless explicitly told to remove them
+- Example: Previous query had filters [department=HC, year=2024, code=F], current query "khusus mall ciputra cibubur" → KEEP [department=HC, year=2024, code=F] and ADD [projectName=Mall Ciputra Cibubur]
+- Example: Previous query had filters [department=IT, year=2024], current query "hanya temuan" → KEEP [department=IT, year=2024] and ADD [code=F]
+- If user says "reset" or "start over" or "all projects", then clear previous filters
+- "temuan" or "findings" ALWAYS means code="F" (actual findings, not NF/O/R)
+- "semua hasil audit" or "all audit results" means include all codes (F, NF, O, R)
 
 Analyze the user's query and extract database filters. Return a JSON object:
 {
@@ -406,16 +458,27 @@ TARGET TABLE RULES:
 - "departments": for department list, categories, department info
 
 CODE FIELD RULES (CRITICAL):
-- When user says "findings" or "temuan", ALWAYS add filter: {"field": "code", "operator": "==", "value": "F"}
+- "temuan" or "findings" ALWAYS means code="F" only (actual findings, not NF/O/R)
+- "semua temuan" also means code="F" only (all findings, but still only F code)
+- "hanya temuan" or "findings only" means code="F" only
 - code = "F" means Finding (actual audit findings)
 - code = "NF" means Non-Finding (not actual findings)
 - code = "O" means Observation
 - code = "R" means Recommendation
-- If user wants ALL results including NF, they must explicitly say "all audit results" or "semua hasil audit"
+- If user wants ALL results including NF, they must explicitly say "all audit results", "semua hasil audit", "including NF", "termasuk NF", or "all codes"
+- Default behavior: ANY mention of "temuan" or "findings" = filter to code="F" only
+
+CONTEXT-AWARE RULES:
+- If conversation history shows a previous query with specific filters (project, year, department), and current query is a refinement like "hanya temuan" or "findings only", KEEP all previous filters and ADD code="F" filter
+- Example: Previous query "semua temuan Tallasa Makassar" → Current query "hanya temuan" → Keep projectName filter, ADD code="F"
+- If user says just "temuan" or "findings" without other context, it means code="F" for all projects
 
 EXAMPLES:
-Query: "show all IT findings 2024"
+Query: "show all IT findings 2024" or "semua temuan IT 2024"
 {"userIntent": "Tampilkan semua temuan IT tahun 2024", "targetTable": "audit-results", "filters": [{"field": "department", "operator": "==", "value": "IT"}, {"field": "year", "operator": "==", "value": "2024"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+
+Query: "temuan Tallasa Makassar" or "semua temuan Tallasa Makassar"
+{"userIntent": "Semua temuan CitraLand Tallasa City Makassar", "targetTable": "audit-results", "filters": [{"field": "projectName", "operator": "==", "value": "CitraLand Tallasa City Makassar"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
 
 Query: "dep = IT, year 2024, code = F"
 {"userIntent": "Temuan IT tahun 2024 dengan kode F", "targetTable": "audit-results", "filters": [{"field": "department", "operator": "==", "value": "IT"}, {"field": "year", "operator": "==", "value": "2024"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
@@ -429,8 +492,11 @@ Query: "temuan APAR"
 Query: "temuan kolam renang 2024"
 {"userIntent": "Temuan kolam renang tahun 2024", "targetTable": "audit-results", "filters": [{"field": "tags", "operator": "array-contains", "value": "Kolam renang"}, {"field": "year", "operator": "==", "value": "2024"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
 
-Query: "all IT audit results 2024" or "semua hasil audit IT 2024"
-{"userIntent": "Semua hasil audit IT tahun 2024 (termasuk NF)", "targetTable": "audit-results", "filters": [{"field": "department", "operator": "==", "value": "IT"}, {"field": "year", "operator": "==", "value": "2024"}], "isValidQuery": true}
+Query: "all IT audit results 2024" or "semua hasil audit IT 2024" or "all codes IT 2024"
+{"userIntent": "Semua hasil audit IT tahun 2024 (termasuk F, NF, O, R)", "targetTable": "audit-results", "filters": [{"field": "department", "operator": "==", "value": "IT"}, {"field": "year", "operator": "==", "value": "2024"}], "isValidQuery": true}
+
+Query: "semua hasil audit Tallasa Makassar" or "all audit results Tallasa"
+{"userIntent": "Semua hasil audit CitraLand Tallasa City Makassar (termasuk F, NF, O, R)", "targetTable": "audit-results", "filters": [{"field": "projectName", "operator": "==", "value": "CitraLand Tallasa City Makassar"}], "isValidQuery": true}
 
 Query: "list all projects" or "daftar proyek"
 {"userIntent": "Daftar semua proyek", "targetTable": "projects", "filters": [], "isValidQuery": true}
@@ -449,6 +515,31 @@ Query: "list departments" or "daftar departemen"
 
 Query: "IT departments" or "departemen IT"
 {"userIntent": "Departemen kategori IT", "targetTable": "departments", "filters": [{"field": "category", "operator": "==", "value": "IT"}], "isValidQuery": true}
+
+CONTEXT-AWARE EXAMPLES (with conversation history):
+Previous: "semua temuan HC 2024" (filters: department="HC", year="2024", code="F")
+Current: "khusus mall ciputra cibubur" or "show only mall ciputra cibubur"
+{"userIntent": "Temuan HC tahun 2024 khusus Mall Ciputra Cibubur", "targetTable": "audit-results", "filters": [{"field": "department", "operator": "==", "value": "HC"}, {"field": "year", "operator": "==", "value": "2024"}, {"field": "code", "operator": "==", "value": "F"}, {"field": "projectName", "operator": "==", "value": "Mall Ciputra Cibubur"}], "isValidQuery": true}
+
+Previous: "semua temuan HR 2024" (filters: department="HR", year="2024", code="F")
+Current: "khusus SH1" or "only SH1" or "SH1 saja"
+{"userIntent": "Temuan HR tahun 2024 khusus SH1", "targetTable": "audit-results", "filters": [{"field": "department", "operator": "==", "value": "HR"}, {"field": "year", "operator": "==", "value": "2024"}, {"field": "code", "operator": "==", "value": "F"}, {"field": "sh", "operator": "==", "value": "SH1"}], "isValidQuery": true}
+
+Previous: "semua temuan HR 2024" (filters: department="HR", year="2024", code="F")
+Current: "SH2 coba" or "coba SH2" or "filter SH2"
+{"userIntent": "Temuan HR tahun 2024 khusus SH2", "targetTable": "audit-results", "filters": [{"field": "department", "operator": "==", "value": "HR"}, {"field": "year", "operator": "==", "value": "2024"}, {"field": "code", "operator": "==", "value": "F"}, {"field": "sh", "operator": "==", "value": "SH2"}], "isValidQuery": true}
+
+Previous: "semua temuan Tallasa Makassar" (filters: projectName="CitraLand Tallasa City Makassar")
+Current: "hanya temuan" or "findings only"
+{"userIntent": "Hanya temuan (code F) untuk CitraLand Tallasa City Makassar", "targetTable": "audit-results", "filters": [{"field": "projectName", "operator": "==", "value": "CitraLand Tallasa City Makassar"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+
+Previous: "IT findings 2024" (filters: department="IT", year="2024", code="F")
+Current: "show all results" or "semua hasil"
+{"userIntent": "Semua hasil audit IT tahun 2024 (termasuk NF)", "targetTable": "audit-results", "filters": [{"field": "department", "operator": "==", "value": "IT"}, {"field": "year", "operator": "==", "value": "2024"}], "isValidQuery": true}
+
+Previous: "proyek Raffles" (filters: projectName="Hotel Raffles Jakarta")
+Current: "temuan 2024"
+{"userIntent": "Temuan Hotel Raffles Jakarta tahun 2024", "targetTable": "audit-results", "filters": [{"field": "projectName", "operator": "==", "value": "Hotel Raffles Jakarta"}, {"field": "year", "operator": "==", "value": "2024"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
 
 Query: "hello how are you"
 {"userIntent": "Bukan query database", "targetTable": "audit-results", "filters": [], "isValidQuery": false, "invalidReason": "Ini bukan query database. Silakan tanyakan tentang audit findings, projects, atau departments."}
@@ -495,7 +586,7 @@ Return ONLY the JSON object.`;
           if (suggestions.length === 0) {
             return {
               success: false,
-              message: `❌ Project "${projectNameFilter.value}" not found and no similar projects found.\n\nPlease check the project name and try again.`,
+              message: `❌ Proyek "${projectNameFilter.value}" tidak ditemukan dan tidak ada proyek serupa.\n\nSilakan periksa nama proyek dan coba lagi.`,
               resultsCount: 0,
               needsConfirmation: false,
               filters,
@@ -504,7 +595,7 @@ Return ONLY the JSON object.`;
           
           return {
             success: false,
-            message: `⚠️ Project "${projectNameFilter.value}" not found.\n\nDid you mean one of these projects?`,
+            message: `⚠️ Proyek "${projectNameFilter.value}" tidak ditemukan.\n\nApakah maksud Anda salah satu dari proyek ini?`,
             resultsCount: 0,
             needsConfirmation: true,
             filters,
@@ -514,8 +605,8 @@ Return ONLY the JSON object.`;
         }
       }
 
-      // Execute query
-      let results = await this.executeQuery(filters, targetTable);
+      // Execute query with original user query for context
+      let results = await this.executeQuery(filters, targetTable, query);
       
       // Generate Excel file
       const { excelBuffer, excelFilename } = await this.generateExcel(results, targetTable, userIntent);
@@ -563,8 +654,12 @@ ${this.describeFilters(filters)}
    * IMPORTANT: Firestore has limitations on composite indexes.
    * Range/inequality operators (>, >=, <, <=, !=) on multiple fields require composite indexes.
    * Strategy: Execute with equality filters in Firestore, apply range filters in-memory.
+   * 
+   * @param filters - Query filters to apply
+   * @param table - Target table name
+   * @param userQuery - Original user query for AI-powered department matching context
    */
-  private async executeQuery(filters: QueryFilter[], table: string): Promise<any[]> {
+  private async executeQuery(filters: QueryFilter[], table: string, userQuery?: string): Promise<any[]> {
     try {
       const db = new DatabaseService(table);
       
@@ -599,17 +694,20 @@ ${this.describeFilters(filters)}
           return f;
         });
 
-        // Expand department category to actual department names
+        // Expand department using AI-powered matching
         const deptFilter = expandedFilters.find(f => f.field === 'department');
         if (deptFilter) {
-          const deptNames = await this.getDepartmentNames(String(deptFilter.value));
-          console.log(`📂 Department "${deptFilter.value}" expanded to:`, deptNames);
+          // Pass the full user query for better AI context, fallback to department value
+          const queryContext = userQuery || String(deptFilter.value);
+          const deptNames = await this.getDepartmentNames(queryContext);
+          console.log(`📂 Department "${deptFilter.value}" expanded to ${deptNames.length} names:`, deptNames);
           
           const otherFilters = expandedFilters.filter(f => f.field !== 'department');
           
           if (deptNames.length === 1) {
             expandedFilters = [...otherFilters, { field: 'department', operator: '==', value: deptNames[0] }];
           } else if (deptNames.length > 1) {
+            // Firestore 'in' operator supports up to 10 values
             expandedFilters = [...otherFilters, { field: 'department', operator: 'in' as any, value: deptNames.slice(0, 10) }];
           } else {
             expandedFilters = otherFilters.concat({ field: 'department', operator: '==', value: deptFilter.value });
@@ -632,10 +730,11 @@ ${this.describeFilters(filters)}
       const orderDir = table === 'audit-results' ? 'desc' : 'asc';
 
       // Fetch with equality filters only (avoids composite index issues)
+      // Use higher limit to accommodate large result sets (e.g., all code F findings = 4000+)
       let results = await db.getAll({
         filters: dbFilters,
         sorts: [{ field: orderBy, direction: orderDir }],
-        limit: rangeFilters.length > 0 ? 5000 : 1000 // Fetch more if we need to filter in-memory
+        limit: rangeFilters.length > 0 ? 10000 : 5000 // Increased limits for large datasets
       });
       
       // Apply range filters in-memory
@@ -671,9 +770,9 @@ ${this.describeFilters(filters)}
         
         console.log(`🔍 After in-memory filtering: ${results.length} results`);
         
-        // Limit results after filtering
-        if (results.length > 1000) {
-          results = results.slice(0, 1000);
+        // Limit results after filtering (increased to 5000 for large datasets)
+        if (results.length > 5000) {
+          results = results.slice(0, 5000);
         }
       }
 
@@ -810,26 +909,133 @@ ${this.describeFilters(filters)}
   }
 
   /**
-   * Get department names for normalization
+   * Get department names using AI-powered category matching
+   * Uses existing department categories to match user intent
    */
-  private async getDepartmentNames(category: string): Promise<string[]> {
+  private async getDepartmentNames(userQuery: string): Promise<string[]> {
     try {
-      const allDepts = await departmentService.getAll({});
-      const matching = allDepts.filter(d => 
-        d.category?.toLowerCase() === category.toLowerCase() ||
-        d.originalNames?.some(name => name.toLowerCase() === category.toLowerCase())
-      );
-      
-      if (matching.length === 0) return [category];
-      
-      const names: string[] = [];
-      matching.forEach(d => {
-        if (d.originalNames) names.push(...d.originalNames);
+      // Available categories from DepartmentService
+      const CATEGORIES = [
+        'IT',
+        'Finance',
+        'HR',
+        'Marketing & Sales',
+        'Property Management',
+        'Engineering & Construction',
+        'Legal & Compliance',
+        'Audit & Risk',
+        'Planning & Development',
+        'Healthcare',
+        'Insurance & Actuarial',
+        'CSR & Community',
+        'Security',
+        'Corporate',
+        'Supply Chain & Procurement',
+        'Academic & Administration',
+        'Operations',
+        'Hospitality & F&B',
+        'Outsourcing & Third Party',
+        'Other'
+      ];
+
+      console.log(`🤖 Matching user query to department categories`);
+
+      // Ask Gemini to match user intent to categories
+      const prompt = `You are a department category matcher for an Indonesian audit system.
+
+USER QUERY: "${userQuery}"
+
+AVAILABLE CATEGORIES:
+${CATEGORIES.map((c, i) => `${i + 1}. ${c}`).join('\n')}
+
+CATEGORY DESCRIPTIONS:
+- IT: Information Technology, ICT, Teknologi Informasi
+- Finance: Keuangan, Accounting, FAD, Treasury, Investment
+- HR: Human Capital, HRD, HCM, SDM, Sumber Daya Manusia, People Management
+- Marketing & Sales: Marketing, Sales, HBD, Promotion, Commercial
+- Property Management: Estate, Building Management, Tenant, Leasing
+- Engineering & Construction: Teknik, Konstruksi, QS, Maintenance
+- Legal & Compliance: Hukum, Legal, Regulatory
+- Audit & Risk: Audit Internal, Risk Management, APU, PPT
+- Planning & Development: Perencanaan, FSD, FDD
+- Healthcare: Medis, Medical, Health, Kesehatan, Nursing
+- Insurance & Actuarial: Actuarial, Underwriting, Asuransi
+- CSR & Community: Corporate Social Responsibility, Community, Education
+- Security: Keamanan, Security
+- Corporate: Executive, Board, Direksi
+- Supply Chain & Procurement: Procurement, Purchasing, Logistics, Warehouse
+- Academic & Administration: Akademik, Student Affairs, Alumni
+- Operations: Operasi, General Affairs, Housekeeping, Customer Service
+- Hospitality & F&B: Food & Beverage, Restaurant, Hotel, Golf, Club
+- Outsourcing & Third Party: Vendor, Pihak Ketiga
+- Other: Miscellaneous departments
+
+Analyze the user's query and determine which category(ies) match their intent.
+
+MATCHING RULES:
+- Match based on keywords, abbreviations, and Indonesian terms
+- "HC" or "Human Capital" → HR
+- "IT" → IT
+- "Finance" or "Keuangan" → Finance
+- Be flexible with variations
+- Return empty array if no clear match
+
+Return a JSON object:
+{
+  "matchedCategories": ["Category 1", "Category 2", ...],
+  "reasoning": "brief explanation"
+}
+
+EXAMPLES:
+Query: "HC" → {"matchedCategories": ["HR"], "reasoning": "HC is Human Capital"}
+Query: "IT" → {"matchedCategories": ["IT"], "reasoning": "IT department"}
+Query: "Finance" → {"matchedCategories": ["Finance"], "reasoning": "Finance department"}
+Query: "Marketing" → {"matchedCategories": ["Marketing & Sales"], "reasoning": "Marketing department"}
+
+Return ONLY the JSON object.`;
+
+      const response = await this.ai.models.generateContent({
+        model: 'gemini-2.0-flash-exp',
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
       });
-      
-      return names.length > 0 ? names : [category];
-    } catch {
-      return [category];
+
+      const responseText = response.text?.trim() || '{}';
+      let jsonText = responseText;
+      if (responseText.includes('```')) {
+        const match = responseText.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+        if (match) jsonText = match[1];
+      }
+
+      const parsed = JSON.parse(jsonText);
+      const matchedCategories = parsed.matchedCategories || [];
+
+      console.log(`🎯 Gemini matched categories:`, matchedCategories);
+      console.log(`💡 Reasoning: ${parsed.reasoning}`);
+
+      if (matchedCategories.length === 0) {
+        console.warn('⚠️ No categories matched, falling back to original query');
+        return [userQuery];
+      }
+
+      // Fetch departments by matched categories
+      const allMatchedNames: string[] = [];
+      for (const category of matchedCategories) {
+        const depts = await departmentService.getByCategory(category);
+        depts.forEach(dept => {
+          if (dept.originalNames) {
+            allMatchedNames.push(...dept.originalNames);
+          }
+        });
+      }
+
+      // Remove duplicates
+      const uniqueNames = [...new Set(allMatchedNames)];
+      console.log(`📋 Final department names for filtering (${uniqueNames.length}):`, uniqueNames);
+
+      return uniqueNames.length > 0 ? uniqueNames : [userQuery];
+    } catch (error) {
+      console.error('❌ Error in AI-powered category matching:', error);
+      return [userQuery]; // Fallback to original query
     }
   }
 
@@ -858,6 +1064,18 @@ ${this.describeFilters(filters)}
   }
 
 
+
+  /**
+   * Create compact context message for LLM (instead of full formatted response)
+   * This prevents the LLM from being overwhelmed by large result tables
+   */
+  private createCompactContextMessage(queryResult: QueryResult): string {
+    const filterDesc = queryResult.filters && queryResult.filters.length > 0
+      ? queryResult.filters.map(f => `${f.field}=${JSON.stringify(f.value)}`).join(', ')
+      : 'no filters';
+    
+    return `Query executed: ${queryResult.resultsCount} results found. Filters: ${filterDesc}`;
+  }
 
   /**
    * Generate title from first message

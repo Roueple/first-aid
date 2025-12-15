@@ -49,6 +49,8 @@ export const FelixResultsTable: React.FC<FelixResultsTableProps> = ({
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase">Risk Area</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase">Description</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase">Code</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase">Bobot</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase">Kadar</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase">Nilai</th>
               </tr>
             </thead>
@@ -84,6 +86,16 @@ export const FelixResultsTable: React.FC<FelixResultsTableProps> = ({
                       </span>
                     </td>
                     <td className="px-3 py-2 text-center whitespace-nowrap">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        {result.bobot || '-'}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-center whitespace-nowrap">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                        {result.kadar || '-'}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-center whitespace-nowrap">
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                         {result.nilai}
                       </span>
@@ -91,7 +103,7 @@ export const FelixResultsTable: React.FC<FelixResultsTableProps> = ({
                   </tr>
                   {expandedRow === index && (
                     <tr className="bg-blue-50">
-                      <td colSpan={8} className="px-6 py-4">
+                      <td colSpan={10} className="px-6 py-4">
                         <div className="space-y-3 text-sm">
                           <div className="grid grid-cols-2 gap-4">
                             <div>
@@ -115,22 +127,30 @@ export const FelixResultsTable: React.FC<FelixResultsTableProps> = ({
                             <span className="font-semibold text-gray-700">Description:</span>
                             <p className="text-gray-900 mt-1 whitespace-pre-wrap">{result.description}</p>
                           </div>
-                          <div className="grid grid-cols-3 gap-4">
+                          <div className="grid grid-cols-4 gap-4">
                             <div>
                               <span className="font-semibold text-gray-700">Code:</span>
                               <p className="text-gray-900 mt-1">{result.code}</p>
                             </div>
                             <div>
+                              <span className="font-semibold text-gray-700">Bobot:</span>
+                              <p className="text-gray-900 mt-1">{result.bobot || '-'}</p>
+                            </div>
+                            <div>
+                              <span className="font-semibold text-gray-700">Kadar:</span>
+                              <p className="text-gray-900 mt-1">{result.kadar || '-'}</p>
+                            </div>
+                            <div>
                               <span className="font-semibold text-gray-700">Nilai:</span>
                               <p className="text-gray-900 mt-1">{result.nilai}</p>
                             </div>
-                            {result.id && (
-                              <div>
-                                <span className="font-semibold text-gray-700">ID:</span>
-                                <p className="text-gray-900 mt-1 font-mono text-xs">{result.id}</p>
-                              </div>
-                            )}
                           </div>
+                          {result.id && (
+                            <div>
+                              <span className="font-semibold text-gray-700">ID:</span>
+                              <p className="text-gray-900 mt-1 font-mono text-xs">{result.id}</p>
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>
