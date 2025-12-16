@@ -178,7 +178,6 @@ async function uploadProjects() {
         projectName,
         projectType,
         initials: finalInitials,
-        type: type || projectType,
         subtype: subtype || '',
         description: description || '',
         total: excelTotal,

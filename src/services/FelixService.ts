@@ -70,9 +70,21 @@ FIELDS:
 - projectName (string): Full project name (e.g., "Hotel Raffles Jakarta")
 - initials (string): 3-4 character project code (e.g., "HRJ", "CLPK", "CTSB")
 - sh (string): Subholding code
+- projectType (string): Project type category - Commercial, Residential, Healthcare, Education, Others
+- subtype (string): Project subtype - Hospital, Hotel, Mall, Apartment, Landed House, School, University, Clinic, Office, Broker, Insurance, etc.
 - finding (number): Count of findings (code=F)
 - nonFinding (number): Count of non-findings (code=NF)
 - total (number): Total audit results count
+
+PROJECT TYPE & SUBTYPE MAPPING:
+- Healthcare → Hospital, Clinic
+- Commercial → Hotel, Mall, Office
+- Residential → Landed House, Apartment
+- Education → School, University
+- Others → Broker, Insurance, Theatre, Golf Course, Palm Oil
+
+IMPORTANT: When user mentions a subtype (e.g., "hospital", "hotel", "mall"), filter by subtype field.
+When user mentions a type (e.g., "healthcare", "commercial", "residential"), filter by projectType field.
 
 TABLE: departments (department normalization)
 FIELDS:
@@ -168,7 +180,7 @@ Return ONLY the JSON object.`;
           : f
       );
 
-      // Execute query with original user query for context
+      // Execute query with original user query for context (no custom sorting for confirmed queries)
       const results = await this.executeQuery(filters, targetTable, originalQuery);
       const { excelBuffer, excelFilename } = await this.generateExcel(results, targetTable, userIntent);
 
@@ -433,9 +445,17 @@ Analyze the user's query and extract database filters. Return a JSON object:
   "filters": [
     {"field": "fieldName", "operator": "==|!=|>|>=|<|<=|array-contains", "value": "value"}
   ],
+  "sortBy": "field name (optional, e.g., nilai, year, projectName)",
+  "sortOrder": "asc|desc (optional, default: desc for nilai, asc for others)",
   "isValidQuery": true/false,
   "invalidReason": "reason if not valid query"
 }
+
+SORTING RULES:
+- If user says "highest score", "descending", "terbesar", "tertinggi", "dari nilai tertinggi" → sortBy="nilai", sortOrder="desc"
+- If user says "lowest score", "ascending", "terkecil", "terendah", "dari nilai terendah" → sortBy="nilai", sortOrder="asc"
+- If no sorting specified, omit sortBy and sortOrder fields
+- Default sorting is handled by the system (year desc for audit-results, projectName asc for projects)
 
 OPERATOR RULES:
 - "==" for exact match (department = "IT", year = "2024", code = "F")
@@ -516,6 +536,34 @@ Query: "list departments" or "daftar departemen"
 Query: "IT departments" or "departemen IT"
 {"userIntent": "Departemen kategori IT", "targetTable": "departments", "filters": [{"field": "category", "operator": "==", "value": "IT"}], "isValidQuery": true}
 
+PROJECT TYPE & SUBTYPE EXAMPLES:
+Query: "show all findings from hospital" or "temuan dari hospital" or "temuan hospital"
+{"userIntent": "Semua temuan dari proyek hospital", "targetTable": "audit-results", "filters": [{"field": "subtype", "operator": "==", "value": "Hospital"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+
+Query: "findings from healthcare projects" or "temuan healthcare" or "temuan proyek healthcare"
+{"userIntent": "Semua temuan dari proyek healthcare", "targetTable": "audit-results", "filters": [{"field": "projectType", "operator": "==", "value": "Healthcare"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+
+Query: "show all findings from hospital, descending from highest score" or "temuan hospital dari nilai tertinggi"
+{"userIntent": "Semua temuan dari proyek hospital, diurutkan dari nilai tertinggi", "targetTable": "audit-results", "filters": [{"field": "subtype", "operator": "==", "value": "Hospital"}, {"field": "code", "operator": "==", "value": "F"}], "sortBy": "nilai", "sortOrder": "desc", "isValidQuery": true}
+
+Query: "temuan hotel 2024" or "findings from hotels 2024"
+{"userIntent": "Temuan dari proyek hotel tahun 2024", "targetTable": "audit-results", "filters": [{"field": "subtype", "operator": "==", "value": "Hotel"}, {"field": "year", "operator": "==", "value": "2024"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+
+Query: "temuan mall" or "findings from malls"
+{"userIntent": "Temuan dari proyek mall", "targetTable": "audit-results", "filters": [{"field": "subtype", "operator": "==", "value": "Mall"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+
+Query: "temuan commercial projects" or "temuan proyek komersial"
+{"userIntent": "Temuan dari proyek commercial", "targetTable": "audit-results", "filters": [{"field": "projectType", "operator": "==", "value": "Commercial"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+
+Query: "temuan residential" or "findings from residential projects"
+{"userIntent": "Temuan dari proyek residential", "targetTable": "audit-results", "filters": [{"field": "projectType", "operator": "==", "value": "Residential"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+
+Query: "temuan apartment" or "findings from apartments"
+{"userIntent": "Temuan dari proyek apartment", "targetTable": "audit-results", "filters": [{"field": "subtype", "operator": "==", "value": "Apartment"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+
+Query: "temuan school dan university" or "findings from schools and universities"
+{"userIntent": "Temuan dari proyek school dan university", "targetTable": "audit-results", "filters": [{"field": "projectType", "operator": "==", "value": "Education"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+
 CONTEXT-AWARE EXAMPLES (with conversation history):
 Previous: "semua temuan HC 2024" (filters: department="HC", year="2024", code="F")
 Current: "khusus mall ciputra cibubur" or "show only mall ciputra cibubur"
@@ -576,6 +624,8 @@ Return ONLY the JSON object.`;
       const userIntent = parsed.userIntent || 'Mencari audit findings';
       const targetTable = parsed.targetTable || 'audit-results';
       let filters: QueryFilter[] = parsed.filters || [];
+      const sortBy = parsed.sortBy;
+      const sortOrder = parsed.sortOrder || 'desc';
 
       // VALIDATION: Check project name before executing
       const projectNameFilter = filters.find(f => f.field === 'projectName');
@@ -606,7 +656,7 @@ Return ONLY the JSON object.`;
       }
 
       // Execute query with original user query for context
-      let results = await this.executeQuery(filters, targetTable, query);
+      let results = await this.executeQuery(filters, targetTable, query, sortBy, sortOrder);
       
       // Generate Excel file
       const { excelBuffer, excelFilename } = await this.generateExcel(results, targetTable, userIntent);
@@ -658,8 +708,16 @@ ${this.describeFilters(filters)}
    * @param filters - Query filters to apply
    * @param table - Target table name
    * @param userQuery - Original user query for AI-powered department matching context
+   * @param sortBy - Field to sort by (optional)
+   * @param sortOrder - Sort order: asc or desc (optional)
    */
-  private async executeQuery(filters: QueryFilter[], table: string, userQuery?: string): Promise<any[]> {
+  private async executeQuery(
+    filters: QueryFilter[], 
+    table: string, 
+    userQuery?: string,
+    sortBy?: string,
+    sortOrder?: string
+  ): Promise<any[]> {
     try {
       const db = new DatabaseService(table);
       
@@ -683,6 +741,9 @@ ${this.describeFilters(filters)}
       
       // Handle filter transformations for audit-results
       let expandedFilters = equalityFilters;
+      let projectTypeFilter: QueryFilter | undefined;
+      let subtypeFilter: QueryFilter | undefined;
+      
       if (table === 'audit-results') {
         // Convert year from string to number (Firestore stores year as number)
         expandedFilters = expandedFilters.map(f => {
@@ -693,6 +754,13 @@ ${this.describeFilters(filters)}
           }
           return f;
         });
+
+        // Extract projectType and subtype filters (need to join with projects table)
+        projectTypeFilter = expandedFilters.find(f => f.field === 'projectType');
+        subtypeFilter = expandedFilters.find(f => f.field === 'subtype');
+        
+        // Remove projectType and subtype from audit-results filters (they don't exist in that table)
+        expandedFilters = expandedFilters.filter(f => f.field !== 'projectType' && f.field !== 'subtype');
 
         // Expand department using AI-powered matching
         const deptFilter = expandedFilters.find(f => f.field === 'department');
@@ -737,6 +805,46 @@ ${this.describeFilters(filters)}
         limit: rangeFilters.length > 0 ? 10000 : 5000 // Increased limits for large datasets
       });
       
+      // Apply projectType/subtype filters if present (requires joining with projects table)
+      if (table === 'audit-results' && (projectTypeFilter || subtypeFilter)) {
+        console.log(`🏢 Filtering by project type/subtype - fetching projects data`);
+        
+        // Fetch all projects to get type/subtype mapping
+        const projectsDb = new DatabaseService('projects');
+        const allProjects = await projectsDb.getAll({ limit: 500 });
+        
+        // Create projectId -> project mapping
+        const projectMap = new Map();
+        allProjects.forEach((p: any) => {
+          projectMap.set(p.projectId, p);
+        });
+        
+        console.log(`📋 Loaded ${projectMap.size} projects for type/subtype filtering`);
+        
+        // Filter results based on projectType/subtype
+        const beforeCount = results.length;
+        results = results.filter(item => {
+          const project = projectMap.get(item.projectId);
+          if (!project) return false;
+          
+          // Check projectType filter
+          if (projectTypeFilter) {
+            const projectTypeMatch = this.matchesFilter(project.projectType, projectTypeFilter);
+            if (!projectTypeMatch) return false;
+          }
+          
+          // Check subtype filter
+          if (subtypeFilter) {
+            const subtypeMatch = this.matchesFilter(project.subtype, subtypeFilter);
+            if (!subtypeMatch) return false;
+          }
+          
+          return true;
+        });
+        
+        console.log(`🏢 After type/subtype filtering: ${beforeCount} → ${results.length} results`);
+      }
+      
       // Apply range filters in-memory
       if (rangeFilters.length > 0) {
         console.log(`🔍 Applying ${rangeFilters.length} range filter(s) in-memory on ${results.length} results`);
@@ -774,6 +882,33 @@ ${this.describeFilters(filters)}
         if (results.length > 5000) {
           results = results.slice(0, 5000);
         }
+      }
+
+      // Apply custom sorting if specified
+      if (sortBy && results.length > 0) {
+        console.log(`🔀 Sorting by ${sortBy} (${sortOrder || 'desc'})`);
+        
+        results.sort((a, b) => {
+          const aVal = a[sortBy];
+          const bVal = b[sortBy];
+          
+          // Handle null/undefined values
+          if (aVal === null || aVal === undefined) return 1;
+          if (bVal === null || bVal === undefined) return -1;
+          
+          // Numeric comparison
+          if (typeof aVal === 'number' && typeof bVal === 'number') {
+            return sortOrder === 'asc' ? aVal - bVal : bVal - aVal;
+          }
+          
+          // String comparison
+          const aStr = String(aVal);
+          const bStr = String(bVal);
+          const comparison = aStr.localeCompare(bStr);
+          return sortOrder === 'asc' ? comparison : -comparison;
+        });
+        
+        console.log(`✅ Sorted ${results.length} results by ${sortBy} (${sortOrder})`);
       }
 
       return results;
@@ -906,6 +1041,40 @@ ${this.describeFilters(filters)}
       const icon = icons[f.field] || '•';
       return `${icon} ${f.field} ${f.operator} ${f.value}`;
     }).join('\n');
+  }
+
+  /**
+   * Helper to match a value against a filter
+   */
+  private matchesFilter(value: any, filter: QueryFilter): boolean {
+    if (value === null || value === undefined) return false;
+    
+    const filterValue = filter.value;
+    
+    switch (filter.operator) {
+      case '==':
+        // Handle case-insensitive string matching
+        if (typeof value === 'string' && typeof filterValue === 'string') {
+          return value.toLowerCase().includes(filterValue.toLowerCase());
+        }
+        return value === filterValue;
+      case '!=':
+        return value !== filterValue;
+      case '>':
+        return value > filterValue;
+      case '>=':
+        return value >= filterValue;
+      case '<':
+        return value < filterValue;
+      case '<=':
+        return value <= filterValue;
+      case 'array-contains':
+        return Array.isArray(value) && value.includes(filterValue);
+      case 'in':
+        return Array.isArray(filterValue) && filterValue.includes(value);
+      default:
+        return true;
+    }
   }
 
   /**

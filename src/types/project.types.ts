@@ -16,7 +16,6 @@ export interface Project {
   total: number; // Total findings count (aggregated)
   finding: number; // Count of findings
   nonFinding: number; // Count of non-findings
-  type: string; // Additional type classification
   subtype: string; // Subtype classification
   description: string; // Project description
   
@@ -42,7 +41,6 @@ export interface CreateProjectInput {
   sh: string;
   projectName: string;
   projectType: ProjectType;
-  type?: string;
   subtype?: string;
   description: string;
   location?: string;
@@ -58,7 +56,6 @@ export interface UpdateProjectInput {
   sh?: string;
   projectName?: string;
   projectType?: ProjectType;
-  type?: string;
   subtype?: string;
   description?: string;
   isActive?: boolean;

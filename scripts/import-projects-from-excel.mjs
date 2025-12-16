@@ -278,7 +278,6 @@ async function importProjects() {
         projectName,
         projectType,
         initials,
-        type: type || projectType,
         subtype: subtype || '',
         description: description || '',
         total: total,

@@ -51,7 +51,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({ onProjectSelect })
         (p) =>
           p.projectName.toLowerCase().includes(searchLower) ||
           p.sh.toLowerCase().includes(searchLower) ||
-          p.type.toLowerCase().includes(searchLower) ||
+          p.projectType.toLowerCase().includes(searchLower) ||
           p.description.toLowerCase().includes(searchLower)
       );
     }
@@ -166,10 +166,10 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({ onProjectSelect })
                 Non-Finding {sortField === 'nonFinding' && (sortDirection === 'asc' ? '↑' : '↓')}
               </th>
               <th
-                onClick={() => handleSort('type')}
+                onClick={() => handleSort('projectType')}
                 className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
               >
-                Type {sortField === 'type' && (sortDirection === 'asc' ? '↑' : '↓')}
+                Type {sortField === 'projectType' && (sortDirection === 'asc' ? '↑' : '↓')}
               </th>
               <th
                 onClick={() => handleSort('subtype')}
@@ -218,7 +218,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({ onProjectSelect })
                   </span>
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-900">
-                  {project.type}
+                  {project.projectType}
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-600">
                   {project.subtype}

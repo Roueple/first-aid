@@ -45,6 +45,7 @@ export const FelixResultsTable: React.FC<FelixResultsTableProps> = ({
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase">No</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase">Year</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase">Project</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase">SH</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase">Department</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase">Risk Area</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase">Description</th>
@@ -73,6 +74,7 @@ export const FelixResultsTable: React.FC<FelixResultsTableProps> = ({
                     <td className="px-3 py-2 text-gray-900 max-w-xs truncate" title={result.projectName}>
                       {result.projectName}
                     </td>
+                    <td className="px-3 py-2 text-gray-900 whitespace-nowrap">{result.sh || '-'}</td>
                     <td className="px-3 py-2 text-gray-900 whitespace-nowrap">{result.department}</td>
                     <td className="px-3 py-2 text-gray-900 max-w-[150px] truncate" title={result.riskArea}>
                       {result.riskArea}
@@ -103,7 +105,7 @@ export const FelixResultsTable: React.FC<FelixResultsTableProps> = ({
                   </tr>
                   {expandedRow === index && (
                     <tr className="bg-blue-50">
-                      <td colSpan={10} className="px-6 py-4">
+                      <td colSpan={11} className="px-6 py-4">
                         <div className="space-y-3 text-sm">
                           <div className="grid grid-cols-2 gap-4">
                             <div>
@@ -113,6 +115,10 @@ export const FelixResultsTable: React.FC<FelixResultsTableProps> = ({
                             <div>
                               <span className="font-semibold text-gray-700">Year:</span>
                               <p className="text-gray-900 mt-1">{result.year}</p>
+                            </div>
+                            <div>
+                              <span className="font-semibold text-gray-700">Subholding:</span>
+                              <p className="text-gray-900 mt-1">{result.sh || '-'}</p>
                             </div>
                             <div>
                               <span className="font-semibold text-gray-700">Department:</span>

@@ -125,7 +125,6 @@ export class ProjectService extends DatabaseService<Project> {
       projectName: input.projectName,
       projectType: input.projectType,
       initials,
-      type: input.type || input.projectType,
       subtype: input.subtype || '',
       description: input.description,
       location: input.location,

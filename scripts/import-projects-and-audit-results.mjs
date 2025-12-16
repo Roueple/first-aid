@@ -163,7 +163,6 @@ async function importProjects() {
         projectName,
         projectType: type,
         initials,
-        type,
         subtype,
         description,
         finding: 0, // Will be calculated after audit results import

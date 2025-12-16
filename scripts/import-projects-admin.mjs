@@ -123,7 +123,6 @@ async function importProjects() {
         sh,
         projectName,
         projectType,
-        type: type || projectType,
         subtype: subtype || '',
         description: description || '',
         total: excelTotal,
