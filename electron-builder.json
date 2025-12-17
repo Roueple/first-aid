@@ -18,12 +18,38 @@
     "name": "FIRST-AID Auth",
     "schemes": ["firstaid"]
   },
+  "compression": "maximum",
   "win": {
-    "target": ["portable"],
-    "icon": "build/icon.ico"
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      },
+      {
+        "target": "portable",
+        "arch": ["x64"]
+      }
+    ],
+    "publisherName": "FIRST-AID Team",
+    "verifyUpdateCodeSignature": false,
+    "sign": null,
+    "signingHashAlgorithms": []
+  },
+  "nsis": {
+    "oneClick": false,
+    "perMachine": false,
+    "allowElevation": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "FIRST-AID",
+    "deleteAppDataOnUninstall": false,
+    "runAfterFinish": true,
+    "artifactName": "${productName}-Setup-${version}.${ext}",
+    "license": "LICENSE.txt"
   },
   "portable": {
-    "artifactName": "${productName}-${version}-portable.exe"
+    "artifactName": "${productName}-Portable-${version}.exe"
   },
   "mac": {
     "target": ["dmg"],
