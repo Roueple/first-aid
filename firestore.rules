@@ -133,5 +133,23 @@ service cloud.firestore {
       allow update, delete: if isAuthenticated() && 
         resource.data.userId == request.auth.uid;
     }
+    
+    // Email Whitelist - read-only for all (needed for passwordless auth check), write-only for admins
+    match /emailWhitelist/{email} {
+      allow read: if true; // Allow unauthenticated read for whitelist check during sign-in
+      allow write: if false; // Only admin scripts can write
+    }
+    
+    // Device Sessions - allow unauthenticated read for session check during sign-in
+    // Session IDs are composite (deviceId_email), so users can only access their own sessions
+    match /deviceSessions/{sessionId} {
+      allow read: if true; // Allow unauthenticated read for session validation during sign-in
+      allow create: if isAuthenticated() && 
+        request.resource.data.email == request.auth.token.email;
+      allow update: if isAuthenticated() && 
+        resource.data.email == request.auth.token.email;
+      allow delete: if isAuthenticated() && 
+        resource.data.email == request.auth.token.email;
+    }
   }
 }

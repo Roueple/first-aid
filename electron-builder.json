@@ -7,19 +7,31 @@
   },
   "files": [
     "dist/**/*",
-    "package.json"
+    "package.json",
+    "!node_modules/**/*"
   ],
+  "asarUnpack": [
+    "node_modules/jszip/**/*"
+  ],
+  "extraResources": [],
+  "protocols": {
+    "name": "FIRST-AID Auth",
+    "schemes": ["firstaid"]
+  },
   "win": {
-    "target": ["nsis"],
+    "target": ["portable"],
     "icon": "build/icon.ico"
+  },
+  "portable": {
+    "artifactName": "${productName}-${version}-portable.exe"
   },
   "mac": {
     "target": ["dmg"],
     "icon": "build/icon.icns",
     "category": "public.app-category.business"
   },
-  "nsis": {
-    "oneClick": false,
-    "allowToChangeInstallationDirectory": true
+  "linux": {
+    "target": ["AppImage"],
+    "category": "Office"
   }
 }

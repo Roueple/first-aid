@@ -4,9 +4,17 @@ import App from './App';
 import './index.css';
 import { connectionMonitor } from '../utils/connectionMonitor';
 
-// Import seed utilities (they auto-expose to window)
-import '../utils/seedDataNew';
-import '../utils/clearAndReseed';
+console.log('🎬 main.tsx loading...');
+
+// Import seed utilities (they auto-expose to window) - load async to not block
+Promise.all([
+  import('../utils/seedDataNew'),
+  import('../utils/clearAndReseed')
+]).then(() => {
+  console.log('✅ Seed utilities loaded');
+}).catch((error) => {
+  console.error('⚠️ Failed to load seed utilities:', error);
+});
 
 // Expose connectionMonitor to window for DevTools testing
 declare global {
@@ -20,8 +28,18 @@ declare global {
 
 window.connectionMonitor = connectionMonitor;
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+console.log('🎯 Creating React root...');
+const rootElement = document.getElementById('root');
+if (!rootElement) {
+  console.error('❌ Root element not found!');
+  throw new Error('Root element not found');
+}
+
+console.log('✅ Root element found, rendering app...');
+ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
     <App />
   </React.StrictMode>
 );
+
+console.log('✅ React app rendered');

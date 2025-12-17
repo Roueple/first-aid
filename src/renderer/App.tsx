@@ -1,8 +1,11 @@
 import { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '../contexts/AuthContext';
+import ErrorBoundary from '../components/ErrorBoundary';
 import FelixPage from './pages/FelixPage';
+import PasswordlessLoginPage from './pages/PasswordlessLoginPage';
+import ProtectedRoute from '../components/ProtectedRoute';
 import { initializeGemini } from '../services/GeminiService';
 import './styles/felix.css';
 
@@ -36,29 +39,92 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  console.log('🚀 App component mounting...');
+
   // Initialize Gemini on app startup
   useEffect(() => {
-    initializeGemini();
+    console.log('🔧 Initializing Gemini...');
+    try {
+      initializeGemini();
+      console.log('✅ Gemini initialized');
+    } catch (error) {
+      console.error('❌ Failed to initialize Gemini:', error);
+    }
   }, []);
 
+  // Handle deep links from Electron
+  useEffect(() => {
+    const electron = (window as any).electron;
+    if (!electron?.ipc?.on) {
+      console.log('⚠️ Electron IPC not available');
+      return;
+    }
+
+    console.log('✅ Setting up deep link listener');
+
+    const unsubscribe = electron.ipc.on('deep-link', (url: string) => {
+      console.log('📱 Deep link received:', url);
+      
+      try {
+        // Extract query parameters from the deep link
+        // Format: firstaid://auth/verify?apiKey=...&oobCode=...
+        const queryIndex = url.indexOf('?');
+        if (queryIndex !== -1) {
+          const queryString = url.substring(queryIndex);
+          // Store the auth link for the login page to pick up
+          sessionStorage.setItem('pendingAuthLink', url);
+          // Navigate using hash - must include the # for HashRouter
+          const newHash = '#/auth/verify' + queryString;
+          console.log('🔄 Setting hash to:', newHash);
+          window.location.hash = newHash;
+          // Force a reload to ensure React Router picks up the new hash
+          window.location.reload();
+        } else {
+          console.error('❌ No query parameters in deep link');
+        }
+      } catch (error) {
+        console.error('❌ Error handling deep link:', error);
+      }
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
+
+  console.log('📦 Rendering App component...');
+
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <Router
-          future={{
-            v7_startTransition: true,
-            v7_relativeSplatPath: true,
-          }}
-        >
-          <div className="min-h-screen">
-            <Routes>
-              <Route path="/felix" element={<FelixPage />} />
-              <Route path="*" element={<Navigate to="/felix" replace />} />
-            </Routes>
-          </div>
-        </Router>
-      </AuthProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <Router
+            future={{
+              v7_startTransition: true,
+              v7_relativeSplatPath: true,
+            }}
+          >
+            <div className="min-h-screen">
+              <Routes>
+                <Route path="/login" element={<PasswordlessLoginPage />} />
+                <Route path="/auth/verify" element={<PasswordlessLoginPage />} />
+                <Route 
+                  path="/felix" 
+                  element={
+                    <ProtectedRoute>
+                      <ErrorBoundary>
+                        <FelixPage />
+                      </ErrorBoundary>
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route path="*" element={<Navigate to="/felix" replace />} />
+              </Routes>
+            </div>
+          </Router>
+        </AuthProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

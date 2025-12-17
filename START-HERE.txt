@@ -1,0 +1,125 @@
+================================================================================
+🚨 SECURITY BREACH DETECTED - START HERE 🚨
+================================================================================
+
+Your Firebase and Gemini API keys are exposed in GitHub!
+Follow this guide to fix it immediately.
+
+================================================================================
+QUICK START (30 minutes total)
+================================================================================
+
+OPTION 1: AUTOMATED (Recommended)
+----------------------------------
+1. Run: security-fix-guide.bat
+2. Follow the on-screen instructions
+3. The script will guide you through each step
+
+OPTION 2: MANUAL (More control)
+--------------------------------
+1. Open: SECURITY-FIX-CHECKLIST.txt
+2. Follow each step and check off as you go
+3. Use the helper scripts:
+   - clean-git-history.bat (for Step 7)
+   - verify-security-fix.bat (to check your work)
+
+================================================================================
+FILES IN THIS SECURITY FIX PACKAGE
+================================================================================
+
+📋 SECURITY-FIX-CHECKLIST.txt
+   Complete step-by-step checklist with all details
+
+🤖 security-fix-guide.bat
+   Automated guide that walks you through the process
+
+🧹 clean-git-history.bat
+   Removes sensitive files from git history
+
+✅ verify-security-fix.bat
+   Verifies your security fix is complete
+
+📄 .env.template
+   Template for your .env file (safe to commit)
+
+📄 serviceaccountKey.json.template
+   Template for service account (safe to commit)
+
+📖 SECURITY-SETUP.md
+   Documentation for future setup
+
+================================================================================
+WHAT NEEDS TO BE DONE
+================================================================================
+
+1. ❌ REVOKE old Firebase API key (5 min)
+2. ❌ REVOKE old Gemini API key (3 min)
+3. ❌ REVOKE old Service Account key (5 min)
+4. ❌ UPDATE .env with new keys (2 min)
+5. ❌ DOWNLOAD BFG Repo Cleaner (2 min)
+6. ❌ CLEAN git history (5 min)
+7. ❌ FORCE PUSH to GitHub (1 min)
+8. ❌ VERIFY everything works (5 min)
+
+Total time: ~30 minutes
+
+================================================================================
+EXPOSED CREDENTIALS (DO NOT USE)
+================================================================================
+
+❌ Firebase API Key: AIzaSyBt1JoukjkIGvFhvEvf5B648QrvR41uKS8
+❌ Gemini API Key: AIzaSyBu0xBkBuu_s2Goy-kzvsRN9ILtFJ9Pr1I
+❌ Service Account: Full private key in serviceaccountKey.json
+
+These are PUBLIC on GitHub right now!
+
+================================================================================
+IMPORTANT LINKS
+================================================================================
+
+Firebase Console:
+https://console.firebase.google.com
+
+Google Cloud Console (for API keys):
+https://console.cloud.google.com
+
+Gemini API Studio:
+https://aistudio.google.com/app/apikey
+
+BFG Repo Cleaner:
+https://rtyley.github.io/bfg-repo-cleaner/
+
+================================================================================
+NEED HELP?
+================================================================================
+
+If you get stuck:
+1. Check SECURITY-FIX-CHECKLIST.txt for detailed instructions
+2. Run verify-security-fix.bat to see what's wrong
+3. Make sure you completed all prerequisites before cleaning git history
+
+================================================================================
+AFTER COMPLETION
+================================================================================
+
+✅ Test your app: npm run dev
+✅ Verify Firebase works
+✅ Verify Gemini AI works
+✅ Check GitHub to confirm sensitive files are gone
+✅ Inform team members to re-clone the repository
+
+================================================================================
+PREVENTION
+================================================================================
+
+To prevent this in the future:
+- NEVER commit .env or serviceaccountKey.json
+- Always check git status before committing
+- Use .env.template for sharing configuration structure
+- Keep .gitignore up to date
+
+================================================================================
+
+Ready to start? Run: security-fix-guide.bat
+
+================================================================================

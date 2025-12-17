@@ -23,7 +23,7 @@ contextBridge.exposeInMainWorld('electron', {
       }
     },
     on: (channel: string, func: (...args: unknown[]) => void) => {
-      const validChannels = ['fromMain'];
+      const validChannels = ['fromMain', 'deep-link'];
       if (validChannels.includes(channel)) {
         const subscription = (_event: Electron.IpcRendererEvent, ...args: unknown[]) => func(...args);
         ipcRenderer.on(channel, subscription);

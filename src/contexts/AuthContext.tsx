@@ -5,6 +5,10 @@ interface AuthContextType {
   currentUser: User | null;
   loading: boolean;
   signIn: (email: string, password: string, rememberMe?: boolean) => Promise<User>;
+  sendSignInLink: (email: string) => Promise<void>;
+  completeSignInWithEmailLink: (emailLink?: string) => Promise<User>;
+  isEmailWhitelisted: (email: string) => Promise<boolean>;
+  hasValidDeviceSession: (email: string) => Promise<boolean>;
   signOut: () => Promise<void>;
   isAuthenticated: boolean;
 }
@@ -24,23 +28,50 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
+  console.log('🔐 AuthProvider initializing...');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Subscribe to auth state changes
-    const unsubscribe = authService.onAuthStateChange((user) => {
-      setCurrentUser(user);
-      setLoading(false);
-    });
+    console.log('🔐 Setting up auth state listener...');
+    try {
+      // Subscribe to auth state changes
+      const unsubscribe = authService.onAuthStateChange((user) => {
+        console.log('🔐 Auth state changed:', user ? 'User logged in' : 'No user');
+        setCurrentUser(user);
+        setLoading(false);
+      });
 
-    return unsubscribe;
+      console.log('✅ Auth state listener set up');
+      return unsubscribe;
+    } catch (error) {
+      console.error('❌ Failed to set up auth listener:', error);
+      setLoading(false);
+    }
   }, []);
 
   const signIn = async (email: string, password: string, rememberMe: boolean = false): Promise<User> => {
     const user = await authService.signIn(email, password, rememberMe);
     setCurrentUser(user);
     return user;
+  };
+
+  const sendSignInLink = async (email: string): Promise<void> => {
+    await authService.sendSignInLink(email);
+  };
+
+  const completeSignInWithEmailLink = async (emailLink?: string): Promise<User> => {
+    const user = await authService.completeSignInWithEmailLink(emailLink);
+    setCurrentUser(user);
+    return user;
+  };
+
+  const isEmailWhitelisted = async (email: string): Promise<boolean> => {
+    return await authService.isEmailWhitelisted(email);
+  };
+
+  const hasValidDeviceSession = async (email: string): Promise<boolean> => {
+    return await authService.hasValidDeviceSession(email);
   };
 
   const signOut = async (): Promise<void> => {
@@ -52,6 +83,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     currentUser,
     loading,
     signIn,
+    sendSignInLink,
+    completeSignInWithEmailLink,
+    isEmailWhitelisted,
+    hasValidDeviceSession,
     signOut,
     isAuthenticated: currentUser !== null,
   };

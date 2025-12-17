@@ -3,7 +3,6 @@ import { felixService } from '../../services/FelixService';
 import FelixSessionService from '../../services/FelixSessionService';
 import FelixChatService from '../../services/FelixChatService';
 import { useAuth } from '../../contexts/AuthContext';
-import authService from '../../services/AuthService';
 import FelixResultsTable from '../../components/FelixResultsTable';
 import { AuditResultsTable } from '../../components/AuditResultsTable';
 import { CatAnimation } from '../../components/ui/cat-animation';
@@ -41,26 +40,11 @@ export default function FelixPage() {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [sessions, setSessions] = useState<any[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [showAuditTable, setShowAuditTable] = useState(false);
   const chatAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => {
-    const autoAuth = async () => {
-      if (!currentUser && !isAuthenticating) {
-        setIsAuthenticating(true);
-        try {
-          await authService.signIn('test@example.com', 'password123', false);
-        } catch (error) {
-          console.error('Auto-authentication failed:', error);
-        } finally {
-          setIsAuthenticating(false);
-        }
-      }
-    };
-    autoAuth();
-  }, [currentUser, isAuthenticating]);
+  // Note: Auto-auth removed - users must authenticate via passwordless login
 
   useEffect(() => {
     if (currentUser) {
@@ -340,12 +324,12 @@ export default function FelixPage() {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
-  if (isAuthenticating || !currentUser) {
+  if (!currentUser) {
     return (
       <div className="felix-page felix-loading">
         <div className="felix-loading-content">
           <span className="felix-loading-icon">🔐</span>
-          <p>Authenticating...</p>
+          <p>Loading...</p>
         </div>
       </div>
     );
