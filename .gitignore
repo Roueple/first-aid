@@ -40,3 +40,10 @@ release/
 test-results/
 TEST-CLEANUP-SUMMARY.md
 TEST-FILES-ANALYSIS.md
+
+# Archive folders
+archive-pre-production/
+production-archive/
+docs-archive/
+scripts-archive/
+src-archive/
