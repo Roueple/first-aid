@@ -8,8 +8,8 @@ import * as XLSX from 'xlsx';
 
 export interface QueryFilter {
   field: string;
-  operator: '==' | '!=' | '>' | '>=' | '<' | '<=' | 'array-contains' | 'in';
-  value: string | number | string[];
+  operator: '==' | '!=' | '>' | '>=' | '<' | '<=' | 'array-contains' | 'in' | 'array-contains-any';
+  value: string | number | string[] | number[];
 }
 
 export interface ProjectSuggestion {
@@ -457,14 +457,30 @@ SORTING RULES:
 - If no sorting specified, omit sortBy and sortOrder fields
 - Default sorting is handled by the system (year desc for audit-results, projectName asc for projects)
 
+OR LOGIC RULES (CRITICAL):
+- Use "in" operator for OR logic on the SAME field with multiple values
+- Examples: 
+  * "IT or Finance" → {"field": "department", "operator": "in", "value": ["IT", "Finance"]}
+  * "SH1 or SH2 or SH3A" → {"field": "sh", "operator": "in", "value": ["SH1", "SH2", "SH3A"]}
+  * "2023 or 2024" → {"field": "year", "operator": "in", "value": [2023, 2024]}
+  * "Project A or Project B" → {"field": "projectName", "operator": "in", "value": ["Project A", "Project B"]}
+- Use "array-contains-any" for OR logic on array fields (tags)
+- Examples:
+  * "APAR or Hydrant" → {"field": "tags", "operator": "array-contains-any", "value": ["APAR", "Hydrant"]}
+  * "Kolam renang or Lift or CCTV" → {"field": "tags", "operator": "array-contains-any", "value": ["Kolam renang", "Lift", "CCTV"]}
+- Maximum 30 values per 'in' or 'array-contains-any' operator (Firestore limit)
+- Keywords that indicate OR logic: "atau", "or", "dan" (when listing items), comma-separated lists
+
 OPERATOR RULES:
 - "==" for exact match (department = "IT", year = "2024", code = "F")
+- "in" for OR logic with multiple values (department in ["IT", "Finance"], projectName in ["Project A", "Project B"])
 - ">=" for "above", "more than", "at least", "minimum"
 - "<=" for "below", "less than", "at most", "maximum"
 - ">" for "greater than"
 - "<" for "less than"
 - "!=" for "not equal", "except", "exclude"
-- "array-contains" for tags field ONLY (e.g., APAR, Kolam renang, Hydrant)
+- "array-contains" for single tag match (e.g., APAR, Kolam renang, Hydrant)
+- "array-contains-any" for multiple tag matches (e.g., ["APAR", "Hydrant"])
 
 FIELD TYPE RULES:
 - year: ALWAYS string (e.g., "2024", "2023", "2022") - NEVER use number
@@ -497,8 +513,23 @@ EXAMPLES:
 Query: "show all IT findings 2024" or "semua temuan IT 2024"
 {"userIntent": "Tampilkan semua temuan IT tahun 2024", "targetTable": "audit-results", "filters": [{"field": "department", "operator": "==", "value": "IT"}, {"field": "year", "operator": "==", "value": "2024"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
 
+Query: "temuan IT atau Finance 2024" or "findings from IT or Finance 2024"
+{"userIntent": "Temuan dari IT atau Finance tahun 2024", "targetTable": "audit-results", "filters": [{"field": "department", "operator": "in", "value": ["IT", "Finance"]}, {"field": "year", "operator": "==", "value": "2024"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+
+Query: "temuan dari Tallasa atau Raffles" or "findings from Tallasa or Raffles"
+{"userIntent": "Temuan dari CitraLand Tallasa atau Hotel Raffles", "targetTable": "audit-results", "filters": [{"field": "projectName", "operator": "in", "value": ["CitraLand Tallasa City Makassar", "Hotel Raffles Jakarta"]}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+
+Query: "temuan SH1 atau SH2" or "findings from SH1 or SH2"
+{"userIntent": "Temuan dari SH1 atau SH2", "targetTable": "audit-results", "filters": [{"field": "sh", "operator": "in", "value": ["SH1", "SH2"]}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+
+Query: "temuan APAR atau Hydrant" or "findings about APAR or Hydrant"
+{"userIntent": "Temuan terkait APAR atau Hydrant", "targetTable": "audit-results", "filters": [{"field": "tags", "operator": "array-contains-any", "value": ["APAR", "Hydrant"]}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+
 Query: "temuan Tallasa Makassar" or "semua temuan Tallasa Makassar"
 {"userIntent": "Semua temuan CitraLand Tallasa City Makassar", "targetTable": "audit-results", "filters": [{"field": "projectName", "operator": "==", "value": "CitraLand Tallasa City Makassar"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+
+Query: "temuan dari 3 proyek: Tallasa, Raffles, dan Ciputra Mall" or "findings from Tallasa, Raffles, and Ciputra Mall"
+{"userIntent": "Temuan dari 3 proyek", "targetTable": "audit-results", "filters": [{"field": "projectName", "operator": "in", "value": ["CitraLand Tallasa City Makassar", "Hotel Raffles Jakarta", "Mall Ciputra Cibubur"]}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
 
 Query: "dep = IT, year 2024, code = F"
 {"userIntent": "Temuan IT tahun 2024 dengan kode F", "targetTable": "audit-results", "filters": [{"field": "department", "operator": "==", "value": "IT"}, {"field": "year", "operator": "==", "value": "2024"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
@@ -511,6 +542,9 @@ Query: "temuan APAR"
 
 Query: "temuan kolam renang 2024"
 {"userIntent": "Temuan kolam renang tahun 2024", "targetTable": "audit-results", "filters": [{"field": "tags", "operator": "array-contains", "value": "Kolam renang"}, {"field": "year", "operator": "==", "value": "2024"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+
+Query: "temuan kolam renang atau lift" or "findings about swimming pool or elevator"
+{"userIntent": "Temuan terkait kolam renang atau lift", "targetTable": "audit-results", "filters": [{"field": "tags", "operator": "array-contains-any", "value": ["Kolam renang", "Lift"]}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
 
 Query: "all IT audit results 2024" or "semua hasil audit IT 2024" or "all codes IT 2024"
 {"userIntent": "Semua hasil audit IT tahun 2024 (termasuk F, NF, O, R)", "targetTable": "audit-results", "filters": [{"field": "department", "operator": "==", "value": "IT"}, {"field": "year", "operator": "==", "value": "2024"}], "isValidQuery": true}
@@ -555,11 +589,17 @@ Query: "temuan mall" or "findings from malls"
 Query: "temuan commercial projects" or "temuan proyek komersial"
 {"userIntent": "Temuan dari proyek commercial", "targetTable": "audit-results", "filters": [{"field": "projectType", "operator": "==", "value": "Commercial"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
 
+Query: "temuan dari commercial atau residential" or "findings from commercial or residential projects"
+{"userIntent": "Temuan dari proyek commercial atau residential", "targetTable": "audit-results", "filters": [{"field": "projectType", "operator": "in", "value": ["Commercial", "Residential"]}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+
 Query: "temuan residential" or "findings from residential projects"
 {"userIntent": "Temuan dari proyek residential", "targetTable": "audit-results", "filters": [{"field": "projectType", "operator": "==", "value": "Residential"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
 
 Query: "temuan apartment" or "findings from apartments"
 {"userIntent": "Temuan dari proyek apartment", "targetTable": "audit-results", "filters": [{"field": "subtype", "operator": "==", "value": "Apartment"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+
+Query: "temuan dari hospital, clinic, atau hotel" or "findings from hospitals, clinics, or hotels"
+{"userIntent": "Temuan dari hospital, clinic, atau hotel", "targetTable": "audit-results", "filters": [{"field": "subtype", "operator": "in", "value": ["Hospital", "Clinic", "Hotel"]}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
 
 Query: "temuan school dan university" or "findings from schools and universities"
 {"userIntent": "Temuan dari proyek school dan university", "targetTable": "audit-results", "filters": [{"field": "projectType", "operator": "==", "value": "Education"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
@@ -765,20 +805,44 @@ ${this.describeFilters(filters)}
         // Expand department using AI-powered matching
         const deptFilter = expandedFilters.find(f => f.field === 'department');
         if (deptFilter) {
-          // Pass the full user query for better AI context, fallback to department value
-          const queryContext = userQuery || String(deptFilter.value);
-          const deptNames = await this.getDepartmentNames(queryContext);
-          console.log(`📂 Department "${deptFilter.value}" expanded to ${deptNames.length} names:`, deptNames);
-          
           const otherFilters = expandedFilters.filter(f => f.field !== 'department');
           
-          if (deptNames.length === 1) {
-            expandedFilters = [...otherFilters, { field: 'department', operator: '==', value: deptNames[0] }];
-          } else if (deptNames.length > 1) {
-            // Firestore 'in' operator supports up to 10 values
-            expandedFilters = [...otherFilters, { field: 'department', operator: 'in' as any, value: deptNames.slice(0, 10) }];
+          // If already using 'in' operator, expand each department value
+          if (deptFilter.operator === 'in' && Array.isArray(deptFilter.value)) {
+            console.log(`📂 Expanding multiple departments: ${deptFilter.value.join(', ')}`);
+            const allDeptNames: string[] = [];
+            
+            for (const dept of deptFilter.value) {
+              const queryContext = userQuery || String(dept);
+              const deptNames = await this.getDepartmentNames(queryContext);
+              allDeptNames.push(...deptNames);
+            }
+            
+            // Remove duplicates and limit to 30 (Firestore 'in' limit)
+            const uniqueDeptNames = [...new Set(allDeptNames)].slice(0, 30);
+            console.log(`📂 Expanded to ${uniqueDeptNames.length} unique department names`);
+            
+            if (uniqueDeptNames.length === 1) {
+              expandedFilters = [...otherFilters, { field: 'department', operator: '==', value: uniqueDeptNames[0] }];
+            } else if (uniqueDeptNames.length > 1) {
+              expandedFilters = [...otherFilters, { field: 'department', operator: 'in' as any, value: uniqueDeptNames }];
+            } else {
+              expandedFilters = otherFilters.concat(deptFilter);
+            }
           } else {
-            expandedFilters = otherFilters.concat({ field: 'department', operator: '==', value: deptFilter.value });
+            // Single department value - expand as before
+            const queryContext = userQuery || String(deptFilter.value);
+            const deptNames = await this.getDepartmentNames(queryContext);
+            console.log(`📂 Department "${deptFilter.value}" expanded to ${deptNames.length} names:`, deptNames);
+            
+            if (deptNames.length === 1) {
+              expandedFilters = [...otherFilters, { field: 'department', operator: '==', value: deptNames[0] }];
+            } else if (deptNames.length > 1) {
+              // Firestore 'in' operator supports up to 30 values
+              expandedFilters = [...otherFilters, { field: 'department', operator: 'in' as any, value: deptNames.slice(0, 30) }];
+            } else {
+              expandedFilters = otherFilters.concat({ field: 'department', operator: '==', value: deptFilter.value });
+            }
           }
         }
       }
@@ -786,11 +850,34 @@ ${this.describeFilters(filters)}
       console.log('🔍 Felix executeQuery - Expanded equality filters:', JSON.stringify(expandedFilters, null, 2));
       
       // Convert filters to DatabaseService format
-      const dbFilters = expandedFilters.map(f => ({
-        field: f.field,
-        operator: f.operator as any,
-        value: f.value
-      }));
+      // Validate 'in' operator values (Firestore limit: 30 values max)
+      const dbFilters = expandedFilters.map(f => {
+        if (f.operator === 'in' && Array.isArray(f.value)) {
+          if (f.value.length > 30) {
+            console.warn(`⚠️ 'in' operator limited to 30 values, truncating from ${f.value.length}`);
+            return {
+              field: f.field,
+              operator: f.operator as any,
+              value: f.value.slice(0, 30)
+            };
+          }
+        }
+        if (f.operator === 'array-contains-any' && Array.isArray(f.value)) {
+          if (f.value.length > 30) {
+            console.warn(`⚠️ 'array-contains-any' operator limited to 30 values, truncating from ${f.value.length}`);
+            return {
+              field: f.field,
+              operator: f.operator as any,
+              value: f.value.slice(0, 30)
+            };
+          }
+        }
+        return {
+          field: f.field,
+          operator: f.operator as any,
+          value: f.value
+        };
+      });
 
       // Determine sort order
       const orderBy = table === 'projects' ? 'projectName' : 
@@ -1034,12 +1121,32 @@ ${this.describeFilters(filters)}
       nonFinding: '✅',
       total: '📈',
       category: '📁',
-      name: '📛'
+      name: '📛',
+      projectType: '🏗️',
+      subtype: '🏛️'
     };
 
     return filters.map(f => {
       const icon = icons[f.field] || '•';
-      return `${icon} ${f.field} ${f.operator} ${f.value}`;
+      
+      // Format value display for arrays
+      let displayValue: string;
+      if (Array.isArray(f.value)) {
+        if (f.value.length <= 3) {
+          displayValue = f.value.join(' OR ');
+        } else {
+          displayValue = `${f.value.slice(0, 3).join(', ')} + ${f.value.length - 3} more`;
+        }
+      } else {
+        displayValue = String(f.value);
+      }
+      
+      // Simplify operator display
+      const operatorDisplay = f.operator === 'in' ? 'IN' : 
+                             f.operator === 'array-contains-any' ? 'CONTAINS ANY' :
+                             f.operator;
+      
+      return `${icon} ${f.field} ${operatorDisplay} ${displayValue}`;
     }).join('\n');
   }
 
@@ -1070,8 +1177,16 @@ ${this.describeFilters(filters)}
         return value <= filterValue;
       case 'array-contains':
         return Array.isArray(value) && value.includes(filterValue);
+      case 'array-contains-any': {
+        if (!Array.isArray(value) || !Array.isArray(filterValue)) return false;
+        // Check if any filter value exists in the value array
+        for (const fv of filterValue) {
+          if (value.indexOf(fv) !== -1) return true;
+        }
+        return false;
+      }
       case 'in':
-        return Array.isArray(filterValue) && filterValue.includes(value);
+        return Array.isArray(filterValue) && (filterValue as any[]).includes(value);
       default:
         return true;
     }

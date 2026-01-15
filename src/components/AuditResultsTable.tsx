@@ -40,17 +40,67 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
     kadar: 'all',
     nilai: 'all',
   });
+  const [totalCount] = useState(8840); // Approximate total
 
+  // Load results when page, sort, or filters change
   useEffect(() => {
     loadResults();
-  }, []);
+  }, [currentPage, sortField, sortDirection, columnFilters, filterText]);
 
   const loadResults = async () => {
     try {
       setLoading(true);
-      const data = await auditResultService.getAll();
-      setResults(data);
+      
+      // Build query filters from column filters
+      const filters: any[] = [];
+      
+      Object.entries(columnFilters).forEach(([column, selectedValues]) => {
+        if (selectedValues !== 'all' && (selectedValues as Set<any>).size > 0) {
+          const filterSet = selectedValues as Set<any>;
+          const values = Array.from(filterSet);
+          
+          if (values.length === 1) {
+            filters.push({
+              field: column,
+              operator: '==',
+              value: values[0],
+            });
+          } else if (values.length <= 10) {
+            filters.push({
+              field: column,
+              operator: 'in',
+              value: values,
+            });
+          }
+        }
+      });
+
+      // Fetch ONLY 50 records per page from Firebase
+      const data = await auditResultService.getAll({
+        filters: filters.length > 0 ? filters : undefined,
+        sorts: [{ field: sortField, direction: sortDirection }],
+        limit: itemsPerPage, // Only fetch 50 records
+      });
+
+      // Apply text filter client-side
+      let filteredData = data;
+      if (filterText) {
+        const searchLower = filterText.toLowerCase();
+        filteredData = data.filter(
+          (r) =>
+            r.projectName.toLowerCase().includes(searchLower) ||
+            r.department.toLowerCase().includes(searchLower) ||
+            r.riskArea.toLowerCase().includes(searchLower) ||
+            r.description.toLowerCase().includes(searchLower) ||
+            r.code.toLowerCase().includes(searchLower) ||
+            r.sh.toLowerCase().includes(searchLower)
+        );
+      }
+
+      setResults(filteredData);
       setError(null);
+      
+      console.log(`📊 Loaded page ${currentPage}: ${filteredData.length} records (Firebase READ: ${itemsPerPage})`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load audit results');
     } finally {
@@ -193,10 +243,10 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
     );
   };
 
-  // Get unique values for each column
+  // Get unique values from current results for filters
   const uniqueValues = React.useMemo(() => {
     return {
-      year: Array.from(new Set(results.map(r => r.year))).sort((a, b) => b - a),
+      year: Array.from(new Set(results.map(r => r.year))).sort((a, b) => String(b).localeCompare(String(a))),
       sh: Array.from(new Set(results.map(r => r.sh))).sort(),
       projectName: Array.from(new Set(results.map(r => r.projectName))).sort(),
       department: Array.from(new Set(results.map(r => r.department))).sort(),
@@ -208,55 +258,13 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
     };
   }, [results]);
 
-  const filteredAndSortedResults = React.useMemo(() => {
-    let filtered = results;
-
-    // Apply text filter
-    if (filterText) {
-      const searchLower = filterText.toLowerCase();
-      filtered = filtered.filter(
-        (r) =>
-          r.projectName.toLowerCase().includes(searchLower) ||
-          r.department.toLowerCase().includes(searchLower) ||
-          r.riskArea.toLowerCase().includes(searchLower) ||
-          r.descriptions.toLowerCase().includes(searchLower) ||
-          r.code.toLowerCase().includes(searchLower) ||
-          r.sh.toLowerCase().includes(searchLower)
-      );
-    }
-
-    // Apply column filters (Excel-like: only filter if not 'all')
-    Object.entries(columnFilters).forEach(([column, selectedValues]) => {
-      if (selectedValues !== 'all') {
-        const filterSet = selectedValues as Set<any>;
-        filtered = filtered.filter(r => filterSet.has(r[column as keyof AuditResult]));
-      }
-    });
-
-    // Apply sort
-    return [...filtered].sort((a, b) => {
-      const aVal = a[sortField];
-      const bVal = b[sortField];
-
-      if (aVal === bVal) return 0;
-      if (aVal == null) return 1;
-      if (bVal == null) return -1;
-
-      const comparison = aVal > bVal ? 1 : -1;
-      return sortDirection === 'asc' ? comparison : -comparison;
-    });
-  }, [results, filterText, columnFilters, sortField, sortDirection]);
+  // Results are already paginated from Firebase
+  const filteredAndSortedResults = results;
+  const paginatedResults = results;
 
   // Pagination calculations
-  const totalPages = Math.ceil(filteredAndSortedResults.length / itemsPerPage);
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedResults = filteredAndSortedResults.slice(startIndex, endIndex);
-
-  // Reset to page 1 when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filterText, columnFilters]);
 
   const goToPage = (page: number) => {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)));
@@ -430,8 +438,8 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
       </div>
 
       <div className="text-xs sm:text-sm text-gray-600 px-1">
-        Showing {startIndex + 1}-{Math.min(endIndex, filteredAndSortedResults.length)} of {filteredAndSortedResults.length} results
-        {filteredAndSortedResults.length !== results.length && ` (filtered from ${results.length})`}
+        Showing page {currentPage} of ~{totalPages} ({results.length} records loaded)
+        {hasActiveFilters && ' - Filters active'}
       </div>
 
       {/* Table */}
@@ -526,8 +534,8 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
                 <td className="px-2 sm:px-4 py-2 sm:py-3 text-gray-900 max-w-[150px] truncate" title={result.riskArea}>
                   {result.riskArea}
                 </td>
-                <td className="px-2 sm:px-4 py-2 sm:py-3 text-gray-600 max-w-[200px] sm:max-w-xs truncate" title={result.descriptions}>
-                  {result.descriptions}
+                <td className="px-2 sm:px-4 py-2 sm:py-3 text-gray-600 max-w-[200px] sm:max-w-xs truncate" title={result.description}>
+                  {result.description}
                 </td>
                 <td className="px-2 sm:px-4 py-2 sm:py-3 text-center whitespace-nowrap">
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">

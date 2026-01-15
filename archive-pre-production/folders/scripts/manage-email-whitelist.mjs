@@ -6,7 +6,7 @@
  * Manages the email whitelist for passwordless authentication
  * 
  * Usage:
- *   node scripts/manage-email-whitelist.mjs add <email> <added-by> [display-name]
+ *   node scripts/manage-email-whitelist.mjs add <email> <added-by>
  *   node scripts/manage-email-whitelist.mjs remove <email>
  *   node scripts/manage-email-whitelist.mjs list
  *   node scripts/manage-email-whitelist.mjs check <email>
@@ -21,7 +21,7 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Initialize Firebase Admin - look for serviceaccountKey.json in project root
+// Initialize Firebase Admin
 const serviceAccount = JSON.parse(
   readFileSync(join(__dirname, '..', 'serviceaccountKey.json'), 'utf8')
 );
@@ -142,7 +142,7 @@ async function main() {
   switch (command) {
     case 'add':
       if (args.length < 2) {
-        console.error('Usage: node scripts/manage-email-whitelist.mjs add <email> <added-by> [display-name]');
+        console.error('Usage: node manage-email-whitelist.mjs add <email> <added-by> [display-name]');
         process.exit(1);
       }
       await addEmail(args[0], args[1], args[2]);
@@ -150,7 +150,7 @@ async function main() {
 
     case 'remove':
       if (args.length < 1) {
-        console.error('Usage: node scripts/manage-email-whitelist.mjs remove <email>');
+        console.error('Usage: node manage-email-whitelist.mjs remove <email>');
         process.exit(1);
       }
       await removeEmail(args[0]);
@@ -162,7 +162,7 @@ async function main() {
 
     case 'check':
       if (args.length < 1) {
-        console.error('Usage: node scripts/manage-email-whitelist.mjs check <email>');
+        console.error('Usage: node manage-email-whitelist.mjs check <email>');
         process.exit(1);
       }
       await checkEmail(args[0]);

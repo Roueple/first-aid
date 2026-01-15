@@ -128,8 +128,8 @@
 │                                                                     │
 │  ✅ Found 15 findings matching your criteria:                      │
 │                                                                     │
-│  1. FND-2025-001 - Critical IT security issue in Hotel Project     │
-│  2. FND-2025-003 - Critical IT access control in Grand Hotel       │
+│  1. FND-2025-001 - Critical eIT security issue in Hotel Project     │
+│  2. FND-2025-003 - Critical IT access control in Grand Hotl       │
 │  3. ...                                                            │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
