@@ -35,15 +35,15 @@ yarn-error.log*
 # Electron
 release/
 
+# Auto-update setup guides (local reference only)
+AUTO-UPDATE-SETUP.txt
+QUICK-RELEASE-GUIDE.txt
+
 # Test credentials and results
 .test-credentials.json
 test-results/
 TEST-CLEANUP-SUMMARY.md
 TEST-FILES-ANALYSIS.md
 
-# Archive folders
-archive-pre-production/
-production-archive/
-docs-archive/
-scripts-archive/
-src-archive/
+# Archive folder
+archive/

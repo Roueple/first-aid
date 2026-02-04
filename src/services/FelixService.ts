@@ -8,7 +8,7 @@ import * as XLSX from 'xlsx';
 
 export interface QueryFilter {
   field: string;
-  operator: '==' | '!=' | '>' | '>=' | '<' | '<=' | 'array-contains' | 'in' | 'array-contains-any';
+  operator: '==' | '!=' | '>' | '>=' | '<' | '<=' | 'array-contains' | 'in' | 'array-contains-any' | 'contains';
   value: string | number | string[] | number[];
 }
 
@@ -17,10 +17,23 @@ export interface ProjectSuggestion {
   score: number;
 }
 
+export interface AggregationResult {
+  groupBy: string | string[]; // Single field or array of fields for multi-dimensional
+  groupValue: string | number | Record<string, string | number>; // Single value or object for multi-dimensional
+  count: number;
+  sum?: number;
+  avg?: number;
+  min?: number;
+  max?: number;
+  filters?: QueryFilter[]; // Store filters to fetch underlying data
+  [key: string]: any; // Allow additional aggregated fields
+}
+
 export interface QueryResult {
   success: boolean;
   message: string;
   results?: any[];
+  aggregatedResults?: AggregationResult[];
   resultsCount: number;
   table?: string;
   excelBuffer?: ArrayBuffer;
@@ -29,6 +42,10 @@ export interface QueryResult {
   filters?: QueryFilter[];
   suggestions?: ProjectSuggestion[];
   originalQuery?: string;
+  isAggregated?: boolean;
+  aggregationType?: 'count' | 'sum' | 'avg' | 'min' | 'max';
+  groupByField?: string | string[]; // Support multiple fields
+  yearAggregation?: AggregationResult[]; // Auto-generated year chart data
 }
 
 /**
@@ -43,6 +60,19 @@ export interface QueryResult {
  */
 export class FelixService {
   private ai: GoogleGenAI;
+  
+  // Model fallback chain - try in order if one fails
+  private readonly MODELS = [
+    'gemini-2.5-flash',      // Primary: Latest stable, 500 req/day
+    'gemini-2.0-flash',      // Fallback 1: Older but stable
+    'gemini-2.5-pro',        // Fallback 2: More powerful but limited
+  ];
+  
+  private currentModelIndex = 0;
+  
+  private get MODEL_NAME(): string {
+    return this.MODELS[this.currentModelIndex];
+  }
 
   // Table structure for AI context (NO DATA, structure only)
   private readonly TABLE_SCHEMA = `
@@ -103,6 +133,13 @@ COMMON TAGS (for audit-results.tags field):
 - Estate: IPL, Tunggakan air, Serah Terima
 - HR: Kontrak kerja, BPJS, Asuransi, Clearance sheet
 
+IMPORTANT KEYWORD SEARCH RULES:
+- For keyword searches (APAR, PPJB, IMB, etc.), ALWAYS use "description" field with "contains" operator
+- The "tags" field is NOT reliable for all keywords - many findings have keywords in description but not in tags
+- Example: {"field": "description", "operator": "contains", "value": "APAR"}
+- Only use "tags" field if user explicitly says "tagged with" or "tag contains"
+- For aggregation queries with keywords, use description field: "agregasi temuan APAR" → filter by description contains "APAR"
+
 SUBHOLDING (SH) CODES:
 - SH1, SH2, SH3A, SH3B, SH4 (always uppercase)
 - Use "sh" field to filter by subholding
@@ -156,11 +193,7 @@ Analyze the user's query and extract database filters. Return a JSON object:
 
 Return ONLY the JSON object.`;
 
-      const response = await this.ai.models.generateContent({
-        model: 'gemini-2.0-flash-exp',
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      });
-
+      const response = await this.generateContentWithFallback(prompt);
       const responseText = response.text?.trim() || '{}';
       let jsonText = responseText;
       if (responseText.includes('```')) {
@@ -183,6 +216,14 @@ Return ONLY the JSON object.`;
       // Execute query with original user query for context (no custom sorting for confirmed queries)
       const results = await this.executeQuery(filters, targetTable, originalQuery);
       const { excelBuffer, excelFilename } = await this.generateExcel(results, targetTable, userIntent);
+
+      // AUTO-GENERATE YEAR CHART for audit-results queries with multiple results
+      let yearAggregation: AggregationResult[] | undefined;
+      if (targetTable === 'audit-results' && results.length > 0) {
+        console.log(`📊 Auto-generating year aggregation chart for ${results.length} findings`);
+        yearAggregation = await this.aggregateResults(results, 'year', 'count', undefined, 'asc', filters);
+        console.log(`📊 Generated ${yearAggregation.length} year groups for chart`);
+      }
 
       const message = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -208,6 +249,7 @@ ${this.describeFilters(filters)}
         excelFilename,
         needsConfirmation: false,
         filters,
+        yearAggregation,
       };
 
       // Save assistant response
@@ -217,7 +259,7 @@ ${this.describeFilters(filters)}
         queryResult.message,
         {
           responseTime: Date.now() - startTime,
-          modelVersion: 'gemini-3-pro-preview',
+          modelVersion: this.MODEL_NAME,
           metadata: {
             resultsCount: queryResult.resultsCount,
             filters: queryResult.filters,
@@ -255,6 +297,33 @@ ${this.describeFilters(filters)}
       await FelixChatService.addUserMessage(activeSessionId, userId, message);
       await FelixSessionService.incrementMessageCount(activeSessionId);
 
+      // Check for demo command
+      if (message.toLowerCase().trim() === 'demo') {
+        const demoResponse = this.generateDemoResponse();
+        await FelixChatService.addAssistantResponse(
+          activeSessionId,
+          userId,
+          demoResponse,
+          {
+            responseTime: Date.now() - startTime,
+            modelVersion: 'demo-mode',
+            metadata: { isDemo: true }
+          }
+        );
+        await FelixSessionService.incrementMessageCount(activeSessionId);
+
+        return {
+          response: demoResponse,
+          sessionId: activeSessionId,
+          queryResult: {
+            success: true,
+            message: demoResponse,
+            resultsCount: 0,
+            needsConfirmation: false,
+          }
+        };
+      }
+
       // Process query through Gemini with session context
       const queryResult = await this.processQuery(message, activeSessionId);
 
@@ -267,7 +336,7 @@ ${this.describeFilters(filters)}
         queryResult.message,
         {
           responseTime: Date.now() - startTime,
-          modelVersion: 'gemini-3-pro-preview',
+          modelVersion: this.MODEL_NAME,
           metadata: {
             resultsCount: queryResult.resultsCount,
             filters: queryResult.filters,
@@ -313,6 +382,46 @@ ${this.describeFilters(filters)}
       await FelixChatService.addUserMessage(activeSessionId, userId, message);
       await FelixSessionService.incrementMessageCount(activeSessionId);
 
+      // Check for demo command
+      if (message.toLowerCase().trim() === 'demo') {
+        const demoResponse = this.generateDemoResponse();
+        
+        // Stream the demo response word by word for typing effect
+        const words = demoResponse.split(' ');
+        for (let i = 0; i < words.length; i++) {
+          const chunk = (i === 0 ? '' : ' ') + words[i];
+          yield chunk;
+        }
+
+        await FelixChatService.addAssistantResponse(
+          activeSessionId,
+          userId,
+          demoResponse,
+          {
+            responseTime: Date.now() - startTime,
+            modelVersion: 'demo-mode',
+            metadata: { isDemo: true }
+          }
+        );
+        await FelixSessionService.incrementMessageCount(activeSessionId);
+
+        // Auto-generate title
+        const session = await FelixSessionService.getById(activeSessionId);
+        if (session && !session.title && session.messageCount === 2) {
+          await FelixSessionService.updateTitle(activeSessionId, 'Felix Demo - Feature Showcase');
+        }
+
+        return {
+          sessionId: activeSessionId,
+          queryResult: {
+            success: true,
+            message: demoResponse,
+            resultsCount: 0,
+            needsConfirmation: false,
+          }
+        };
+      }
+
       // Process query with session context
       const queryResult = await this.processQuery(message, activeSessionId);
 
@@ -332,7 +441,7 @@ ${this.describeFilters(filters)}
         queryResult.message,
         {
           responseTime: Date.now() - startTime,
-          modelVersion: 'gemini-3-pro-preview',
+          modelVersion: this.MODEL_NAME,
           metadata: {
             resultsCount: queryResult.resultsCount,
             filters: queryResult.filters,
@@ -451,9 +560,43 @@ Analyze the user's query and extract database filters. Return a JSON object:
   "invalidReason": "reason if not valid query"
 }
 
+AGGREGATION RULES (PIVOT TABLE):
+- If user wants to "group by", "count by", "summarize by", "aggregate by", "pivot", "breakdown by" → Use aggregation
+- Aggregation types:
+  * "count" - Count records per group (default)
+  * "sum" - Sum a numeric field per group
+  * "avg" - Average a numeric field per group
+  * "min" - Minimum value per group
+  * "max" - Maximum value per group
+- MULTI-DIMENSIONAL AGGREGATION (NEW):
+  * Support multiple groupBy fields for nested aggregation
+  * "by SH and by Year" → {"groupBy": ["sh", "year"], "aggregationType": "count"}
+  * "by department and project" → {"groupBy": ["department", "projectName"], "aggregationType": "count"}
+  * "by year and SH" → {"groupBy": ["year", "sh"], "aggregationType": "count"}
+  * Order matters: first field is primary grouping, second is secondary
+- PROJECT TYPE/SUBTYPE AGGREGATION (SUPPORTED):
+  * Can aggregate by projectType or subtype even though they're in projects table
+  * "by projectType and year" → {"groupBy": ["projectType", "year"], "aggregationType": "count"}
+  * "by subtype" → {"groupBy": "subtype", "aggregationType": "count"}
+  * "Promosi findings by projectType and year" → {"groupBy": ["projectType", "year"], "aggregationType": "count", "filters": [{"field": "description", "operator": "contains", "value": "Promosi"}, {"field": "code", "operator": "==", "value": "F"}]}
+  * System will automatically join with projects table to get type/subtype data
+- Common aggregation queries:
+  * "count findings by department" → {"groupBy": "department", "aggregationType": "count"}
+  * "sum nilai by project" → {"groupBy": "projectName", "aggregationType": "sum", "aggregateField": "nilai"}
+  * "average score by year" → {"groupBy": "year", "aggregationType": "avg", "aggregateField": "nilai"}
+  * "highest findings count by department 2024" → {"groupBy": "department", "aggregationType": "count", "filters": [{"field": "year", "operator": "==", "value": "2024"}], "sortOrder": "desc"}
+  * "PPJB findings by SH and year" → {"groupBy": ["sh", "year"], "aggregationType": "count", "filters": [{"field": "description", "operator": "contains", "value": "PPJB"}, {"field": "code", "operator": "==", "value": "F"}]}
+  * "findings by project and department" → {"groupBy": ["projectName", "department"], "aggregationType": "count"}
+  * "findings by projectType" → {"groupBy": "projectType", "aggregationType": "count"}
+  * "hospital findings by year" → {"groupBy": "year", "aggregationType": "count", "filters": [{"field": "subtype", "operator": "==", "value": "Hospital"}]}
+- Keywords indicating aggregation: "group by", "count by", "summarize", "breakdown", "pivot", "per department", "by project", "berdasarkan", "per", "jumlah temuan per", "agregasi"
+- Keywords indicating multi-dimensional: "by X and Y", "by X and by Y", "per X dan Y", "berdasarkan X dan Y"
+- When aggregating, return groupBy (string or array), aggregationType, and optional aggregateField (for sum/avg/min/max)
+
 SORTING RULES:
 - If user says "highest score", "descending", "terbesar", "tertinggi", "dari nilai tertinggi" → sortBy="nilai", sortOrder="desc"
 - If user says "lowest score", "ascending", "terkecil", "terendah", "dari nilai terendah" → sortBy="nilai", sortOrder="asc"
+- For aggregated results: "highest count" → sortOrder="desc", "lowest count" → sortOrder="asc"
 - If no sorting specified, omit sortBy and sortOrder fields
 - Default sorting is handled by the system (year desc for audit-results, projectName asc for projects)
 
@@ -479,8 +622,11 @@ OPERATOR RULES:
 - ">" for "greater than"
 - "<" for "less than"
 - "!=" for "not equal", "except", "exclude"
-- "array-contains" for single tag match (e.g., APAR, Kolam renang, Hydrant)
-- "array-contains-any" for multiple tag matches (e.g., ["APAR", "Hydrant"])
+- "array-contains" for single tag match (ONLY if user explicitly says "tagged with" or "tag contains")
+- "array-contains-any" for multiple tag matches (ONLY if user explicitly says "tagged with" or "tag contains")
+- "contains" for text search in description field (DEFAULT for keyword searches: APAR, PPJB, IMB, SHM, Kolam renang, Hydrant, etc.)
+
+CRITICAL: For keyword searches, ALWAYS use description field with "contains" operator unless user explicitly mentions "tags"
 
 FIELD TYPE RULES:
 - year: ALWAYS string (e.g., "2024", "2023", "2022") - NEVER use number
@@ -523,7 +669,7 @@ Query: "temuan SH1 atau SH2" or "findings from SH1 or SH2"
 {"userIntent": "Temuan dari SH1 atau SH2", "targetTable": "audit-results", "filters": [{"field": "sh", "operator": "in", "value": ["SH1", "SH2"]}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
 
 Query: "temuan APAR atau Hydrant" or "findings about APAR or Hydrant"
-{"userIntent": "Temuan terkait APAR atau Hydrant", "targetTable": "audit-results", "filters": [{"field": "tags", "operator": "array-contains-any", "value": ["APAR", "Hydrant"]}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+{"userIntent": "Temuan terkait APAR atau Hydrant", "targetTable": "audit-results", "filters": [{"field": "description", "operator": "contains", "value": "APAR"}, {"field": "description", "operator": "contains", "value": "Hydrant"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
 
 Query: "temuan Tallasa Makassar" or "semua temuan Tallasa Makassar"
 {"userIntent": "Semua temuan CitraLand Tallasa City Makassar", "targetTable": "audit-results", "filters": [{"field": "projectName", "operator": "==", "value": "CitraLand Tallasa City Makassar"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
@@ -538,13 +684,19 @@ Query: "findings with nilai >= 10"
 {"userIntent": "Temuan dengan nilai di atas atau sama dengan 10", "targetTable": "audit-results", "filters": [{"field": "nilai", "operator": ">=", "value": 10}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
 
 Query: "temuan APAR"
-{"userIntent": "Semua temuan terkait APAR", "targetTable": "audit-results", "filters": [{"field": "tags", "operator": "array-contains", "value": "APAR"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+{"userIntent": "Semua temuan terkait APAR", "targetTable": "audit-results", "filters": [{"field": "description", "operator": "contains", "value": "APAR"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
 
 Query: "temuan kolam renang 2024"
-{"userIntent": "Temuan kolam renang tahun 2024", "targetTable": "audit-results", "filters": [{"field": "tags", "operator": "array-contains", "value": "Kolam renang"}, {"field": "year", "operator": "==", "value": "2024"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+{"userIntent": "Temuan kolam renang tahun 2024", "targetTable": "audit-results", "filters": [{"field": "description", "operator": "contains", "value": "kolam renang"}, {"field": "year", "operator": "==", "value": "2024"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
 
 Query: "temuan kolam renang atau lift" or "findings about swimming pool or elevator"
-{"userIntent": "Temuan terkait kolam renang atau lift", "targetTable": "audit-results", "filters": [{"field": "tags", "operator": "array-contains-any", "value": ["Kolam renang", "Lift"]}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+{"userIntent": "Temuan terkait kolam renang atau lift", "targetTable": "audit-results", "filters": [{"field": "description", "operator": "contains", "value": "kolam renang"}, {"field": "description", "operator": "contains", "value": "lift"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+
+Query: "show all PPJB findings" or "temuan yang mengandung PPJB"
+{"userIntent": "Semua temuan yang mengandung kata PPJB di deskripsi", "targetTable": "audit-results", "filters": [{"field": "description", "operator": "contains", "value": "PPJB"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+
+Query: "findings with IMB in description" or "temuan dengan IMB"
+{"userIntent": "Temuan dengan kata IMB di deskripsi", "targetTable": "audit-results", "filters": [{"field": "description", "operator": "contains", "value": "IMB"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
 
 Query: "all IT audit results 2024" or "semua hasil audit IT 2024" or "all codes IT 2024"
 {"userIntent": "Semua hasil audit IT tahun 2024 (termasuk F, NF, O, R)", "targetTable": "audit-results", "filters": [{"field": "department", "operator": "==", "value": "IT"}, {"field": "year", "operator": "==", "value": "2024"}], "isValidQuery": true}
@@ -629,16 +781,40 @@ Previous: "proyek Raffles" (filters: projectName="Hotel Raffles Jakarta")
 Current: "temuan 2024"
 {"userIntent": "Temuan Hotel Raffles Jakarta tahun 2024", "targetTable": "audit-results", "filters": [{"field": "projectName", "operator": "==", "value": "Hotel Raffles Jakarta"}, {"field": "year", "operator": "==", "value": "2024"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
 
+AGGREGATION EXAMPLES:
+Query: "count findings by department 2024" or "jumlah temuan per department 2024"
+{"userIntent": "Jumlah temuan per department tahun 2024", "targetTable": "audit-results", "filters": [{"field": "year", "operator": "==", "value": "2024"}, {"field": "code", "operator": "==", "value": "F"}], "groupBy": "department", "aggregationType": "count", "sortOrder": "desc", "isValidQuery": true}
+
+Query: "show me highest findings count by department 2024" or "department dengan temuan terbanyak 2024"
+{"userIntent": "Department dengan jumlah temuan terbanyak tahun 2024", "targetTable": "audit-results", "filters": [{"field": "year", "operator": "==", "value": "2024"}, {"field": "code", "operator": "==", "value": "F"}], "groupBy": "department", "aggregationType": "count", "sortOrder": "desc", "isValidQuery": true}
+
+Query: "group findings by project" or "kelompokkan temuan berdasarkan proyek"
+{"userIntent": "Kelompokkan temuan berdasarkan proyek", "targetTable": "audit-results", "filters": [{"field": "code", "operator": "==", "value": "F"}], "groupBy": "projectName", "aggregationType": "count", "sortOrder": "desc", "isValidQuery": true}
+
+Query: "sum nilai by department" or "total nilai per department"
+{"userIntent": "Total nilai per department", "targetTable": "audit-results", "filters": [], "groupBy": "department", "aggregationType": "sum", "aggregateField": "nilai", "sortOrder": "desc", "isValidQuery": true}
+
+Query: "average score by year" or "rata-rata nilai per tahun"
+{"userIntent": "Rata-rata nilai per tahun", "targetTable": "audit-results", "filters": [], "groupBy": "year", "aggregationType": "avg", "aggregateField": "nilai", "sortOrder": "desc", "isValidQuery": true}
+
+Query: "breakdown findings by SH" or "breakdown temuan per SH"
+{"userIntent": "Breakdown temuan per SH", "targetTable": "audit-results", "filters": [{"field": "code", "operator": "==", "value": "F"}], "groupBy": "sh", "aggregationType": "count", "sortOrder": "desc", "isValidQuery": true}
+
+Query: "agregasi temuan APAR berdasarkan SH dan tahun" or "APAR findings by SH and year"
+{"userIntent": "Agregasi temuan APAR berdasarkan SH dan tahun", "targetTable": "audit-results", "filters": [{"field": "description", "operator": "contains", "value": "APAR"}, {"field": "code", "operator": "==", "value": "F"}], "groupBy": ["sh", "year"], "aggregationType": "count", "sortOrder": "desc", "isValidQuery": true}
+
+Query: "from all projects, all PPJB findings sorted for the most show me" or "dari semua proyek, temuan PPJB terbanyak per proyek"
+{"userIntent": "Temuan PPJB terbanyak per proyek", "targetTable": "audit-results", "filters": [{"field": "description", "operator": "contains", "value": "PPJB"}, {"field": "code", "operator": "==", "value": "F"}], "groupBy": "projectName", "aggregationType": "count", "sortOrder": "desc", "isValidQuery": true}
+
+Query: "show me projects with most IMB findings" or "proyek dengan temuan IMB terbanyak"
+{"userIntent": "Proyek dengan temuan IMB terbanyak", "targetTable": "audit-results", "filters": [{"field": "description", "operator": "contains", "value": "IMB"}, {"field": "code", "operator": "==", "value": "F"}], "groupBy": "projectName", "aggregationType": "count", "sortOrder": "desc", "isValidQuery": true}
+
 Query: "hello how are you"
 {"userIntent": "Bukan query database", "targetTable": "audit-results", "filters": [], "isValidQuery": false, "invalidReason": "Ini bukan query database. Silakan tanyakan tentang audit findings, projects, atau departments."}
 
 Return ONLY the JSON object.`;
 
-      const response = await this.ai.models.generateContent({
-        model: 'gemini-2.0-flash-exp',
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      });
-
+      const response = await this.generateContentWithFallback(prompt);
       const responseText = response.text?.trim() || '{}';
       
       // Extract JSON from response
@@ -666,6 +842,11 @@ Return ONLY the JSON object.`;
       let filters: QueryFilter[] = parsed.filters || [];
       const sortBy = parsed.sortBy;
       const sortOrder = parsed.sortOrder || 'desc';
+      
+      // Check for aggregation
+      const groupBy = parsed.groupBy;
+      const aggregationType = parsed.aggregationType || 'count';
+      const aggregateField = parsed.aggregateField;
 
       // VALIDATION: Check project name before executing
       const projectNameFilter = filters.find(f => f.field === 'projectName');
@@ -698,8 +879,59 @@ Return ONLY the JSON object.`;
       // Execute query with original user query for context
       let results = await this.executeQuery(filters, targetTable, query, sortBy, sortOrder);
       
-      // Generate Excel file
+      // Handle aggregation if requested
+      if (groupBy) {
+        const aggregatedResults = await this.aggregateResults(results, groupBy, aggregationType, aggregateField, sortOrder, filters);
+        // Generate Excel with ALL detailed findings (not just aggregation summary)
+        const { excelBuffer, excelFilename } = await this.generateExcel(results, targetTable, userIntent);
+        
+        const groupByDisplay = Array.isArray(groupBy) ? groupBy.join(' + ') : groupBy;
+        const isMultiDimensional = Array.isArray(groupBy);
+        
+        const message = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 ${userIntent}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ ${isMultiDimensional ? 'MULTI-DIMENSIONAL ' : ''}AGGREGATION COMPLETED
+
+Grouped by: ${groupByDisplay}
+Aggregation: ${aggregationType}${aggregateField ? ` (${aggregateField})` : ''}
+Groups found: ${aggregatedResults.length}
+Total findings: ${results.length}
+
+${this.describeFilters(filters)}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+
+        return {
+          success: true,
+          message,
+          aggregatedResults,
+          results, // Include original results for reference
+          resultsCount: aggregatedResults.length,
+          table: targetTable,
+          excelBuffer, // Excel contains ALL detailed findings
+          excelFilename,
+          needsConfirmation: false,
+          filters,
+          isAggregated: true,
+          aggregationType: aggregationType as any,
+          groupByField: groupBy,
+        };
+      }
+      
+      // Generate Excel file for non-aggregated results
       const { excelBuffer, excelFilename } = await this.generateExcel(results, targetTable, userIntent);
+
+      // AUTO-GENERATE YEAR CHART for audit-results queries with multiple results
+      let yearAggregation: AggregationResult[] | undefined;
+      if (targetTable === 'audit-results' && results.length > 0) {
+        console.log(`📊 Auto-generating year aggregation chart for ${results.length} findings`);
+        yearAggregation = await this.aggregateResults(results, 'year', 'count', undefined, 'asc', filters);
+        console.log(`📊 Generated ${yearAggregation.length} year groups for chart`);
+      }
 
       // Format response
       const message = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -726,6 +958,8 @@ ${this.describeFilters(filters)}
         excelFilename,
         needsConfirmation: false,
         filters,
+        // Include year aggregation for automatic chart display
+        yearAggregation,
       };
     } catch (error) {
       console.error('Query processing error:', error);
@@ -763,13 +997,16 @@ ${this.describeFilters(filters)}
       
       console.log('🔍 Felix executeQuery - Input filters:', JSON.stringify(filters, null, 2));
       
-      // Separate equality filters from range filters
+      // Separate equality filters from range filters and contains filters
       const rangeOperators = ['>', '>=', '<', '<=', '!='];
       const equalityFilters: QueryFilter[] = [];
       const rangeFilters: QueryFilter[] = [];
+      const containsFilters: QueryFilter[] = [];
       
       filters.forEach(f => {
-        if (rangeOperators.includes(f.operator)) {
+        if (f.operator === 'contains') {
+          containsFilters.push(f);
+        } else if (rangeOperators.includes(f.operator)) {
           rangeFilters.push(f);
         } else {
           equalityFilters.push(f);
@@ -778,6 +1015,7 @@ ${this.describeFilters(filters)}
       
       console.log('🔍 Equality filters (Firestore):', JSON.stringify(equalityFilters, null, 2));
       console.log('🔍 Range filters (in-memory):', JSON.stringify(rangeFilters, null, 2));
+      console.log('🔍 Contains filters (in-memory):', JSON.stringify(containsFilters, null, 2));
       
       // Handle filter transformations for audit-results
       let expandedFilters = equalityFilters;
@@ -787,10 +1025,24 @@ ${this.describeFilters(filters)}
       if (table === 'audit-results') {
         // Convert year from string to number (Firestore stores year as number)
         expandedFilters = expandedFilters.map(f => {
-          if (f.field === 'year' && typeof f.value === 'string') {
-            const yearNum = parseInt(f.value, 10);
-            console.log(`📅 Converting year from "${f.value}" (string) to ${yearNum} (number)`);
-            return { ...f, value: yearNum };
+          if (f.field === 'year') {
+            // Handle single string value
+            if (typeof f.value === 'string') {
+              const yearNum = parseInt(f.value, 10);
+              console.log(`📅 Converting year from "${f.value}" (string) to ${yearNum} (number)`);
+              return { ...f, value: yearNum };
+            }
+            // Handle array of string values (for 'in' operator)
+            if (Array.isArray(f.value)) {
+              const yearNums = f.value.map(v => {
+                if (typeof v === 'string') {
+                  return parseInt(v, 10);
+                }
+                return v;
+              });
+              console.log(`📅 Converting year array from [${f.value.join(', ')}] to [${yearNums.join(', ')}]`);
+              return { ...f, value: yearNums };
+            }
           }
           return f;
         });
@@ -889,7 +1141,7 @@ ${this.describeFilters(filters)}
       let results = await db.getAll({
         filters: dbFilters,
         sorts: [{ field: orderBy, direction: orderDir }],
-        limit: rangeFilters.length > 0 ? 10000 : 5000 // Increased limits for large datasets
+        limit: rangeFilters.length > 0 || containsFilters.length > 0 ? 10000 : 5000 // Increased limits for large datasets
       });
       
       // Apply projectType/subtype filters if present (requires joining with projects table)
@@ -969,6 +1221,29 @@ ${this.describeFilters(filters)}
         if (results.length > 5000) {
           results = results.slice(0, 5000);
         }
+      }
+
+      // Apply contains filters in-memory (case-insensitive text search)
+      if (containsFilters.length > 0) {
+        console.log(`🔍 Applying ${containsFilters.length} contains filter(s) in-memory on ${results.length} results`);
+        
+        results = results.filter(item => {
+          return containsFilters.every(f => {
+            const itemValue = item[f.field];
+            const searchValue = String(f.value);
+            
+            // Handle null/undefined values
+            if (itemValue === null || itemValue === undefined) return false;
+            
+            // Case-insensitive contains check
+            const itemText = String(itemValue).toLowerCase();
+            const searchText = searchValue.toLowerCase();
+            
+            return itemText.includes(searchText);
+          });
+        });
+        
+        console.log(`🔍 After contains filtering: ${results.length} results`);
       }
 
       // Apply custom sorting if specified
@@ -1123,7 +1398,8 @@ ${this.describeFilters(filters)}
       category: '📁',
       name: '📛',
       projectType: '🏗️',
-      subtype: '🏛️'
+      subtype: '🏛️',
+      description: '📝'
     };
 
     return filters.map(f => {
@@ -1144,6 +1420,7 @@ ${this.describeFilters(filters)}
       // Simplify operator display
       const operatorDisplay = f.operator === 'in' ? 'IN' : 
                              f.operator === 'array-contains-any' ? 'CONTAINS ANY' :
+                             f.operator === 'contains' ? 'CONTAINS' :
                              f.operator;
       
       return `${icon} ${f.field} ${operatorDisplay} ${displayValue}`;
@@ -1187,6 +1464,12 @@ ${this.describeFilters(filters)}
       }
       case 'in':
         return Array.isArray(filterValue) && (filterValue as any[]).includes(value);
+      case 'contains':
+        // Case-insensitive text search
+        if (typeof value === 'string' && typeof filterValue === 'string') {
+          return value.toLowerCase().includes(filterValue.toLowerCase());
+        }
+        return false;
       default:
         return true;
     }
@@ -1278,11 +1561,7 @@ Query: "Marketing" → {"matchedCategories": ["Marketing & Sales"], "reasoning":
 
 Return ONLY the JSON object.`;
 
-      const response = await this.ai.models.generateContent({
-        model: 'gemini-2.0-flash-exp',
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      });
-
+      const response = await this.generateContentWithFallback(prompt);
       const responseText = response.text?.trim() || '{}';
       let jsonText = responseText;
       if (responseText.includes('```')) {
@@ -1350,6 +1629,263 @@ Return ONLY the JSON object.`;
 
 
   /**
+   * Generate interactive demo response
+   */
+  private generateDemoResponse(): string {
+    return `╔═══════════════════════════════════════════════════════════════════╗
+║                                                                   ║
+║              🎯 FELIX AI ASSISTANT - INTERACTIVE DEMO             ║
+║                                                                   ║
+╚═══════════════════════════════════════════════════════════════════╝
+
+Welcome to Felix! Let me show you what I can do. 🚀
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 FEATURE 1: NATURAL LANGUAGE QUERIES
+
+I understand questions in plain English or Indonesian!
+
+Try these examples:
+┌─────────────────────────────────────────────────────────────────┐
+│ 🔹 "show all IT findings 2024"                                  │
+│ 🔹 "temuan HC tahun 2024"                                       │
+│ 🔹 "findings from hospitals"                                    │
+│ 🔹 "temuan dengan nilai >= 10"                                  │
+└─────────────────────────────────────────────────────────────────┘
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 FEATURE 2: SMART FILTER EXTRACTION
+
+I automatically extract filters from your questions:
+
+Example: "show IT findings 2024 with nilai >= 10"
+┌─────────────────────────────────────────────────────────────────┐
+│ ✅ Extracted Filters:                                           │
+│    📂 department = IT                                           │
+│    📅 year = 2024                                               │
+│    📊 nilai >= 10                                               │
+│    🏷️ code = F (findings only)                                 │
+└─────────────────────────────────────────────────────────────────┘
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔀 FEATURE 3: OR LOGIC SUPPORT
+
+Query multiple values at once!
+
+Example: "temuan IT atau Finance 2024"
+┌─────────────────────────────────────────────────────────────────┐
+│ ✅ Filters:                                                     │
+│    📂 department IN [IT, Finance]                               │
+│    📅 year = 2024                                               │
+│    🏷️ code = F                                                  │
+└─────────────────────────────────────────────────────────────────┘
+
+More examples:
+• "findings from SH1 or SH2"
+• "temuan APAR atau Hydrant"
+• "projects from hospitals, hotels, or malls"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🧠 FEATURE 4: CONTEXT-AWARE CONVERSATIONS
+
+I remember your previous filters!
+
+Conversation Example:
+┌─────────────────────────────────────────────────────────────────┐
+│ 👤 You: "semua temuan HC 2024"                                  │
+│ 🤖 Felix: [Shows HC findings from 2024]                        │
+│                                                                 │
+│ 👤 You: "khusus mall ciputra cibubur"                          │
+│ 🤖 Felix: [Keeps HC + 2024 filters, adds Mall filter]          │
+│                                                                 │
+│ 👤 You: "hanya yang nilai >= 15"                               │
+│ 🤖 Felix: [Keeps all previous filters, adds nilai >= 15]       │
+└─────────────────────────────────────────────────────────────────┘
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🏢 FEATURE 5: PROJECT TYPE & SUBTYPE FILTERING
+
+Query by business type or specific categories!
+
+Project Types:
+┌─────────────────────────────────────────────────────────────────┐
+│ 🏥 Healthcare    → Hospital, Clinic                             │
+│ 🏨 Commercial    → Hotel, Mall, Office                          │
+│ 🏠 Residential   → Landed House, Apartment                      │
+│ 🎓 Education     → School, University                           │
+│ 🏗️ Others        → Broker, Insurance, Theatre, Golf            │
+└─────────────────────────────────────────────────────────────────┘
+
+Try:
+• "findings from healthcare projects"
+• "temuan hospital"
+• "show all mall findings 2024"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 FEATURE 6: FUZZY PROJECT NAME MATCHING
+
+Misspelled a project name? No problem!
+
+Example: You type "Rafles Jakarta"
+┌─────────────────────────────────────────────────────────────────┐
+│ ⚠️ Did you mean one of these?                                   │
+│                                                                 │
+│ 1. Hotel Raffles Jakarta (95% match) ⭐                         │
+│ 2. Hotel Raffles Surabaya (87% match)                          │
+│ 3. Raffles Residence (82% match)                               │
+└─────────────────────────────────────────────────────────────────┘
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔤 FEATURE 7: DEPARTMENT SMART MATCHING
+
+I understand department abbreviations and variations!
+
+Automatic Expansions:
+┌─────────────────────────────────────────────────────────────────┐
+│ "HC" → Human Capital, HRD, SDM, People Management               │
+│ "IT" → Information Technology, ICT, Teknologi Informasi         │
+│ "Finance" → Keuangan, Accounting, FAD, Treasury                 │
+└─────────────────────────────────────────────────────────────────┘
+
+20 Department Categories:
+• IT • Finance • HR • Marketing & Sales
+• Property Management • Engineering & Construction
+• Legal & Compliance • Audit & Risk
+• Healthcare • Operations • And more...
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔀 FEATURE 8: CUSTOM SORTING
+
+Sort results by any field!
+
+Examples:
+┌─────────────────────────────────────────────────────────────────┐
+│ • "findings from hospitals, highest score first"                │
+│ • "temuan IT 2024 dari nilai tertinggi"                        │
+│ • "projects sorted by finding count descending"                 │
+└─────────────────────────────────────────────────────────────────┘
+
+Supported sort fields:
+📊 nilai • ⚖️ bobot • 🔥 kadar • 📅 year • 🏢 projectName
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📁 FEATURE 9: AUTOMATIC EXCEL EXPORT
+
+Every query generates a downloadable Excel file!
+
+File Format:
+┌─────────────────────────────────────────────────────────────────┐
+│ 📊 Formatted columns with proper widths                         │
+│ 📋 All result fields included                                   │
+│ 📅 Timestamped filename                                         │
+│ 💾 Ready for analysis in Excel/Google Sheets                    │
+└─────────────────────────────────────────────────────────────────┘
+
+Example: felix-temuan-it-2024-2026-01-30.xlsx
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💬 FEATURE 10: SESSION MANAGEMENT
+
+All your conversations are saved!
+
+Features:
+┌─────────────────────────────────────────────────────────────────┐
+│ ✅ Auto-generated session titles                                │
+│ ✅ Chat history sidebar                                         │
+│ ✅ Switch between sessions seamlessly                           │
+│ ✅ Context maintained per session                               │
+│ ✅ Persistent across app restarts                               │
+└─────────────────────────────────────────────────────────────────┘
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 DATA COVERAGE
+
+┌─────────────────────────────────────────────────────────────────┐
+│ 📋 8,840+ audit findings                                        │
+│ 🏢 110+ real estate projects                                    │
+│ 📂 20 department categories                                     │
+│ 🏗️ 5 project types                                              │
+│ 🏛️ 15+ project subtypes                                         │
+│ 🏷️ 200+ Indonesian real estate terms                            │
+└─────────────────────────────────────────────────────────────────┘
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 QUICK START EXAMPLES
+
+Ready to try? Here are some queries to get you started:
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 1️⃣ BASIC QUERY                                                 ┃
+┃    "show all IT findings 2024"                                 ┃
+┃                                                                ┃
+┃ 2️⃣ WITH FILTERS                                                ┃
+┃    "temuan HC 2024 dengan nilai >= 10"                        ┃
+┃                                                                ┃
+┃ 3️⃣ OR LOGIC                                                    ┃
+┃    "findings from IT or Finance 2024"                          ┃
+┃                                                                ┃
+┃ 4️⃣ PROJECT TYPE                                                ┃
+┃    "temuan dari hospital, highest score first"                 ┃
+┃                                                                ┃
+┃ 5️⃣ SPECIFIC PROJECT                                            ┃
+┃    "findings from Mall Ciputra Cibubur"                        ┃
+┃                                                                ┃
+┃ 6️⃣ TAG SEARCH                                                  ┃
+┃    "temuan APAR atau Hydrant"                                  ┃
+┃                                                                ┃
+┃ 7️⃣ PROJECT LIST                                                ┃
+┃    "list all projects"                                         ┃
+┃                                                                ┃
+┃ 8️⃣ DEPARTMENT INFO                                             ┃
+┃    "show all departments"                                      ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💡 PRO TIPS
+
+┌─────────────────────────────────────────────────────────────────┐
+│ ✨ Use natural language - I understand context!                 │
+│ ✨ Mix English and Indonesian - both work!                      │
+│ ✨ I remember previous filters in the conversation              │
+│ ✨ Misspellings are OK - I'll suggest corrections               │
+│ ✨ Every result includes Excel export                           │
+│ ✨ Type "reset" to clear conversation context                   │
+└─────────────────────────────────────────────────────────────────┘
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚀 READY TO START?
+
+Just type your question naturally, and I'll handle the rest!
+
+Examples to try right now:
+• "show all IT findings 2024"
+• "temuan HC tahun 2024"
+• "findings from hospitals"
+• "list all projects"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Powered by Google Gemini 2.0 Flash Exp 🤖
+Felix AI Assistant v1.0 | FIRST-AID Audit System
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+  }
+
+  /**
    * Create compact context message for LLM (instead of full formatted response)
    * This prevents the LLM from being overwhelmed by large result tables
    */
@@ -1385,6 +1921,343 @@ Return ONLY the JSON object.`;
   async deleteSession(sessionId: string): Promise<void> {
     await FelixChatService.deleteSessionChats(sessionId);
     await FelixSessionService.delete(sessionId);
+  }
+
+  /**
+   * Aggregate results by one or more fields (pivot table functionality)
+   * Supports both single and multi-dimensional aggregation
+   * @param results - Raw query results
+   * @param groupBy - Field(s) to group by (string for single, array for multi-dimensional)
+   * @param aggregationType - Type of aggregation (count, sum, avg, min, max)
+   * @param aggregateField - Field to aggregate (for sum/avg/min/max)
+   * @param sortOrder - Sort order for results (asc/desc)
+   * @param baseFilters - Base filters to include in group filters
+   */
+  private async aggregateResults(
+    results: any[],
+    groupBy: string | string[],
+    aggregationType: string = 'count',
+    aggregateField?: string,
+    sortOrder: string = 'desc',
+    baseFilters: QueryFilter[] = []
+  ): Promise<AggregationResult[]> {
+    const isMultiDimensional = Array.isArray(groupBy);
+    const groupByFields = isMultiDimensional ? groupBy : [groupBy];
+    
+    console.log(`📊 Aggregating ${results.length} results by ${isMultiDimensional ? groupByFields.join(' + ') : groupBy} (${aggregationType})`);
+
+    // Check if we need to enrich with project data (for projectType/subtype aggregation)
+    const needsProjectData = groupByFields.some(field => field === 'projectType' || field === 'subtype');
+    let projectMap = new Map<string, any>();
+    
+    if (needsProjectData) {
+      console.log(`🏢 Aggregation requires project data (projectType/subtype) - fetching projects`);
+      const projectsDb = new DatabaseService('projects');
+      const allProjects = await projectsDb.getAll({ limit: 500 });
+      
+      allProjects.forEach((p: any) => {
+        projectMap.set(p.projectId, p);
+      });
+      
+      console.log(`📋 Loaded ${projectMap.size} projects for enrichment`);
+      
+      // Enrich results with project data
+      results = results.map(result => {
+        const project = projectMap.get(result.projectId);
+        if (project) {
+          return {
+            ...result,
+            projectType: project.projectType,
+            subtype: project.subtype,
+          };
+        }
+        return result;
+      });
+      
+      console.log(`✅ Enriched ${results.length} results with project type/subtype data`);
+    }
+
+    // Group results by the specified field(s)
+    const groups = new Map<string, any[]>();
+    
+    for (const result of results) {
+      // Create composite key for multi-dimensional grouping
+      const keyParts: string[] = [];
+      const groupValues: Record<string, string | number> = {};
+      let hasNullValue = false;
+      
+      for (const field of groupByFields) {
+        const value = result[field];
+        if (value === null || value === undefined) {
+          hasNullValue = true;
+          break;
+        }
+        keyParts.push(String(value));
+        groupValues[field] = value;
+      }
+      
+      if (hasNullValue) continue;
+      
+      const compositeKey = keyParts.join('|||'); // Use delimiter that won't appear in data
+      if (!groups.has(compositeKey)) {
+        groups.set(compositeKey, []);
+      }
+      groups.get(compositeKey)!.push(result);
+    }
+
+    console.log(`📊 Found ${groups.size} unique ${isMultiDimensional ? 'multi-dimensional ' : ''}groups`);
+
+    // Calculate aggregations for each group
+    const aggregatedResults: AggregationResult[] = [];
+    
+    for (const [_compositeKey, groupResults] of groups.entries()) {
+      // For keyword-based aggregation, each finding counts only once
+      const uniqueFindings = new Set<string>();
+      groupResults.forEach(r => {
+        if (r.auditResultId) {
+          uniqueFindings.add(r.auditResultId);
+        }
+      });
+      
+      // Extract group values from first result in group
+      const firstResult = groupResults[0];
+      const groupValue = isMultiDimensional 
+        ? groupByFields.reduce((obj, field) => {
+            obj[field] = firstResult[field];
+            return obj;
+          }, {} as Record<string, string | number>)
+        : firstResult[groupByFields[0]];
+      
+      // Create filters for this specific group (base filters + group filters)
+      const groupFilters: QueryFilter[] = [...baseFilters];
+      
+      if (isMultiDimensional) {
+        // Add filter for each dimension
+        groupByFields.forEach(field => {
+          groupFilters.push({ 
+            field, 
+            operator: '==', 
+            value: firstResult[field] 
+          });
+        });
+      } else {
+        groupFilters.push({ 
+          field: groupByFields[0], 
+          operator: '==', 
+          value: firstResult[groupByFields[0]] 
+        });
+      }
+      
+      const aggregation: AggregationResult = {
+        groupBy,
+        groupValue,
+        count: uniqueFindings.size > 0 ? uniqueFindings.size : groupResults.length,
+        filters: groupFilters,
+      };
+
+      // Calculate additional aggregations if field specified
+      if (aggregateField && groupResults.length > 0) {
+        const values = groupResults
+          .map(r => r[aggregateField])
+          .filter(v => typeof v === 'number' && !isNaN(v));
+
+        if (values.length > 0) {
+          switch (aggregationType) {
+            case 'sum':
+              aggregation.sum = values.reduce((a, b) => a + b, 0);
+              break;
+            case 'avg':
+              aggregation.avg = values.reduce((a, b) => a + b, 0) / values.length;
+              break;
+            case 'min':
+              aggregation.min = Math.min(...values);
+              break;
+            case 'max':
+              aggregation.max = Math.max(...values);
+              break;
+          }
+        }
+      }
+
+      aggregatedResults.push(aggregation);
+    }
+
+    // Sort results
+    aggregatedResults.sort((a, b) => {
+      let compareValue = 0;
+      
+      // Determine what to sort by
+      if (aggregationType === 'count' || !aggregateField) {
+        compareValue = a.count - b.count;
+      } else if (aggregationType === 'sum' && a.sum !== undefined && b.sum !== undefined) {
+        compareValue = a.sum - b.sum;
+      } else if (aggregationType === 'avg' && a.avg !== undefined && b.avg !== undefined) {
+        compareValue = a.avg - b.avg;
+      } else if (aggregationType === 'min' && a.min !== undefined && b.min !== undefined) {
+        compareValue = a.min - b.min;
+      } else if (aggregationType === 'max' && a.max !== undefined && b.max !== undefined) {
+        compareValue = a.max - b.max;
+      }
+      
+      return sortOrder === 'asc' ? compareValue : -compareValue;
+    });
+
+    console.log(`✅ Aggregation complete: ${aggregatedResults.length} groups`);
+    return aggregatedResults;
+  }
+
+  /**
+   * Generate Excel file from aggregated results
+   */
+  private async generateAggregatedExcel(
+    aggregatedResults: AggregationResult[],
+    groupBy: string,
+    aggregationType: string,
+    userIntent: string
+  ): Promise<{ excelBuffer: ArrayBuffer; excelFilename: string }> {
+    try {
+      // Prepare data for Excel
+      const excelData = aggregatedResults.map(r => {
+        const row: any = {
+          [groupBy]: r.groupValue,
+          'Count': r.count,
+        };
+
+        if (r.sum !== undefined) row['Sum'] = r.sum;
+        if (r.avg !== undefined) row['Average'] = r.avg.toFixed(2);
+        if (r.min !== undefined) row['Min'] = r.min;
+        if (r.max !== undefined) row['Max'] = r.max;
+
+        return row;
+      });
+
+      // Create workbook
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Aggregated Results');
+
+      // Set column widths
+      worksheet['!cols'] = [
+        { wch: 30 }, // Group by field
+        { wch: 12 }, // Count
+        { wch: 12 }, // Sum
+        { wch: 12 }, // Avg
+        { wch: 12 }, // Min
+        { wch: 12 }, // Max
+      ];
+
+      // Generate buffer
+      const excelBuffer = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
+      
+      // Generate filename
+      const timestamp = new Date().toISOString().split('T')[0];
+      const sanitizedIntent = userIntent
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .substring(0, 30);
+      const excelFilename = `felix-aggregated-${sanitizedIntent}-${timestamp}.xlsx`;
+
+      return { excelBuffer, excelFilename };
+    } catch (error) {
+      console.error('Aggregated Excel generation error:', error);
+      throw error;
+    }
+  }
+  /**
+   * Fetch underlying findings for an aggregation group
+   */
+  async fetchAggregationGroupDetails(
+    filters: QueryFilter[],
+    table: string = 'audit-results'
+  ): Promise<{ results: any[]; excelBuffer: ArrayBuffer; excelFilename: string }> {
+    try {
+      console.log('📊 Fetching aggregation group details with filters:', filters);
+      
+      // Execute query to get the underlying findings
+      const results = await this.executeQuery(filters, table);
+      
+      // Generate Excel for this specific group
+      const groupValue = filters.find(f => f.field !== 'code' && f.field !== 'year' && f.field !== 'department')?.value || 'group';
+      const userIntent = `Details for ${groupValue}`;
+      const { excelBuffer, excelFilename } = await this.generateExcel(results, table, userIntent);
+      
+      return { results, excelBuffer, excelFilename };
+    } catch (error) {
+      console.error('Error fetching aggregation group details:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Generate content with automatic fallback to alternative models
+   * Handles 503 (Service Unavailable) and 429 (Rate Limit) errors
+   */
+  private async generateContentWithFallback(
+    prompt: string,
+    maxRetries: number = 3
+  ): Promise<{ text?: string }> {
+    let lastError: Error | null = null;
+    
+    // Try each model in the fallback chain
+    for (let modelIndex = 0; modelIndex < this.MODELS.length; modelIndex++) {
+      this.currentModelIndex = modelIndex;
+      const currentModel = this.MODEL_NAME;
+      
+      // Retry current model up to maxRetries times
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          console.log(`🤖 Attempting API call with ${currentModel} (attempt ${attempt}/${maxRetries})`);
+          
+          const response = await this.ai.models.generateContent({
+            model: currentModel,
+            contents: prompt,
+          });
+          
+          console.log(`✅ Success with ${currentModel}`);
+          return response;
+          
+        } catch (error: any) {
+          lastError = error;
+          const errorCode = error?.error?.code || error?.status;
+          const errorMessage = error?.error?.message || error?.message || 'Unknown error';
+          
+          console.warn(`⚠️ ${currentModel} failed (attempt ${attempt}/${maxRetries}):`, errorCode, errorMessage);
+          
+          // Handle specific error codes
+          if (errorCode === 503 || errorCode === 'UNAVAILABLE') {
+            // Service unavailable - wait and retry
+            const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 10000); // Exponential backoff, max 10s
+            console.log(`⏳ Service unavailable, waiting ${waitTime}ms before retry...`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+            continue;
+            
+          } else if (errorCode === 429 || errorCode === 'RESOURCE_EXHAUSTED') {
+            // Rate limit exceeded - try next model immediately
+            console.log(`🔄 Rate limit exceeded for ${currentModel}, trying next model...`);
+            break; // Break retry loop, move to next model
+            
+          } else if (errorCode === 400 || errorCode === 'INVALID_ARGUMENT') {
+            // Bad request - don't retry, throw immediately
+            console.error(`❌ Invalid request for ${currentModel}:`, errorMessage);
+            throw error;
+            
+          } else {
+            // Unknown error - wait briefly and retry
+            const waitTime = 1000 * attempt;
+            console.log(`⏳ Unknown error, waiting ${waitTime}ms before retry...`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+            continue;
+          }
+        }
+      }
+    }
+    
+    // All models and retries exhausted
+    console.error('❌ All models failed after retries');
+    throw new Error(
+      `All Gemini models failed. Last error: ${lastError?.message || 'Unknown error'}. ` +
+      `Please try again later or check your API quota at https://ai.google.dev/`
+    );
   }
 }
 

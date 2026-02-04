@@ -10,7 +10,9 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "moduleResolution": "node"
+    "moduleResolution": "node",
+    "incremental": true,
+    "tsBuildInfoFile": "dist/main/.tsbuildinfo"
   },
   "include": ["src/main/**/*"]
 }

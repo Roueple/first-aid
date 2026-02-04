@@ -117,11 +117,79 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
     }
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     try {
-      exportAuditResultsToExcel(filteredAndSortedResults);
+      // Show loading state
+      const exportButton = document.querySelector('[data-export-button]') as HTMLButtonElement;
+      if (exportButton) {
+        exportButton.disabled = true;
+        exportButton.textContent = 'Exporting...';
+      }
+
+      // Build query filters from column filters (same as loadResults)
+      const filters: any[] = [];
+      
+      Object.entries(columnFilters).forEach(([column, selectedValues]) => {
+        if (selectedValues !== 'all' && (selectedValues as Set<any>).size > 0) {
+          const filterSet = selectedValues as Set<any>;
+          const values = Array.from(filterSet);
+          
+          if (values.length === 1) {
+            filters.push({
+              field: column,
+              operator: '==',
+              value: values[0],
+            });
+          } else if (values.length <= 10) {
+            filters.push({
+              field: column,
+              operator: 'in',
+              value: values,
+            });
+          }
+        }
+      });
+
+      // Fetch ALL records from Firebase (no limit)
+      console.log('📊 Fetching all audit results for export...');
+      const allData = await auditResultService.getAll({
+        filters: filters.length > 0 ? filters : undefined,
+        sorts: [{ field: sortField, direction: sortDirection }],
+        // NO LIMIT - fetch everything
+      });
+
+      // Apply text filter client-side
+      let filteredData = allData;
+      if (filterText) {
+        const searchLower = filterText.toLowerCase();
+        filteredData = allData.filter(
+          (r) =>
+            r.projectName.toLowerCase().includes(searchLower) ||
+            r.department.toLowerCase().includes(searchLower) ||
+            r.riskArea.toLowerCase().includes(searchLower) ||
+            r.description.toLowerCase().includes(searchLower) ||
+            r.code.toLowerCase().includes(searchLower) ||
+            r.sh.toLowerCase().includes(searchLower)
+        );
+      }
+
+      console.log(`✅ Exporting ${filteredData.length} audit results to Excel`);
+      exportAuditResultsToExcel(filteredData);
+
+      // Reset button state
+      if (exportButton) {
+        exportButton.disabled = false;
+        exportButton.innerHTML = '📊 <span class="hidden sm:inline">Export to Excel</span><span class="sm:hidden">Export</span>';
+      }
     } catch (err) {
       alert('Failed to export: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      
+      // Reset button state on error
+      const exportButton = document.querySelector('[data-export-button]') as HTMLButtonElement;
+      if (exportButton) {
+        exportButton.disabled = false;
+        exportButton.innerHTML = '📊 <span class="hidden sm:inline">Export to Excel</span><span class="sm:hidden">Export</span>';
+      }
     }
   };
 
@@ -401,7 +469,8 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
         <div className="flex gap-2 w-full sm:w-auto">
           <button
             onClick={handleExport}
-            className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 flex items-center justify-center gap-2 text-sm"
+            data-export-button
+            className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
           >
             📊 <span className="hidden sm:inline">Export to Excel</span><span className="sm:hidden">Export</span>
           </button>

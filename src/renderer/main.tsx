@@ -6,15 +6,18 @@ import { connectionMonitor } from '../utils/connectionMonitor';
 
 console.log('🎬 main.tsx loading...');
 
-// Import seed utilities (they auto-expose to window) - load async to not block
-Promise.all([
-  import('../utils/seedDataNew'),
-  import('../utils/clearAndReseed')
-]).then(() => {
-  console.log('✅ Seed utilities loaded');
-}).catch((error) => {
-  console.error('⚠️ Failed to load seed utilities:', error);
-});
+// Lazy load seed utilities only when needed (not on startup)
+// Access via: window.loadSeedUtils()
+if (typeof window !== 'undefined') {
+  (window as any).loadSeedUtils = async () => {
+    console.log('📦 Loading seed utilities...');
+    await Promise.all([
+      import('../utils/seedDataNew'),
+      import('../utils/clearAndReseed')
+    ]);
+    console.log('✅ Seed utilities loaded');
+  };
+}
 
 // Expose connectionMonitor to window for DevTools testing
 declare global {

@@ -632,3 +632,357 @@
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
 }
+
+/* Aggregated Results Styles */
+.felix-aggregated-results {
+  margin-top: 1rem;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.felix-aggregation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.felix-aggregation-label {
+  color: white;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.felix-aggregation-label strong {
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.felix-aggregation-type {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.felix-aggregation-table {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.felix-aggregation-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.felix-aggregation-table thead {
+  background: linear-gradient(135deg, #047857 0%, #065f46 100%);
+}
+
+.felix-aggregation-table thead th {
+  color: white;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.felix-aggregation-table tbody tr {
+  border-bottom: 1px solid #e5e7eb;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.felix-aggregation-table tbody tr:hover {
+  background-color: #f3f4f6;
+  transform: translateX(4px);
+}
+
+.felix-aggregation-row-clickable {
+  cursor: pointer;
+}
+
+.felix-aggregation-row-clickable:hover {
+  background-color: #f3f4f6 !important;
+  transform: translateX(4px);
+}
+
+.felix-aggregation-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.felix-aggregation-table tbody td {
+  padding: 0.75rem 1rem;
+  color: #374151;
+  font-size: 0.9rem;
+}
+
+.felix-group-value {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.felix-count-value {
+  font-weight: 700;
+  color: #3b82f6;
+  font-size: 1rem;
+}
+
+.felix-aggregation-table tbody td:not(.felix-group-value):not(.felix-count-value) {
+  text-align: right;
+  font-family: 'Courier New', monospace;
+}
+
+/* Modal Enhancements */
+.felix-modal-large {
+  max-width: 1600px;
+  width: 98vw;
+  height: 95vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.felix-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid #e5e7eb;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.felix-modal-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.felix-modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.felix-modal-actions .felix-action-btn {
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  color: #3b82f6;
+  font-weight: 600;
+}
+
+.felix-modal-actions .felix-action-btn:hover {
+  background: white;
+}
+
+.felix-modal-actions .felix-modal-close {
+  position: static;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.felix-modal-actions .felix-modal-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.felix-modal-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+
+
+/* Chart Styles */
+.felix-chart-container {
+  margin-bottom: 1.5rem;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.felix-chart-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 1rem 1.25rem;
+  background: linear-gradient(135deg, #047857 0%, #065f46 100%);
+  color: white;
+}
+
+.felix-chart-title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.felix-chart-subtitle {
+  font-size: 0.875rem;
+  opacity: 0.9;
+}
+
+.felix-chart-wrapper {
+  padding: 1.5rem;
+  background: #fafafa;
+}
+
+.felix-chart-tooltip {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 0.75rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.felix-tooltip-label {
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.felix-tooltip-value {
+  font-size: 0.8125rem;
+  color: #4b5563;
+  margin: 0.25rem 0;
+}
+
+.felix-tooltip-metric {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.felix-chart-highlight-info {
+  padding: 1rem 1.25rem;
+  background: #eff6ff;
+  border-top: 1px solid #e5e7eb;
+  color: #1e40af;
+  font-size: 0.875rem;
+  text-align: center;
+  animation: fadeIn 0.2s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Chart Detail Panel */
+.felix-chart-detail-panel {
+  padding: 1.25rem;
+  background: #f8fafc;
+  border-top: 1px solid #e5e7eb;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 500px;
+    padding-top: 1.25rem;
+    padding-bottom: 1.25rem;
+  }
+}
+
+.felix-chart-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.felix-chart-detail-header button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: all 0.15s;
+}
+
+.felix-chart-detail-header button:hover {
+  background: #e5e7eb;
+}
+
+.felix-chart-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.felix-chart-detail-item {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  transition: all 0.2s;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.felix-chart-detail-item:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2);
+  transform: translateY(-2px);
+}
+
+.felix-chart-detail-label {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.felix-chart-detail-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1f2937;
+  font-family: 'Courier New', monospace;
+}
+
+.felix-chart-detail-summary {
+  background: white;
+  border: 1px solid #3b82f6;
+  border-radius: 6px;
+  padding: 1rem;
+}
+
+.felix-chart-detail-summary .text-muted-foreground {
+  color: #6b7280;
+}
+
+.felix-chart-detail-summary .font-semibold {
+  color: #3b82f6;
+}

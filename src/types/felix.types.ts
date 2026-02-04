@@ -79,3 +79,18 @@ export const createFelixChat = (
     ...options,
   };
 };
+
+/**
+ * Aggregation Result - For pivot table / group by queries
+ * Supports both single and multi-dimensional aggregations
+ */
+export interface AggregationResult {
+  groupBy: string | string[]; // Single field or array of fields for multi-dimensional
+  groupValue: string | number | Record<string, string | number>; // Single value or object for multi-dimensional
+  count: number;
+  sum?: number;
+  avg?: number;
+  min?: number;
+  max?: number;
+  [key: string]: any;
+}

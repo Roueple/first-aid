@@ -5,6 +5,7 @@ import FelixChatService from '../../services/FelixChatService';
 import { useAuth } from '../../contexts/AuthContext';
 import FelixResultsTable from '../../components/FelixResultsTable';
 import { AuditResultsTable } from '../../components/AuditResultsTable';
+import { FelixAggregationChart } from '../../components/FelixAggregationChart';
 import { CatAnimation } from '../../components/ui/cat-animation';
 import { FelixVanishInput } from '../../components/ui/felix-vanish-input';
 import { PanelLeftClose, PanelLeft, Plus, Download, Copy, ChevronUp, MessageSquare, Trash2, Database, X } from 'lucide-react';
@@ -12,6 +13,17 @@ import { PanelLeftClose, PanelLeft, Plus, Download, Copy, ChevronUp, MessageSqua
 interface ProjectSuggestion {
   name: string;
   score: number;
+}
+
+interface AggregationResult {
+  groupBy: string;
+  groupValue: string | number;
+  count: number;
+  sum?: number;
+  avg?: number;
+  min?: number;
+  max?: number;
+  filters?: any[]; // Filters to fetch underlying data
 }
 
 interface Message {
@@ -22,12 +34,17 @@ interface Message {
   queryResult?: {
     resultsCount: number;
     results?: any[];
+    aggregatedResults?: AggregationResult[];
     table?: string;
     excelBuffer?: ArrayBuffer | Uint8Array;
     excelFilename?: string;
     needsConfirmation?: boolean;
     suggestions?: ProjectSuggestion[];
     originalQuery?: string;
+    isAggregated?: boolean;
+    aggregationType?: string;
+    groupByField?: string;
+    yearAggregation?: AggregationResult[];
   };
 }
 
@@ -39,8 +56,14 @@ export default function FelixPage() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [sessions, setSessions] = useState<any[]>([]);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showAuditTable, setShowAuditTable] = useState(false);
+  const [aggregationDetails, setAggregationDetails] = useState<{
+    results: any[];
+    excelBuffer: ArrayBuffer;
+    excelFilename: string;
+    groupValue: string | number;
+  } | null>(null);
   const chatAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -165,12 +188,17 @@ export default function FelixPage() {
                   queryResult: {
                     resultsCount: result.queryResult.resultsCount,
                     results: result.queryResult.results,
+                    aggregatedResults: result.queryResult.aggregatedResults,
                     table: result.queryResult.table || 'audit-results',
                     excelBuffer: result.queryResult.excelBuffer,
                     excelFilename: result.queryResult.excelFilename,
                     needsConfirmation: result.queryResult.needsConfirmation,
                     suggestions: result.queryResult.suggestions,
-                    originalQuery: result.queryResult.originalQuery
+                    originalQuery: result.queryResult.originalQuery,
+                    isAggregated: result.queryResult.isAggregated,
+                    aggregationType: result.queryResult.aggregationType,
+                    groupByField: result.queryResult.groupByField,
+                    yearAggregation: result.queryResult.yearAggregation,
                   }
                 }
               : msg
@@ -276,7 +304,8 @@ export default function FelixPage() {
             results: result.queryResult.results,
             table: result.queryResult.table || 'audit-results',
             excelBuffer: result.queryResult.excelBuffer,
-            excelFilename: result.queryResult.excelFilename
+            excelFilename: result.queryResult.excelFilename,
+            yearAggregation: result.queryResult.yearAggregation,
           }
         };
         setMessages(prev => [...prev, assistantMessage]);
@@ -306,6 +335,29 @@ export default function FelixPage() {
       await loadUserSessions();
     } catch (error) {
       console.error('Error deleting session:', error);
+    }
+  };
+
+  const handleAggregationRowClick = async (aggregationResult: AggregationResult) => {
+    if (!aggregationResult.filters) return;
+    
+    setIsLoading(true);
+    try {
+      const details = await felixService.fetchAggregationGroupDetails(
+        aggregationResult.filters,
+        'audit-results'
+      );
+      
+      setAggregationDetails({
+        results: details.results,
+        excelBuffer: details.excelBuffer,
+        excelFilename: details.excelFilename,
+        groupValue: aggregationResult.groupValue,
+      });
+    } catch (error) {
+      console.error('Error fetching aggregation details:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -466,13 +518,101 @@ export default function FelixPage() {
                           </div>
                         )}
 
-                        {message.queryResult?.results && message.queryResult.results.length > 0 && (
+                        {message.queryResult?.results && message.queryResult.results.length > 0 && !message.queryResult.isAggregated && (
                           <div className="felix-results">
+                            {/* Auto-generated year chart for audit-results */}
+                            {message.queryResult.yearAggregation && message.queryResult.yearAggregation.length > 0 && (
+                              <div className="felix-auto-chart mb-4">
+                                <FelixAggregationChart
+                                  data={message.queryResult.yearAggregation}
+                                  groupByField="year"
+                                  aggregationType="count"
+                                />
+                              </div>
+                            )}
+                            
                             <FelixResultsTable 
                               results={message.queryResult.results}
                               table={message.queryResult.table || 'audit-results'}
                               maxRows={20}
                             />
+                          </div>
+                        )}
+
+                        {message.queryResult?.aggregatedResults && message.queryResult.aggregatedResults.length > 0 && (
+                          <div className="felix-results felix-aggregated-results">
+                            <div className="felix-aggregation-header">
+                              <span className="felix-aggregation-label">
+                                📊 Grouped by: <strong>{message.queryResult.groupByField}</strong>
+                              </span>
+                              <span className="felix-aggregation-type">
+                                {message.queryResult.aggregationType}
+                              </span>
+                            </div>
+                            
+                            {/* Smart Chart Visualization */}
+                            <FelixAggregationChart
+                              data={message.queryResult.aggregatedResults}
+                              groupByField={message.queryResult.groupByField || 'group'}
+                              aggregationType={message.queryResult.aggregationType}
+                            />
+                            
+                            <div className="felix-aggregation-table">
+                              <table>
+                                <thead>
+                                  <tr>
+                                    {Array.isArray(message.queryResult?.groupByField) ? (
+                                      message.queryResult.groupByField.map((field: string) => (
+                                        <th key={field}>{field}</th>
+                                      ))
+                                    ) : (
+                                      <th>{message.queryResult?.groupByField}</th>
+                                    )}
+                                    <th>Count</th>
+                                    {message.queryResult?.aggregatedResults[0].sum !== undefined && <th>Sum</th>}
+                                    {message.queryResult?.aggregatedResults[0].avg !== undefined && <th>Average</th>}
+                                    {message.queryResult?.aggregatedResults[0].min !== undefined && <th>Min</th>}
+                                    {message.queryResult?.aggregatedResults[0].max !== undefined && <th>Max</th>}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {message.queryResult.aggregatedResults.map((row, idx) => {
+                                    const isMultiDimensional = typeof row.groupValue === 'object' && !Array.isArray(row.groupValue);
+                                    const groupByFields = Array.isArray(message.queryResult?.groupByField) 
+                                      ? message.queryResult.groupByField 
+                                      : [message.queryResult?.groupByField || 'group'];
+                                    
+                                    return (
+                                      <tr 
+                                        key={idx}
+                                        onClick={() => handleAggregationRowClick(row)}
+                                        className="felix-aggregation-row-clickable"
+                                        title="Click to view findings"
+                                      >
+                                        {isMultiDimensional ? (
+                                          groupByFields.map((field: string | undefined) => {
+                                            if (!field || typeof row.groupValue !== 'object' || Array.isArray(row.groupValue)) return null;
+                                            const groupValueObj = row.groupValue as Record<string, string | number>;
+                                            return (
+                                              <td key={field} className="felix-group-value">
+                                                {groupValueObj[field]}
+                                              </td>
+                                            );
+                                          })
+                                        ) : (
+                                          <td className="felix-group-value">{String(row.groupValue)}</td>
+                                        )}
+                                        <td className="felix-count-value">{row.count}</td>
+                                        {row.sum !== undefined && <td>{row.sum.toFixed(2)}</td>}
+                                        {row.avg !== undefined && <td>{row.avg.toFixed(2)}</td>}
+                                        {row.min !== undefined && <td>{row.min}</td>}
+                                        {row.max !== undefined && <td>{row.max}</td>}
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
                           </div>
                         )}
                         
@@ -555,6 +695,45 @@ export default function FelixPage() {
               <X size={20} />
             </button>
             <AuditResultsTable />
+          </div>
+        </div>
+      )}
+
+      {/* Aggregation Details Modal */}
+      {aggregationDetails && (
+        <div className="felix-modal-overlay" onClick={() => setAggregationDetails(null)}>
+          <div className="felix-modal felix-modal-large" onClick={(e) => e.stopPropagation()}>
+            <div className="felix-modal-header">
+              <h2 className="felix-modal-title">
+                📊 {typeof aggregationDetails.groupValue === 'object' && !Array.isArray(aggregationDetails.groupValue)
+                  ? Object.entries(aggregationDetails.groupValue).map(([key, value]) => `${key}: ${value}`).join(', ')
+                  : aggregationDetails.groupValue} - {aggregationDetails.results.length} Findings
+              </h2>
+              <div className="felix-modal-actions">
+                <button
+                  className="felix-action-btn felix-download"
+                  onClick={() => handleDownloadExcel(
+                    aggregationDetails.excelBuffer,
+                    aggregationDetails.excelFilename
+                  )}
+                >
+                  <Download size={14} /> Download Excel
+                </button>
+                <button 
+                  className="felix-modal-close"
+                  onClick={() => setAggregationDetails(null)}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+            <div className="felix-modal-content">
+              <FelixResultsTable 
+                results={aggregationDetails.results}
+                table="audit-results"
+                maxRows={100}
+              />
+            </div>
           </div>
         </div>
       )}

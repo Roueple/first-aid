@@ -1,4 +1,5 @@
-import { app, BrowserWindow, session } from 'electron';
+import { app, BrowserWindow, session, ipcMain, dialog, Menu } from 'electron';
+import { autoUpdater } from 'electron-updater';
 import path from 'path';
 
 let mainWindow: BrowserWindow | null = null;
@@ -6,6 +7,18 @@ let deeplinkUrl: string | null = null;
 let isWindowReady = false;
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+
+// Configure auto-updater
+autoUpdater.autoDownload = false; // Don't auto-download, ask user first
+autoUpdater.autoInstallOnAppQuit = true; // Install when app quits
+
+// Auto-updater logging
+autoUpdater.logger = {
+  info: (msg) => console.log('[AutoUpdater]', msg),
+  warn: (msg) => console.warn('[AutoUpdater]', msg),
+  error: (msg) => console.error('[AutoUpdater]', msg),
+  debug: (msg) => console.debug('[AutoUpdater]', msg),
+};
 
 // Protocol for deep linking
 const PROTOCOL = 'firstaid';
@@ -58,6 +71,9 @@ function createWindow() {
     backgroundColor: '#f9fafb',
   });
 
+  // Create application menu
+  createMenu();
+
   // Load the app
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173').catch((err) => {
@@ -84,10 +100,8 @@ function createWindow() {
     console.log('✅ Window loaded successfully');
     isWindowReady = true;
     
-    // Open DevTools in dev mode
-    if (isDev) {
-      mainWindow?.webContents.openDevTools();
-    }
+    // DevTools are disabled by default for cleaner UI
+    // To enable: View menu > Developer > Toggle DevTools (in dev mode only)
     
     // Send any pending deep link
     if (deeplinkUrl) {
@@ -107,6 +121,113 @@ function createWindow() {
   });
 }
 
+// Create application menu
+function createMenu() {
+  const template: Electron.MenuItemConstructorOptions[] = [
+    {
+      label: 'File',
+      submenu: [
+        { role: 'quit' }
+      ]
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'selectAll' }
+      ]
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' },
+        { role: 'forceReload' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' }
+      ]
+    },
+    {
+      label: 'Help',
+      submenu: [
+        {
+          label: 'Check for Updates',
+          click: async () => {
+            if (isDev) {
+              dialog.showMessageBox({
+                type: 'info',
+                title: 'Updates Disabled',
+                message: 'Auto-updates are disabled in development mode.',
+                buttons: ['OK']
+              });
+              return;
+            }
+            
+            try {
+              const result = await autoUpdater.checkForUpdates();
+              if (!result) {
+                dialog.showMessageBox({
+                  type: 'info',
+                  title: 'No Updates',
+                  message: 'You are running the latest version.',
+                  buttons: ['OK']
+                });
+              }
+            } catch (error) {
+              dialog.showMessageBox({
+                type: 'error',
+                title: 'Update Check Failed',
+                message: `Failed to check for updates: ${(error as Error).message}`,
+                buttons: ['OK']
+              });
+            }
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'About',
+          click: () => {
+            dialog.showMessageBox({
+              type: 'info',
+              title: 'About FIRST-AID',
+              message: `FIRST-AID v${app.getVersion()}`,
+              detail: 'Intelligent Audit Findings Management System\n\nPowered by Electron, React, and Firebase',
+              buttons: ['OK']
+            });
+          }
+        }
+      ]
+    }
+  ];
+
+  // Add dev tools menu in development
+  if (isDev) {
+    template.push({
+      label: 'Developer',
+      submenu: [
+        { role: 'toggleDevTools' },
+        { type: 'separator' },
+        {
+          label: 'Reload',
+          accelerator: 'CmdOrCtrl+R',
+          click: () => mainWindow?.reload()
+        }
+      ]
+    });
+  }
+
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
+}
+
 // Handle deep links on macOS
 app.on('open-url', (event, url) => {
   event.preventDefault();
@@ -119,6 +240,86 @@ app.on('open-url', (event, url) => {
     mainWindow.focus();
   }
 });
+
+// Auto-updater setup
+function setupAutoUpdater() {
+  // Update available
+  autoUpdater.on('update-available', (info) => {
+    console.log('✨ Update available:', info.version);
+    mainWindow?.webContents.send('update-available', {
+      version: info.version,
+      releaseDate: info.releaseDate,
+      releaseNotes: info.releaseNotes,
+    });
+  });
+
+  // Update not available
+  autoUpdater.on('update-not-available', (info) => {
+    console.log('✅ App is up to date:', info.version);
+  });
+
+  // Download progress
+  autoUpdater.on('download-progress', (progress) => {
+    console.log(`📥 Download progress: ${progress.percent.toFixed(2)}%`);
+    mainWindow?.webContents.send('update-download-progress', {
+      percent: progress.percent,
+      transferred: progress.transferred,
+      total: progress.total,
+      bytesPerSecond: progress.bytesPerSecond,
+    });
+  });
+
+  // Update downloaded
+  autoUpdater.on('update-downloaded', (info) => {
+    console.log('✅ Update downloaded:', info.version);
+    mainWindow?.webContents.send('update-downloaded', {
+      version: info.version,
+    });
+  });
+
+  // Error
+  autoUpdater.on('error', (error) => {
+    console.error('❌ Update error:', error);
+    mainWindow?.webContents.send('update-error', {
+      message: error.message,
+    });
+  });
+
+  // IPC handlers for renderer
+  ipcMain.handle('check-for-updates', async () => {
+    if (isDev) {
+      return { available: false, message: 'Updates disabled in development' };
+    }
+    try {
+      const result = await autoUpdater.checkForUpdates();
+      return { 
+        available: result !== null, 
+        version: result?.updateInfo.version 
+      };
+    } catch (error) {
+      console.error('Check for updates failed:', error);
+      return { available: false, error: (error as Error).message };
+    }
+  });
+
+  ipcMain.handle('download-update', async () => {
+    try {
+      await autoUpdater.downloadUpdate();
+      return { success: true };
+    } catch (error) {
+      console.error('Download update failed:', error);
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  ipcMain.handle('install-update', () => {
+    autoUpdater.quitAndInstall(false, true);
+  });
+
+  ipcMain.handle('get-app-version', () => {
+    return app.getVersion();
+  });
+}
 
 // Handle deep links on Windows/Linux
 const gotTheLock = app.requestSingleInstanceLock();
@@ -157,6 +358,20 @@ if (!gotTheLock) {
     }
 
     createWindow();
+    
+    // Set up auto-updater IPC handlers
+    setupAutoUpdater();
+    
+    // Check for updates (only in production)
+    if (!isDev) {
+      // Check for updates 5 seconds after app starts
+      setTimeout(() => {
+        console.log('🔍 Checking for updates...');
+        autoUpdater.checkForUpdates().catch(err => {
+          console.error('Failed to check for updates:', err);
+        });
+      }, 5000);
+    }
     
     // Check for deep link in command line args (Windows/Linux)
     const args = process.argv.slice(1);

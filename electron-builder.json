@@ -5,6 +5,12 @@
     "output": "release",
     "buildResources": "build"
   },
+  "publish": {
+    "provider": "github",
+    "owner": "roueple",
+    "repo": "first-aid",
+    "releaseType": "release"
+  },
   "files": [
     "dist/**/*",
     "package.json",
@@ -24,16 +30,13 @@
       {
         "target": "nsis",
         "arch": ["x64"]
-      },
-      {
-        "target": "portable",
-        "arch": ["x64"]
       }
     ],
     "publisherName": "FIRST-AID Team",
     "verifyUpdateCodeSignature": false,
     "sign": null,
-    "signingHashAlgorithms": []
+    "signingHashAlgorithms": [],
+    "publish": ["github"]
   },
   "nsis": {
     "oneClick": false,
@@ -46,7 +49,8 @@
     "deleteAppDataOnUninstall": false,
     "runAfterFinish": true,
     "artifactName": "${productName}-Setup-${version}.${ext}",
-    "license": "LICENSE.txt"
+    "license": "LICENSE.txt",
+    "differentialPackage": true
   },
   "portable": {
     "artifactName": "${productName}-Portable-${version}.exe"

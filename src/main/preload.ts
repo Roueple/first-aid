@@ -42,6 +42,26 @@ contextBridge.exposeInMainWorld('electron', {
       return Promise.reject(new Error(`Invalid channel: ${channel}`));
     },
   },
+
+  // Auto-updater functions
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+  downloadUpdate: () => ipcRenderer.invoke('download-update'),
+  installUpdate: () => ipcRenderer.invoke('install-update'),
+  getAppVersion: () => ipcRenderer.invoke('get-app-version'),
+  
+  // Auto-updater event listeners
+  onUpdateAvailable: (callback: (info: unknown) => void) => {
+    ipcRenderer.on('update-available', (_event, info) => callback(info));
+  },
+  onUpdateDownloadProgress: (callback: (progress: unknown) => void) => {
+    ipcRenderer.on('update-download-progress', (_event, progress) => callback(progress));
+  },
+  onUpdateDownloaded: (callback: (info: unknown) => void) => {
+    ipcRenderer.on('update-downloaded', (_event, info) => callback(info));
+  },
+  onUpdateError: (callback: (error: unknown) => void) => {
+    ipcRenderer.on('update-error', (_event, error) => callback(error));
+  },
 });
 
 // Log that preload script has loaded

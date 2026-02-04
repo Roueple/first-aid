@@ -3,6 +3,7 @@ import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '../contexts/AuthContext';
 import ErrorBoundary from '../components/ErrorBoundary';
+import { UpdateNotification } from '../components/UpdateNotification';
 import FelixPage from './pages/FelixPage';
 import PasswordlessLoginPage from './pages/PasswordlessLoginPage';
 import ProtectedRoute from '../components/ProtectedRoute';
@@ -41,15 +42,20 @@ const queryClient = new QueryClient({
 function App() {
   console.log('🚀 App component mounting...');
 
-  // Initialize Gemini on app startup
+  // Lazy initialize Gemini (only when needed, not on startup)
   useEffect(() => {
-    console.log('🔧 Initializing Gemini...');
-    try {
-      initializeGemini();
-      console.log('✅ Gemini initialized');
-    } catch (error) {
-      console.error('❌ Failed to initialize Gemini:', error);
-    }
+    // Defer Gemini initialization to not block UI
+    const timer = setTimeout(() => {
+      console.log('🔧 Initializing Gemini...');
+      try {
+        initializeGemini();
+        console.log('✅ Gemini initialized');
+      } catch (error) {
+        console.error('❌ Failed to initialize Gemini:', error);
+      }
+    }, 1000); // Initialize after 1 second
+    
+    return () => clearTimeout(timer);
   }, []);
 
   // Handle deep links from Electron
@@ -120,6 +126,7 @@ function App() {
                 />
                 <Route path="*" element={<Navigate to="/felix" replace />} />
               </Routes>
+              <UpdateNotification />
             </div>
           </Router>
         </AuthProvider>
