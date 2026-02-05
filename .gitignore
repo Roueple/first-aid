@@ -45,5 +45,12 @@ test-results/
 TEST-CLEANUP-SUMMARY.md
 TEST-FILES-ANALYSIS.md
 
+# Documentation (internal only)
+docs/
+DOCUMENTATION-INDEX.md
+
+# Tests
+tests/
+
 # Archive folder
 archive/
