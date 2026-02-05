@@ -77,6 +77,17 @@ $null
 
 # Batch files (internal tools)
 *.bat
+APPLY-ICON-FIXES.bat
+BUILD-INSTALLER-ADMIN.bat
+CLEAN-BUILD.bat
+CLEAR-ICON-CACHE.bat
+CREATE-PORTABLE-ZIP.bat
+
+# Complaint system file
+COMPLAINT-SYSTEM-SETUP.md
+src/components/ReportChatDialog.tsx
+src/services/ComplaintService.ts
+src/types/complaint.types.ts
 
 # Archive folder
 archive/
