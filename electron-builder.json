@@ -7,19 +7,30 @@
   },
   "publish": {
     "provider": "github",
-    "owner": "roueple",
+    "owner": "Roueple",
     "repo": "first-aid",
-    "releaseType": "release"
+    "releaseType": "release",
+    "private": true
   },
   "files": [
     "dist/**/*",
-    "package.json",
-    "!node_modules/**/*"
+    "package.json"
   ],
+  "includeSubNodeModules": false,
   "asarUnpack": [
-    "node_modules/jszip/**/*"
+    "node_modules/jszip/**/*",
+    "node_modules/electron-updater/**/*"
   ],
-  "extraResources": [],
+  "extraResources": [
+    {
+      "from": "build/icon.png",
+      "to": "build/icon.png"
+    },
+    {
+      "from": "build/icon.ico",
+      "to": "build/icon.ico"
+    }
+  ],
   "protocols": {
     "name": "FIRST-AID Auth",
     "schemes": ["firstaid"]
@@ -32,10 +43,12 @@
         "arch": ["x64"]
       }
     ],
+    "icon": "build/icon.ico",
     "publisherName": "FIRST-AID Team",
     "verifyUpdateCodeSignature": false,
     "sign": null,
     "signingHashAlgorithms": [],
+    "signAndEditExecutable": false,
     "publish": ["github"]
   },
   "nsis": {
@@ -46,6 +59,8 @@
     "createDesktopShortcut": true,
     "createStartMenuShortcut": true,
     "shortcutName": "FIRST-AID",
+    "installerIcon": "build/icon.ico",
+    "uninstallerIcon": "build/icon.ico",
     "deleteAppDataOnUninstall": false,
     "runAfterFinish": true,
     "artifactName": "${productName}-Setup-${version}.${ext}",

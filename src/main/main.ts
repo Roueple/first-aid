@@ -1,5 +1,4 @@
 import { app, BrowserWindow, session, ipcMain, dialog, Menu } from 'electron';
-import { autoUpdater } from 'electron-updater';
 import path from 'path';
 
 let mainWindow: BrowserWindow | null = null;
@@ -8,17 +7,40 @@ let isWindowReady = false;
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
-// Configure auto-updater
-autoUpdater.autoDownload = false; // Don't auto-download, ask user first
-autoUpdater.autoInstallOnAppQuit = true; // Install when app quits
+// Safely import electron-updater (may not be available in all environments)
+let autoUpdater: any = null;
+let autoUpdaterAvailable = false;
 
-// Auto-updater logging
-autoUpdater.logger = {
-  info: (msg) => console.log('[AutoUpdater]', msg),
-  warn: (msg) => console.warn('[AutoUpdater]', msg),
-  error: (msg) => console.error('[AutoUpdater]', msg),
-  debug: (msg) => console.debug('[AutoUpdater]', msg),
-};
+try {
+  const updaterModule = require('electron-updater');
+  autoUpdater = updaterModule.autoUpdater;
+  autoUpdaterAvailable = true;
+  
+  // Configure auto-updater
+  autoUpdater.autoDownload = false; // Don't auto-download, ask user first
+  autoUpdater.autoInstallOnAppQuit = true; // Install when app quits
+
+  // Configure for private GitHub repo
+  if (process.env.GH_TOKEN) {
+    autoUpdater.requestHeaders = {
+      'Authorization': `token ${process.env.GH_TOKEN}`
+    };
+    console.log('✅ GitHub token configured for private repo updates');
+  }
+
+  // Auto-updater logging
+  autoUpdater.logger = {
+    info: (msg: string) => console.log('[AutoUpdater]', msg),
+    warn: (msg: string) => console.warn('[AutoUpdater]', msg),
+    error: (msg: string) => console.error('[AutoUpdater]', msg),
+    debug: (msg: string) => console.debug('[AutoUpdater]', msg),
+  };
+  
+  console.log('✅ electron-updater loaded successfully');
+} catch (error) {
+  console.warn('⚠️ electron-updater not available:', (error as Error).message);
+  console.warn('Auto-update functionality will be disabled');
+}
 
 // Protocol for deep linking
 const PROTOCOL = 'firstaid';
@@ -54,11 +76,17 @@ function createWindow() {
     });
   });
 
+  // Set icon path (works for both dev and production)
+  const iconPath = isDev
+    ? path.join(__dirname, '../../build/icon.ico')
+    : path.join(process.resourcesPath, 'build/icon.ico');
+
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
     minWidth: 1024,
     minHeight: 600,
+    icon: iconPath,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -161,6 +189,16 @@ function createMenu() {
         {
           label: 'Check for Updates',
           click: async () => {
+            if (!autoUpdaterAvailable) {
+              dialog.showMessageBox({
+                type: 'info',
+                title: 'Updates Not Available',
+                message: 'Auto-update functionality is not available in this build.',
+                buttons: ['OK']
+              });
+              return;
+            }
+            
             if (isDev) {
               dialog.showMessageBox({
                 type: 'info',
@@ -243,8 +281,31 @@ app.on('open-url', (event, url) => {
 
 // Auto-updater setup
 function setupAutoUpdater() {
+  if (!autoUpdaterAvailable) {
+    console.warn('⚠️ Auto-updater not available, skipping setup');
+    
+    // Provide stub handlers
+    ipcMain.handle('check-for-updates', async () => {
+      return { available: false, message: 'Auto-updater not available' };
+    });
+
+    ipcMain.handle('download-update', async () => {
+      return { success: false, error: 'Auto-updater not available' };
+    });
+
+    ipcMain.handle('install-update', () => {
+      // No-op
+    });
+
+    ipcMain.handle('get-app-version', () => {
+      return app.getVersion();
+    });
+    
+    return;
+  }
+  
   // Update available
-  autoUpdater.on('update-available', (info) => {
+  autoUpdater.on('update-available', (info: any) => {
     console.log('✨ Update available:', info.version);
     mainWindow?.webContents.send('update-available', {
       version: info.version,
@@ -254,12 +315,12 @@ function setupAutoUpdater() {
   });
 
   // Update not available
-  autoUpdater.on('update-not-available', (info) => {
+  autoUpdater.on('update-not-available', (info: any) => {
     console.log('✅ App is up to date:', info.version);
   });
 
   // Download progress
-  autoUpdater.on('download-progress', (progress) => {
+  autoUpdater.on('download-progress', (progress: any) => {
     console.log(`📥 Download progress: ${progress.percent.toFixed(2)}%`);
     mainWindow?.webContents.send('update-download-progress', {
       percent: progress.percent,
@@ -270,7 +331,7 @@ function setupAutoUpdater() {
   });
 
   // Update downloaded
-  autoUpdater.on('update-downloaded', (info) => {
+  autoUpdater.on('update-downloaded', (info: any) => {
     console.log('✅ Update downloaded:', info.version);
     mainWindow?.webContents.send('update-downloaded', {
       version: info.version,
@@ -278,7 +339,7 @@ function setupAutoUpdater() {
   });
 
   // Error
-  autoUpdater.on('error', (error) => {
+  autoUpdater.on('error', (error: Error) => {
     console.error('❌ Update error:', error);
     mainWindow?.webContents.send('update-error', {
       message: error.message,
@@ -362,12 +423,12 @@ if (!gotTheLock) {
     // Set up auto-updater IPC handlers
     setupAutoUpdater();
     
-    // Check for updates (only in production)
-    if (!isDev) {
+    // Check for updates (only in production and if available)
+    if (!isDev && autoUpdaterAvailable) {
       // Check for updates 5 seconds after app starts
       setTimeout(() => {
         console.log('🔍 Checking for updates...');
-        autoUpdater.checkForUpdates().catch(err => {
+        autoUpdater.checkForUpdates().catch((err: Error) => {
           console.error('Failed to check for updates:', err);
         });
       }, 5000);
