@@ -36,6 +36,21 @@ export interface FelixChat {
   modelVersion?: string;
   tokensUsed?: number;
   
+  // Query result data (for preserving tables/charts in history)
+  queryResult?: {
+    resultsCount?: number;
+    results?: any[];
+    aggregatedResults?: AggregationResult[];
+    table?: string;
+    needsConfirmation?: boolean;
+    suggestions?: Array<{ name: string; score: number }>;
+    originalQuery?: string;
+    isAggregated?: boolean;
+    aggregationType?: string;
+    groupByField?: string | string[];
+    yearAggregation?: AggregationResult[];
+  };
+  
   // Additional metadata
   metadata?: Record<string, any>;
 }
@@ -67,6 +82,7 @@ export const createFelixChat = (
     responseTime?: number;
     modelVersion?: string;
     tokensUsed?: number;
+    queryResult?: FelixChat['queryResult'];
     metadata?: Record<string, any>;
   }
 ): Omit<FelixChat, 'id'> => {

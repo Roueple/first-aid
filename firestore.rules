@@ -151,5 +151,20 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && 
         resource.data.email == request.auth.token.email;
     }
+    
+    // Complaints - users can create and read their own complaints
+    match /complaints/{complaintId} {
+      allow read: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid;
+      allow update: if false; // Only admins via console
+      allow delete: if false; // Only admins via console
+    }
+    
+    // Mail queue - for email sending (Firebase Extensions)
+    match /mail/{mailId} {
+      allow read, write: if false; // Only Cloud Functions can write
+    }
   }
 }

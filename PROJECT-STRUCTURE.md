@@ -1,6 +1,6 @@
 # FIRST-AID Project Structure
 
-**Last Updated**: November 28, 2025  
+**Last Updated**: February 5, 2026  
 **Status**: ✅ Organized and Clean
 
 ---
@@ -12,24 +12,40 @@ The root directory now contains only essential files:
 ### Configuration Files
 ```
 .env                    # Environment variables (not in git)
-.env.example            # Environment template
 .firebaserc             # Firebase project config
 .gitignore              # Git ignore rules
 .prettierrc             # Code formatting
-.test-credentials.json  # Test credentials
 electron-builder.json   # Electron packaging
 eslint.config.js        # Linting rules
 firebase.json           # Firebase config
 firestore.indexes.json  # Firestore indexes
 firestore.rules         # Security rules
+firestore.rules.test.ts # Firestore rules tests
 package.json            # Dependencies
 postcss.config.js       # PostCSS config
+serviceaccountKey.json  # Firebase service account (not in git)
 tailwind.config.js      # TailwindCSS config
 tsconfig.json           # TypeScript config
 tsconfig.main.json      # Main process TS config
 tsconfig.node.json      # Node TS config
 vite.config.ts          # Vite build config
 vitest.config.ts        # Vitest test config
+```
+
+### Data & Templates
+```
+data/                   # Reference data files (not in git)
+  ├── deplist.md        # Department list
+  └── kategori_temuan.csv # Finding categories
+
+templates/              # Configuration templates (not in git)
+  ├── .env.example      # Environment template
+  ├── .env.template     # Alternative env template
+  ├── serviceaccountKey.json.template # Firebase template
+  ├── email-whitelist-template.json
+  ├── email-whitelist-template.txt
+  ├── users-template.csv
+  └── users-template.json
 ```
 
 ### Documentation (Root Level)
@@ -39,17 +55,7 @@ DOCUMENTATION-INDEX.md  # Documentation index (KEEP IN ROOT)
 PROJECT-STRUCTURE.md    # This file (KEEP IN ROOT)
 ```
 
-### Test Scripts (Root Level)
-```
-test-consistency.ts                    # Consistency testing
-test-query-router.ts                   # Query router tests
-test-query-all-findings.mjs            # Findings query tests
-test-query-router-prod.mjs             # Production tests
-test-query-router-prod-v2.mjs          # Production tests V2
-test-query-router-prod-auto.mjs        # Automated production tests
-test-smart-query-router-unified.mjs    # Unified router tests
-firestore.rules.test.ts                # Firestore rules tests
-```
+
 
 ### Build Output
 ```
@@ -304,15 +310,16 @@ scripts/
 
 | Location | Count | Purpose |
 |----------|-------|---------|
-| Root config files | ~25 | Build, lint, test configs |
+| Root config files | ~20 | Build, lint, test configs |
 | Root docs | 3 | Essential documentation |
-| Root test scripts | 7 | Test execution scripts |
-| docs-archive/ | 50+ | All documentation |
-| docs/ | 13 | Task completion reports |
+| data/ | 2 | Reference data files |
+| templates/ | 7 | Configuration templates |
+| docs/ | 100+ | All documentation |
 | src/ | 100+ | Application source code |
-| test-results/ | 1+ | Test output files |
+| tests/ | 10+ | Test files |
+| test-results/ | 5+ | Test output files |
 
-**Total**: ~200 files (excluding node_modules, dist)
+**Total**: ~250 files (excluding node_modules, dist, build)
 
 ---
 
@@ -359,5 +366,5 @@ scripts/
 ---
 
 **Structure Status**: ✅ Clean and Organized  
-**Last Reorganization**: November 28, 2025  
+**Last Reorganization**: February 5, 2026  
 **Maintained By**: Development Team

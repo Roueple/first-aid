@@ -35,3 +35,6 @@ export * from './felix.types';
 
 // DocAI types
 export * from './docAI.types';
+
+// Complaint types
+export * from './complaint.types';

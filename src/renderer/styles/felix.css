@@ -986,3 +986,35 @@
 .felix-chart-detail-summary .font-semibold {
   color: #3b82f6;
 }
+
+/* Report Button - Fixed Position */
+.felix-action-btn.felix-report {
+  color: #ff6b6b;
+  border-color: rgba(255, 107, 107, 0.2);
+}
+
+.felix-action-btn.felix-report:hover {
+  background: rgba(255, 107, 107, 0.1);
+  border-color: #ff6b6b;
+  color: #ff6b6b;
+}
+
+/* Adjust for sidebar open state */
+.felix-page.sidebar-open .felix-report-btn {
+  right: 20px;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .felix-report-btn span {
+    display: none;
+  }
+  
+  .felix-report-btn {
+    padding: 8px;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    justify-content: center;
+  }
+}

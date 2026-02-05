@@ -252,7 +252,7 @@ ${this.describeFilters(filters)}
         yearAggregation,
       };
 
-      // Save assistant response
+      // Save assistant response with queryResult (excluding binary data)
       await FelixChatService.addAssistantResponse(
         sessionId,
         userId,
@@ -260,6 +260,19 @@ ${this.describeFilters(filters)}
         {
           responseTime: Date.now() - startTime,
           modelVersion: this.MODEL_NAME,
+          queryResult: {
+            resultsCount: queryResult.resultsCount,
+            results: queryResult.results,
+            aggregatedResults: queryResult.aggregatedResults,
+            table: queryResult.table,
+            needsConfirmation: queryResult.needsConfirmation,
+            suggestions: queryResult.suggestions,
+            originalQuery: queryResult.originalQuery,
+            isAggregated: queryResult.isAggregated,
+            aggregationType: queryResult.aggregationType,
+            groupByField: queryResult.groupByField,
+            yearAggregation: queryResult.yearAggregation,
+          },
           metadata: {
             resultsCount: queryResult.resultsCount,
             filters: queryResult.filters,
@@ -327,7 +340,7 @@ ${this.describeFilters(filters)}
       // Process query through Gemini with session context
       const queryResult = await this.processQuery(message, activeSessionId);
 
-      // Save assistant response with compact summary for context
+      // Save assistant response with compact summary for context and queryResult
       const compactMessage = this.createCompactContextMessage(queryResult);
       
       await FelixChatService.addAssistantResponse(
@@ -337,6 +350,19 @@ ${this.describeFilters(filters)}
         {
           responseTime: Date.now() - startTime,
           modelVersion: this.MODEL_NAME,
+          queryResult: {
+            resultsCount: queryResult.resultsCount,
+            results: queryResult.results,
+            aggregatedResults: queryResult.aggregatedResults,
+            table: queryResult.table,
+            needsConfirmation: queryResult.needsConfirmation,
+            suggestions: queryResult.suggestions,
+            originalQuery: queryResult.originalQuery,
+            isAggregated: queryResult.isAggregated,
+            aggregationType: queryResult.aggregationType,
+            groupByField: queryResult.groupByField,
+            yearAggregation: queryResult.yearAggregation,
+          },
           metadata: {
             resultsCount: queryResult.resultsCount,
             filters: queryResult.filters,
@@ -432,7 +458,7 @@ ${this.describeFilters(filters)}
         yield chunk;
       }
 
-      // Save assistant response with compact summary for context
+      // Save assistant response with compact summary for context and queryResult
       const compactMessage = this.createCompactContextMessage(queryResult);
       
       await FelixChatService.addAssistantResponse(
@@ -442,6 +468,19 @@ ${this.describeFilters(filters)}
         {
           responseTime: Date.now() - startTime,
           modelVersion: this.MODEL_NAME,
+          queryResult: {
+            resultsCount: queryResult.resultsCount,
+            results: queryResult.results,
+            aggregatedResults: queryResult.aggregatedResults,
+            table: queryResult.table,
+            needsConfirmation: queryResult.needsConfirmation,
+            suggestions: queryResult.suggestions,
+            originalQuery: queryResult.originalQuery,
+            isAggregated: queryResult.isAggregated,
+            aggregationType: queryResult.aggregationType,
+            groupByField: queryResult.groupByField,
+            yearAggregation: queryResult.yearAggregation,
+          },
           metadata: {
             resultsCount: queryResult.resultsCount,
             filters: queryResult.filters,

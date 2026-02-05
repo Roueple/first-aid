@@ -39,6 +39,7 @@ export class FelixChatService extends DatabaseService<FelixChat> {
       responseTime?: number;
       modelVersion?: string;
       tokensUsed?: number;
+      queryResult?: FelixChat['queryResult'];
       metadata?: Record<string, any>;
     }
   ): Promise<string> {

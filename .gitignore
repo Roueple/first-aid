@@ -32,62 +32,30 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Electron
+# Electron build
 release/
 
-# Auto-update setup guides (local reference only)
-AUTO-UPDATE-SETUP.txt
-QUICK-RELEASE-GUIDE.txt
-
-# Test credentials and results
-.test-credentials.json
+# Test results
 test-results/
-TEST-CLEANUP-SUMMARY.md
-TEST-FILES-ANALYSIS.md
 
 # Documentation (internal only)
 docs/
-DOCUMENTATION-INDEX.md
 
-# Tests
+# Tests (internal only)
 tests/
 
-# Internal setup guides and notes
-AUTO-UPDATE-SETUP.txt
-QUICK-RELEASE-GUIDE.txt
-SECURITY-SETUP.md
-PASSWORDLESS-AUTH-SETUP.md
-COMPLAINT-SYSTEM-SETUP.md
+# Data folder (reference data - not for production)
+data/
 
-# Template and sample files
-email-whitelist-template.json
-email-whitelist-template.txt
-users-template.csv
-users-template.json
-kategori_temuan.csv
-serviceaccountKey.json.template
+# Templates folder (configuration templates - not for production)
+templates/
 
-# Miscellaneous
-test.txt
-deplist.md
-fdfds.ico
-fdfds.png
-felix_logov2.png
-$null
+# Archive folder (old code and docs)
+archive/
 
 # Batch files (internal tools)
 *.bat
-APPLY-ICON-FIXES.bat
-BUILD-INSTALLER-ADMIN.bat
-CLEAN-BUILD.bat
-CLEAR-ICON-CACHE.bat
-CREATE-PORTABLE-ZIP.bat
 
-# Complaint system file
-COMPLAINT-SYSTEM-SETUP.md
-src/components/ReportChatDialog.tsx
-src/services/ComplaintService.ts
-src/types/complaint.types.ts
-
-# Archive folder
-archive/
+# Kiro AI settings (local only)
+.kiro/
+.claude/

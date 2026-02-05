@@ -21,11 +21,18 @@ try {
   autoUpdater.autoInstallOnAppQuit = true; // Install when app quits
 
   // Configure for private GitHub repo
-  if (process.env.GH_TOKEN) {
+  // Note: For private repos, you need to either:
+  // 1. Make the repo public, OR
+  // 2. Set GH_TOKEN in electron-builder.json publish config
+  // Environment variables are not available in installed apps
+  const ghToken = process.env.GH_TOKEN;
+  if (ghToken) {
     autoUpdater.requestHeaders = {
-      'Authorization': `token ${process.env.GH_TOKEN}`
+      'Authorization': `token ${ghToken}`
     };
     console.log('✅ GitHub token configured for private repo updates');
+  } else {
+    console.log('ℹ️ No GH_TOKEN found - updates will only work for public repos');
   }
 
   // Auto-updater logging
