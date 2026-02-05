@@ -52,5 +52,29 @@ DOCUMENTATION-INDEX.md
 # Tests
 tests/
 
+# Internal setup guides and notes
+AUTO-UPDATE-SETUP.txt
+QUICK-RELEASE-GUIDE.txt
+SECURITY-SETUP.md
+PASSWORDLESS-AUTH-SETUP.md
+COMPLAINT-SYSTEM-SETUP.md
+
+# Template and sample files
+email-whitelist-template.json
+email-whitelist-template.txt
+users-template.csv
+users-template.json
+kategori_temuan.csv
+
+# Miscellaneous
+test.txt
+deplist.md
+fdfds.ico
+fdfds.png
+felix_logov2.png
+
+# Batch files (internal tools)
+*.bat
+
 # Archive folder
 archive/
