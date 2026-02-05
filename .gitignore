@@ -65,6 +65,7 @@ email-whitelist-template.txt
 users-template.csv
 users-template.json
 kategori_temuan.csv
+serviceaccountKey.json.template
 
 # Miscellaneous
 test.txt
@@ -72,6 +73,7 @@ deplist.md
 fdfds.ico
 fdfds.png
 felix_logov2.png
+$null
 
 # Batch files (internal tools)
 *.bat
