@@ -145,6 +145,12 @@ export function PlaceholdersAndVanishInput({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Allow standard Windows shortcuts to pass through
+    if (e.ctrlKey || e.metaKey) {
+      // Don't prevent default for Ctrl+C, Ctrl+V, Ctrl+X, Ctrl+A, Ctrl+F, etc.
+      return;
+    }
+    
     if (e.key === "Enter" && !animating) {
       vanishAndSubmit();
     }

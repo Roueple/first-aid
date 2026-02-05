@@ -6,9 +6,10 @@ import { useAuth } from '../../contexts/AuthContext';
 import FelixResultsTable from '../../components/FelixResultsTable';
 import { AuditResultsTable } from '../../components/AuditResultsTable';
 import { FelixAggregationChart } from '../../components/FelixAggregationChart';
+import { ReportChatDialog } from '../../components/ReportChatDialog';
 import { CatAnimation } from '../../components/ui/cat-animation';
 import { FelixVanishInput } from '../../components/ui/felix-vanish-input';
-import { PanelLeftClose, PanelLeft, Plus, Download, Copy, ChevronUp, MessageSquare, Trash2, Database, X } from 'lucide-react';
+import { PanelLeftClose, PanelLeft, Plus, Download, Copy, ChevronUp, MessageSquare, Trash2, Database, X, Flag } from 'lucide-react';
 
 interface ProjectSuggestion {
   name: string;
@@ -16,8 +17,8 @@ interface ProjectSuggestion {
 }
 
 interface AggregationResult {
-  groupBy: string;
-  groupValue: string | number;
+  groupBy: string | string[];
+  groupValue: string | number | Record<string, string | number>;
   count: number;
   sum?: number;
   avg?: number;
@@ -43,7 +44,7 @@ interface Message {
     originalQuery?: string;
     isAggregated?: boolean;
     aggregationType?: string;
-    groupByField?: string;
+    groupByField?: string | string[];
     yearAggregation?: AggregationResult[];
   };
 }
@@ -58,11 +59,12 @@ export default function FelixPage() {
   const [sessions, setSessions] = useState<any[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showAuditTable, setShowAuditTable] = useState(false);
+  const [showReportDialog, setShowReportDialog] = useState(false);
   const [aggregationDetails, setAggregationDetails] = useState<{
     results: any[];
     excelBuffer: ArrayBuffer;
     excelFilename: string;
-    groupValue: string | number;
+    groupValue: string | number | Record<string, string | number>;
   } | null>(null);
   const chatAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -93,6 +95,19 @@ export default function FelixPage() {
         role: chat.role,
         content: chat.message,
         timestamp: chat.timestamp.toDate(),
+        queryResult: chat.queryResult ? {
+          resultsCount: chat.queryResult.resultsCount || 0,
+          results: chat.queryResult.results,
+          aggregatedResults: chat.queryResult.aggregatedResults,
+          table: chat.queryResult.table,
+          needsConfirmation: chat.queryResult.needsConfirmation,
+          suggestions: chat.queryResult.suggestions,
+          originalQuery: chat.queryResult.originalQuery,
+          isAggregated: chat.queryResult.isAggregated,
+          aggregationType: chat.queryResult.aggregationType,
+          groupByField: chat.queryResult.groupByField,
+          yearAggregation: chat.queryResult.yearAggregation,
+        } : undefined,
       }));
       setMessages(loadedMessages);
     } catch (error) {
@@ -222,6 +237,12 @@ export default function FelixPage() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Allow standard Windows shortcuts to pass through
+    if (e.ctrlKey || e.metaKey) {
+      // Don't prevent default for Ctrl+C, Ctrl+V, Ctrl+X, Ctrl+A, Ctrl+F, etc.
+      return;
+    }
+    
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -637,6 +658,13 @@ export default function FelixPage() {
                                 <Download size={14} /> Download Excel
                               </button>
                             )}
+                            <button
+                              className="felix-action-btn felix-report"
+                              onClick={() => setShowReportDialog(true)}
+                              title="Report an issue with this response"
+                            >
+                              <Flag size={14} /> Report
+                            </button>
                           </div>
                         )}
                       </div>
@@ -736,6 +764,15 @@ export default function FelixPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Report Chat Dialog */}
+      {currentSessionId && (
+        <ReportChatDialog
+          sessionId={currentSessionId}
+          isOpen={showReportDialog}
+          onClose={() => setShowReportDialog(false)}
+        />
       )}
     </div>
   );
