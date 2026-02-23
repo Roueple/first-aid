@@ -94,6 +94,7 @@ function createWindow() {
     minWidth: 1024,
     minHeight: 600,
     icon: iconPath,
+    autoHideMenuBar: true, // Hide menu bar (press Alt to show)
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -101,7 +102,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       devTools: isDev,
     },
-    title: 'FIRST-AID - Audit Findings Management',
+    title: 'FIRST AID - Audit Findings Management',
     show: false,
     backgroundColor: '#f9fafb',
   });
@@ -149,6 +150,15 @@ function createWindow() {
   // Show window when ready
   mainWindow.once('ready-to-show', () => {
     mainWindow?.show();
+  });
+
+  // Hide title bar in fullscreen mode
+  mainWindow.on('enter-full-screen', () => {
+    mainWindow?.setMenuBarVisibility(false);
+  });
+
+  mainWindow.on('leave-full-screen', () => {
+    mainWindow?.setMenuBarVisibility(true);
   });
 
   mainWindow.on('closed', () => {
@@ -243,7 +253,7 @@ function createMenu() {
             dialog.showMessageBox({
               type: 'info',
               title: 'About FIRST-AID',
-              message: `FIRST-AID v${app.getVersion()}`,
+              message: `FIRST AID v${app.getVersion()}`,
               detail: 'Intelligent Audit Findings Management System\n\nPowered by Electron, React, and Firebase',
               buttons: ['OK']
             });

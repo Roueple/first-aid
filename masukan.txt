@@ -1,0 +1,2 @@
+1. tex ketikan harus areanya masuk semua atau perkecil.
+2. row yang sudah dipilih diklik harus warnanya beda

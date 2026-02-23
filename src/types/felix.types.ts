@@ -13,6 +13,7 @@ export interface FelixSession {
   lastActivityAt: Timestamp;
   isActive: boolean;
   messageCount: number;
+  deletedAt?: Timestamp | null; // Soft delete timestamp
   sessionMetadata?: {
     deviceInfo?: string;
     userAgent?: string;
@@ -30,6 +31,7 @@ export interface FelixChat {
   role: 'user' | 'assistant';
   message: string;
   timestamp: Timestamp;
+  deletedAt?: Timestamp | null; // Soft delete timestamp
   
   // AI Response metadata (for assistant messages)
   responseTime?: number; // milliseconds

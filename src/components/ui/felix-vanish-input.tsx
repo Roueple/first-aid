@@ -8,18 +8,16 @@ interface FelixVanishInputProps {
 export function FelixVanishInput({ onSubmit, disabled }: FelixVanishInputProps) {
   // Indonesian real estate audit finding placeholders
   const placeholders = [
-    "Berapa temuan audit IT di tahun 2024?",
-    "Tampilkan proyek dengan temuan terbanyak",
-    "Cari temuan tentang PPJB atau AJB",
-    "Proyek mana yang belum ada IMB?",
-    "Temuan audit departemen Legal tahun 2023",
-    "Berapa proyek yang memiliki masalah SHM?",
-    "Cari temuan tentang KPR di Citraland",
-    "Tampilkan semua temuan kategori High Risk",
-    "Audit findings untuk Raffles Hills Cibubur",
-    "Berapa total temuan di tahun 2022-2024?",
-    "Proyek dengan status PPJB belum selesai",
-    "Temuan terkait sertifikat tanah",
+    "Tampilkan semua temuan audit AJB di CitraGarden City Jakarta",
+    "Cari temuan audit berstatus open di CitraLand Surabaya",
+    "Munculkan temuan berulang di CitraRaya Tangerang tahun 2023",
+    "Tampilkan semua temuan audit kas & bank tahun 2023",
+    "Cari temuan serah terima unit tidak lengkap tahun 2024",
+    "Munculkan temuan high risk di proyek Ciputra tahun 2022",
+    "Tampilkan temuan audit vendor di Ciputra World Jakarta 2023",
+    "Cari temuan overdue action plan di seluruh proyek 2024",
+    "Munculkan temuan perizinan di proyek wilayah Surabaya 2022",
+    "Tampilkan temuan audit Divisi Penjualan tahun 2023",
   ];
 
   const handleChange = (_e: React.ChangeEvent<HTMLInputElement>) => {

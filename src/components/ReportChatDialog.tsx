@@ -29,7 +29,7 @@ export const ReportChatDialog: React.FC<ReportChatDialogProps> = ({
     }
 
     if (!description.trim()) {
-      setError('Please describe the issue or request.');
+      setError('Please share your feedback or suggestion.');
       return;
     }
 
@@ -54,7 +54,7 @@ export const ReportChatDialog: React.FC<ReportChatDialogProps> = ({
       }, 1500);
     } catch (err) {
       console.error('Error submitting complaint:', err);
-      setError('Failed to submit report. Please try again.');
+      setError('Failed to submit feedback. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -75,7 +75,7 @@ export const ReportChatDialog: React.FC<ReportChatDialogProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            Report Issue or Request
+            Share Your Feedback
           </h2>
           <button
             onClick={handleClose}
@@ -93,10 +93,10 @@ export const ReportChatDialog: React.FC<ReportChatDialogProps> = ({
               <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
               <div>
                 <p className="font-medium text-green-900 dark:text-green-100">
-                  Report submitted successfully!
+                  Feedback submitted successfully!
                 </p>
                 <p className="text-sm text-green-700 dark:text-green-300 mt-1">
-                  We'll review your report and get back to you soon.
+                  Thank you for your suggestion! We'll review it soon.
                 </p>
               </div>
             </div>
@@ -112,22 +112,19 @@ export const ReportChatDialog: React.FC<ReportChatDialogProps> = ({
                 htmlFor="description"
                 className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
               >
-                Describe your issue or request
+                Share your thoughts or suggestions
               </label>
               <textarea
                 id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Tell us what went wrong or what you'd like to see improved..."
+                placeholder="What would you like to see improved? Any feedback is valuable..."
                 rows={6}
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none"
                 disabled={isSubmitting}
                 required
                 autoFocus
               />
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                💡 The complete chat history will be automatically attached to your report.
-              </p>
             </div>
 
             {/* Error Message */}
@@ -150,7 +147,7 @@ export const ReportChatDialog: React.FC<ReportChatDialogProps> = ({
               <button
                 type="submit"
                 disabled={isSubmitting || !description.trim()}
-                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg transition-colors flex items-center gap-2"
+                className="px-6 py-2 bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 disabled:bg-gray-400 text-white rounded-lg transition-all flex items-center gap-2 shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50"
               >
                 {isSubmitting ? (
                   <>
@@ -160,7 +157,7 @@ export const ReportChatDialog: React.FC<ReportChatDialogProps> = ({
                 ) : (
                   <>
                     <Send className="w-4 h-4" />
-                    Send Report
+                    Send Feedback
                   </>
                 )}
               </button>

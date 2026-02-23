@@ -138,6 +138,10 @@ service cloud.firestore {
     match /emailWhitelist/{email} {
       allow read: if true; // Allow unauthenticated read for whitelist check during sign-in
       allow write: if false; // Only admin scripts can write
+      // Allow users to update only their own displayName field
+      allow update: if isAuthenticated() && 
+        request.auth.token.email.lower() == email &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName']);
     }
     
     // Device Sessions - allow unauthenticated read for session check during sign-in

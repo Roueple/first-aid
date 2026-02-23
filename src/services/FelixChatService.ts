@@ -1,3 +1,4 @@
+import { Timestamp } from 'firebase/firestore';
 import DatabaseService from './DatabaseService';
 import { FelixChat, createFelixChat } from '../types/felix.types';
 
@@ -50,33 +51,43 @@ export class FelixChatService extends DatabaseService<FelixChat> {
   }
 
   /**
-   * Get all chats for a session
+   * Get all chats for a session (excluding soft-deleted)
    */
   async getSessionChats(
     sessionId: string,
     limit?: number
   ): Promise<(FelixChat & { id: string })[]> {
-    return await this.getAll({
-      filters: [{ field: 'sessionId', operator: '==', value: sessionId }],
+    const chats = await this.getAll({
+      filters: [
+        { field: 'sessionId', operator: '==', value: sessionId },
+      ],
       sorts: [{ field: 'timestamp', direction: 'asc' }],
-      limit,
+      limit: limit ? limit * 2 : undefined, // Get extra to filter in memory
     });
+
+    // Filter out deleted chats in memory
+    const activeChats = chats.filter(c => !c.deletedAt);
+    return limit ? activeChats.slice(0, limit) : activeChats;
   }
 
   /**
-   * Get recent chats for context
+   * Get recent chats for context (excluding soft-deleted)
    */
   async getRecentChats(
     sessionId: string,
     count: number = 10
   ): Promise<(FelixChat & { id: string })[]> {
     const chats = await this.getAll({
-      filters: [{ field: 'sessionId', operator: '==', value: sessionId }],
+      filters: [
+        { field: 'sessionId', operator: '==', value: sessionId },
+      ],
       sorts: [{ field: 'timestamp', direction: 'desc' }],
-      limit: count,
+      limit: count * 2, // Get extra to filter in memory
     });
 
-    return chats.reverse(); // Return in chronological order
+    // Filter out deleted chats in memory
+    const activeChats = chats.filter(c => !c.deletedAt).slice(0, count);
+    return activeChats.reverse(); // Return in chronological order
   }
 
   /**
@@ -95,33 +106,92 @@ export class FelixChatService extends DatabaseService<FelixChat> {
   }
 
   /**
-   * Get all chats for a user across sessions
+   * Get all chats for a user across sessions (excluding soft-deleted)
    */
   async getUserChats(
     userId: string,
     limit: number = 50
   ): Promise<(FelixChat & { id: string })[]> {
-    return await this.getAll({
-      filters: [{ field: 'userId', operator: '==', value: userId }],
+    const chats = await this.getAll({
+      filters: [
+        { field: 'userId', operator: '==', value: userId },
+      ],
       sorts: [{ field: 'timestamp', direction: 'desc' }],
-      limit,
+      limit: limit * 2, // Get extra to filter in memory
     });
+
+    // Filter out deleted chats in memory
+    return chats.filter(c => !c.deletedAt).slice(0, limit);
   }
 
   /**
-   * Count chats in a session
+   * Count chats in a session (excluding soft-deleted)
    */
   async countSessionChats(sessionId: string): Promise<number> {
-    return await this.count({
-      filters: [{ field: 'sessionId', operator: '==', value: sessionId }],
+    const chats = await this.getAll({
+      filters: [
+        { field: 'sessionId', operator: '==', value: sessionId },
+      ],
     });
+    
+    // Filter out deleted chats in memory
+    return chats.filter(c => !c.deletedAt).length;
   }
 
   /**
-   * Delete all chats for a session
+   * Soft delete all chats for a session
    */
-  async deleteSessionChats(sessionId: string): Promise<number> {
-    const chats = await this.getSessionChats(sessionId);
+  async softDeleteSessionChats(sessionId: string): Promise<number> {
+    const chats = await this.getAll({
+      filters: [{ field: 'sessionId', operator: '==', value: sessionId }],
+    });
+    
+    let deletedCount = 0;
+    const now = Timestamp.now();
+
+    for (const chat of chats) {
+      await this.update(chat.id, {
+        deletedAt: now,
+      } as Partial<FelixChat>);
+      deletedCount++;
+    }
+
+    console.log(`🗑️ Soft deleted ${deletedCount} chats from Felix session: ${sessionId}`);
+    return deletedCount;
+  }
+
+  /**
+   * Restore all chats for a session
+   */
+  async restoreSessionChats(sessionId: string): Promise<number> {
+    const chats = await this.getAll({
+      filters: [
+        { field: 'sessionId', operator: '==', value: sessionId },
+        { field: 'deletedAt', operator: '!=', value: null },
+      ],
+    });
+    
+    let restoredCount = 0;
+
+    for (const chat of chats) {
+      await this.update(chat.id, {
+        deletedAt: null,
+      } as Partial<FelixChat>);
+      restoredCount++;
+    }
+
+    console.log(`♻️ Restored ${restoredCount} chats from Felix session: ${sessionId}`);
+    return restoredCount;
+  }
+
+  /**
+   * Permanently delete all chats for a session (hard delete - use with caution)
+   */
+  async permanentlyDeleteSessionChats(sessionId: string): Promise<number> {
+    const chats = await this.getAll({
+      filters: [{ field: 'sessionId', operator: '==', value: sessionId }],
+    });
+    
     let deletedCount = 0;
 
     for (const chat of chats) {
@@ -129,8 +199,15 @@ export class FelixChatService extends DatabaseService<FelixChat> {
       deletedCount++;
     }
 
-    console.log(`🗑️ Deleted ${deletedCount} chats from Felix session: ${sessionId}`);
+    console.log(`💀 Permanently deleted ${deletedCount} chats from Felix session: ${sessionId}`);
     return deletedCount;
+  }
+
+  /**
+   * @deprecated Use softDeleteSessionChats instead
+   */
+  async deleteSessionChats(sessionId: string): Promise<number> {
+    return this.softDeleteSessionChats(sessionId);
   }
 
   /**

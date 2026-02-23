@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '../contexts/AuthContext';
+import { ThemeProvider } from '../contexts/ThemeContext';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { UpdateNotification } from '../components/UpdateNotification';
 import FelixPage from './pages/FelixPage';
@@ -9,6 +10,7 @@ import PasswordlessLoginPage from './pages/PasswordlessLoginPage';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { initializeGemini } from '../services/GeminiService';
 import './styles/felix.css';
+import './styles/felix-theme-additions.css';
 
 // Create a client with optimized caching options
 // Implements Requirements 11.1, 11.3 - Performance and caching
@@ -103,33 +105,35 @@ function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <Router
-            future={{
-              v7_startTransition: true,
-              v7_relativeSplatPath: true,
-            }}
-          >
-            <div className="min-h-screen">
-              <Routes>
-                <Route path="/login" element={<PasswordlessLoginPage />} />
-                <Route path="/auth/verify" element={<PasswordlessLoginPage />} />
-                <Route 
-                  path="/felix" 
-                  element={
-                    <ProtectedRoute>
-                      <ErrorBoundary>
-                        <FelixPage />
-                      </ErrorBoundary>
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route path="*" element={<Navigate to="/felix" replace />} />
-              </Routes>
-              <UpdateNotification />
-            </div>
-          </Router>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <Router
+              future={{
+                v7_startTransition: true,
+                v7_relativeSplatPath: true,
+              }}
+            >
+              <div className="min-h-screen">
+                <Routes>
+                  <Route path="/login" element={<PasswordlessLoginPage />} />
+                  <Route path="/auth/verify" element={<PasswordlessLoginPage />} />
+                  <Route 
+                    path="/felix" 
+                    element={
+                      <ProtectedRoute>
+                        <ErrorBoundary>
+                          <FelixPage />
+                        </ErrorBoundary>
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route path="*" element={<Navigate to="/felix" replace />} />
+                </Routes>
+                <UpdateNotification />
+              </div>
+            </Router>
+          </AuthProvider>
+        </ThemeProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );

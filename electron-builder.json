@@ -10,9 +10,8 @@
     "owner": "Roueple",
     "repo": "first-aid",
     "releaseType": "release",
-    "private": true,
-    "publishAutoUpdate": true,
-    "token": "${GH_TOKEN}"
+    "private": false,
+    "publishAutoUpdate": true
   },
   "files": [
     "dist/**/*",

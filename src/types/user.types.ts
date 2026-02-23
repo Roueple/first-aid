@@ -32,8 +32,9 @@ export interface UserPreferences {
  */
 export interface User {
   id: string; // Firebase Auth UID
-  email: string;
-  name: string;
+  email: string; // Also serves as username
+  fullName: string; // Full legal name
+  displayName: string; // Name displayed in Felix chat
   role: UserRole;
   department?: string;
   preferences: UserPreferences;
@@ -47,7 +48,8 @@ export interface User {
  */
 export interface CreateUserInput {
   email: string;
-  name: string;
+  fullName: string;
+  displayName?: string; // Optional, defaults to first name from fullName
   role: UserRole;
   department?: string;
   preferences?: Partial<UserPreferences>;
@@ -57,7 +59,8 @@ export interface CreateUserInput {
  * Input type for updating a user
  */
 export interface UpdateUserInput {
-  name?: string;
+  fullName?: string;
+  displayName?: string;
   role?: UserRole;
   department?: string;
   preferences?: Partial<UserPreferences>;
@@ -80,7 +83,8 @@ export const UserPreferencesSchema = z.object({
 export const UserSchema = z.object({
   id: z.string(),
   email: z.string().email('Invalid email address'),
-  name: z.string().min(1, 'Name is required'),
+  fullName: z.string().min(1, 'Full name is required'),
+  displayName: z.string().min(1, 'Display name is required'),
   role: z.enum(['auditor', 'admin']),
   department: z.string().optional(),
   preferences: UserPreferencesSchema,
@@ -94,7 +98,8 @@ export const UserSchema = z.object({
  */
 export const CreateUserSchema = z.object({
   email: z.string().email('Invalid email address'),
-  name: z.string().min(1, 'Name is required'),
+  fullName: z.string().min(1, 'Full name is required'),
+  displayName: z.string().min(1).optional(),
   role: z.enum(['auditor', 'admin']),
   department: z.string().optional(),
   preferences: UserPreferencesSchema.partial().optional(),
@@ -104,7 +109,8 @@ export const CreateUserSchema = z.object({
  * Zod schema for updating a user
  */
 export const UpdateUserSchema = z.object({
-  name: z.string().min(1).optional(),
+  fullName: z.string().min(1).optional(),
+  displayName: z.string().min(1).optional(),
   role: z.enum(['auditor', 'admin']).optional(),
   department: z.string().optional(),
   preferences: UserPreferencesSchema.partial().optional(),

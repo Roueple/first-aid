@@ -2,14 +2,19 @@ import { useState, useRef, useEffect } from 'react';
 import { felixService } from '../../services/FelixService';
 import FelixSessionService from '../../services/FelixSessionService';
 import FelixChatService from '../../services/FelixChatService';
+import FelixGreetingService from '../../services/FelixGreetingService';
+import authService from '../../services/AuthService';
 import { useAuth } from '../../contexts/AuthContext';
 import FelixResultsTable from '../../components/FelixResultsTable';
-import { AuditResultsTable } from '../../components/AuditResultsTable';
 import { FelixAggregationChart } from '../../components/FelixAggregationChart';
 import { ReportChatDialog } from '../../components/ReportChatDialog';
+import { ConfirmDeleteDialog } from '../../components/ConfirmDeleteDialog';
+import { UserSettingsDialog } from '../../components/UserSettingsDialog';
+import { FirstTimeSetupDialog } from '../../components/FirstTimeSetupDialog';
+import { ThemeSwitcher } from '../../components/ThemeSwitcher';
 import { CatAnimation } from '../../components/ui/cat-animation';
 import { FelixVanishInput } from '../../components/ui/felix-vanish-input';
-import { PanelLeftClose, PanelLeft, Plus, Download, Copy, ChevronUp, MessageSquare, Trash2, Database, X, Flag } from 'lucide-react';
+import { PanelLeftClose, PanelLeft, Plus, Download, Copy, ChevronUp, MessageSquare, Trash2, X, Flag, Settings } from 'lucide-react';
 
 interface ProjectSuggestion {
   name: string;
@@ -51,6 +56,7 @@ interface Message {
 
 export default function FelixPage() {
   const { currentUser } = useAuth();
+  const canDownloadExcel = authService.canDownloadExcel(currentUser);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -58,8 +64,13 @@ export default function FelixPage() {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [sessions, setSessions] = useState<any[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [showAuditTable, setShowAuditTable] = useState(false);
   const [showReportDialog, setShowReportDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  const [showFirstTimeSetup, setShowFirstTimeSetup] = useState(false);
+  const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [greeting, setGreeting] = useState<string | null>(null);
   const [aggregationDetails, setAggregationDetails] = useState<{
     results: any[];
     excelBuffer: ArrayBuffer;
@@ -74,8 +85,55 @@ export default function FelixPage() {
   useEffect(() => {
     if (currentUser) {
       loadUserSessions();
+      loadPersonalizedGreeting();
+      checkFirstTimeSetup();
     }
   }, [currentUser]);
+
+  const checkFirstTimeSetup = () => {
+    if (!currentUser) return;
+    
+    // Check if user has a default display name (email-based) or no display name
+    const hasDefaultName = !currentUser.displayName || 
+                          currentUser.displayName === currentUser.email?.split('@')[0];
+    
+    // Check if user has already been prompted (stored in localStorage)
+    const hasBeenPrompted = localStorage.getItem(`firstTimeSetup_${currentUser.uid}`);
+    
+    if (hasDefaultName && !hasBeenPrompted) {
+      setShowFirstTimeSetup(true);
+    }
+  };
+
+  const handleFirstTimeSetupComplete = () => {
+    if (currentUser) {
+      localStorage.setItem(`firstTimeSetup_${currentUser.uid}`, 'true');
+    }
+    setShowFirstTimeSetup(false);
+  };
+
+  const loadPersonalizedGreeting = async () => {
+    if (!currentUser) return;
+    try {
+      const personalizedGreeting = await FelixGreetingService.getGreeting(
+        currentUser.uid,
+        currentUser.displayName
+      );
+      setGreeting(personalizedGreeting);
+    } catch (error) {
+      console.error('Error loading greeting:', error);
+      // Fallback to simple greeting
+      setGreeting(`Hello ${currentUser.displayName || currentUser.email?.split('@')[0] || 'User'}, What can Felix do for you?`);
+    }
+  };
+
+  const getGreetingClass = () => {
+    if (!greeting) return 'medium';
+    const length = greeting.length;
+    if (length < 50) return 'short';
+    if (length < 100) return 'medium';
+    return 'long';
+  };
 
   useEffect(() => {
     return () => {
@@ -259,6 +317,7 @@ export default function FelixPage() {
       setMessages([]);
       setInput('');
       await loadUserSessions();
+      await loadPersonalizedGreeting(); // Refresh greeting for new chat
     } catch (error) {
       console.error('Error creating new chat:', error);
     }
@@ -298,8 +357,82 @@ export default function FelixPage() {
     }
   };
 
-  const handleCopyMessage = (content: string) => {
-    navigator.clipboard.writeText(content);
+  const handleCopyMessage = (message: Message) => {
+    let textToCopy = message.content;
+
+    // Add aggregation results if present
+    if (message.queryResult?.aggregatedResults && message.queryResult.aggregatedResults.length > 0) {
+      textToCopy += '\n\n📊 Aggregation Results:\n';
+      textToCopy += `Grouped by: ${message.queryResult.groupByField}\n`;
+      textToCopy += `Type: ${message.queryResult.aggregationType}\n\n`;
+
+      // Create table header
+      const groupByFields = Array.isArray(message.queryResult.groupByField) 
+        ? message.queryResult.groupByField 
+        : [message.queryResult.groupByField || 'group'];
+      
+      const headers = [...groupByFields, 'Count'];
+      const firstRow = message.queryResult.aggregatedResults[0];
+      if (firstRow.sum !== undefined) headers.push('Sum');
+      if (firstRow.avg !== undefined) headers.push('Average');
+      if (firstRow.min !== undefined) headers.push('Min');
+      if (firstRow.max !== undefined) headers.push('Max');
+      
+      textToCopy += headers.join('\t') + '\n';
+      textToCopy += headers.map(() => '---').join('\t') + '\n';
+
+      // Add data rows
+      message.queryResult.aggregatedResults.forEach(row => {
+        const values: string[] = [];
+        
+        if (typeof row.groupValue === 'object' && !Array.isArray(row.groupValue)) {
+          groupByFields.forEach(field => {
+            const groupValueObj = row.groupValue as Record<string, string | number>;
+            values.push(String(groupValueObj[field] || ''));
+          });
+        } else {
+          values.push(String(row.groupValue));
+        }
+        
+        values.push(String(row.count));
+        if (row.sum !== undefined) values.push(row.sum.toFixed(2));
+        if (row.avg !== undefined) values.push(row.avg.toFixed(2));
+        if (row.min !== undefined) values.push(String(row.min));
+        if (row.max !== undefined) values.push(String(row.max));
+        
+        textToCopy += values.join('\t') + '\n';
+      });
+    }
+
+    // Add regular table results if present - only specific columns
+    if (message.queryResult?.results && message.queryResult.results.length > 0 && !message.queryResult.isAggregated) {
+      textToCopy += '\n\n📋 Results Table:\n';
+      textToCopy += `Total: ${message.queryResult.resultsCount} findings\n\n`;
+
+      const results = message.queryResult.results;
+      if (results.length > 0) {
+        // Only include specific columns
+        const allowedColumns = ['sh', 'projectName', 'year', 'department', 'riskArea', 'description'];
+        const headers = allowedColumns.filter(col => 
+          results.some(result => result[col] !== undefined)
+        );
+        
+        textToCopy += headers.join('\t') + '\n';
+        textToCopy += headers.map(() => '---').join('\t') + '\n';
+        
+        results.forEach(result => {
+          const values = headers.map(header => {
+            const value = result[header];
+            if (value === null || value === undefined) return '';
+            if (typeof value === 'object') return JSON.stringify(value);
+            return String(value);
+          });
+          textToCopy += values.join('\t') + '\n';
+        });
+      }
+    }
+
+    navigator.clipboard.writeText(textToCopy);
   };
 
   const handleConfirmProject = async (projectName: string, originalQuery: string) => {
@@ -344,19 +477,35 @@ export default function FelixPage() {
     }
   };
 
-  const handleDeleteSession = async (sessionId: string, e: React.MouseEvent) => {
+  const handleDeleteSession = (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!currentUser) return;
+    setSessionToDelete(sessionId);
+    setShowDeleteDialog(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!currentUser || !sessionToDelete) return;
+    
+    setIsDeleting(true);
     try {
-      await FelixSessionService.deleteSession(sessionId);
-      if (currentSessionId === sessionId) {
+      await FelixSessionService.deleteSession(sessionToDelete);
+      if (currentSessionId === sessionToDelete) {
         setCurrentSessionId(null);
         setMessages([]);
       }
       await loadUserSessions();
+      setShowDeleteDialog(false);
+      setSessionToDelete(null);
     } catch (error) {
       console.error('Error deleting session:', error);
+    } finally {
+      setIsDeleting(false);
     }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteDialog(false);
+    setSessionToDelete(null);
   };
 
   const handleAggregationRowClick = async (aggregationResult: AggregationResult) => {
@@ -397,6 +546,18 @@ export default function FelixPage() {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
+  const renderGreeting = (text: string) => {
+    // Parse **text** markdown for bold
+    const parts = text.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, index) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        const boldText = part.slice(2, -2);
+        return <strong key={index}>{boldText}</strong>;
+      }
+      return <span key={index}>{part}</span>;
+    });
+  };
+
   if (!currentUser) {
     return (
       <div className="felix-page felix-loading">
@@ -410,6 +571,9 @@ export default function FelixPage() {
 
   return (
     <div className={`felix-page ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
+      {/* Theme Switcher */}
+      <ThemeSwitcher />
+
       {/* Sidebar */}
       <aside className={`felix-sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
         <div className="felix-sidebar-header">
@@ -427,15 +591,6 @@ export default function FelixPage() {
         </div>
         
         <div className="felix-sidebar-content">
-          <button 
-            className="felix-data-btn"
-            onClick={() => setShowAuditTable(true)}
-            title="View all audit results"
-          >
-            <Database size={16} />
-            <span>All Audit Data</span>
-          </button>
-          
           <div className="felix-sidebar-label">Recent</div>
           <div className="felix-history-list">
             {sessions.length === 0 ? (
@@ -468,6 +623,17 @@ export default function FelixPage() {
             )}
           </div>
         </div>
+
+        <div className="felix-sidebar-footer">
+          <button 
+            className="felix-settings-btn"
+            onClick={() => setShowSettingsDialog(true)}
+            title="User Settings"
+          >
+            <Settings size={18} />
+            <span>Settings</span>
+          </button>
+        </div>
       </aside>
 
       {/* Sidebar Toggle (when closed) */}
@@ -480,6 +646,14 @@ export default function FelixPage() {
           <PanelLeft size={20} />
         </button>
       )}
+      
+      {/* Felix Brand - always visible, moves with sidebar */}
+      <div 
+        className="felix-page-brand" 
+        style={{ left: sidebarOpen ? '280px' : '4rem' }}
+      >
+        Felix
+      </div>
 
       {/* Main Content */}
       <div className="felix-main">
@@ -488,9 +662,11 @@ export default function FelixPage() {
             /* Welcome Screen */
             <div className="felix-welcome">
               <CatAnimation size={140} className="felix-cat" />
-              <h1 className="felix-greeting">
-                Hello {currentUser?.displayName || currentUser?.email?.split('@')[0] || 'User'}, What can Felix do for you?
-              </h1>
+              {greeting !== null && (
+                <h1 className={`felix-greeting ${getGreetingClass()}`}>
+                  {renderGreeting(greeting)}
+                </h1>
+              )}
               <div className="w-full max-w-2xl px-4">
                 <FelixVanishInput 
                   onSubmit={handleSend}
@@ -642,12 +818,12 @@ export default function FelixPage() {
                             {message.content && (
                               <button 
                                 className="felix-action-btn"
-                                onClick={() => handleCopyMessage(message.content)}
+                                onClick={() => handleCopyMessage(message)}
                               >
                                 <Copy size={14} /> Copy
                               </button>
                             )}
-                            {message.queryResult?.excelBuffer && (
+                            {message.queryResult?.excelBuffer && canDownloadExcel && (
                               <button
                                 className="felix-action-btn felix-download"
                                 onClick={() => handleDownloadExcel(
@@ -661,9 +837,9 @@ export default function FelixPage() {
                             <button
                               className="felix-action-btn felix-report"
                               onClick={() => setShowReportDialog(true)}
-                              title="Report an issue with this response"
+                              title="Give feedback or suggestions"
                             >
-                              <Flag size={14} /> Report
+                              <Flag size={14} /> Suggestion
                             </button>
                           </div>
                         )}
@@ -712,41 +888,31 @@ export default function FelixPage() {
         </div>
       </div>
 
-      {/* Audit Results Modal */}
-      {showAuditTable && (
-        <div className="felix-modal-overlay" onClick={() => setShowAuditTable(false)}>
-          <div className="felix-modal" onClick={(e) => e.stopPropagation()}>
-            <button 
-              className="felix-modal-close"
-              onClick={() => setShowAuditTable(false)}
-            >
-              <X size={20} />
-            </button>
-            <AuditResultsTable />
-          </div>
-        </div>
-      )}
-
       {/* Aggregation Details Modal */}
       {aggregationDetails && (
         <div className="felix-modal-overlay" onClick={() => setAggregationDetails(null)}>
           <div className="felix-modal felix-modal-large" onClick={(e) => e.stopPropagation()}>
             <div className="felix-modal-header">
-              <h2 className="felix-modal-title">
-                📊 {typeof aggregationDetails.groupValue === 'object' && !Array.isArray(aggregationDetails.groupValue)
-                  ? Object.entries(aggregationDetails.groupValue).map(([key, value]) => `${key}: ${value}`).join(', ')
-                  : aggregationDetails.groupValue} - {aggregationDetails.results.length} Findings
-              </h2>
+              <div className="felix-modal-header-left">
+                <span className="felix-modal-brand">Felix</span>
+                <h2 className="felix-modal-title">
+                  📊 {typeof aggregationDetails.groupValue === 'object' && !Array.isArray(aggregationDetails.groupValue)
+                    ? Object.entries(aggregationDetails.groupValue).map(([key, value]) => `${key}: ${value}`).join(', ')
+                    : aggregationDetails.groupValue} - {aggregationDetails.results.length} Findings
+                </h2>
+              </div>
               <div className="felix-modal-actions">
-                <button
-                  className="felix-action-btn felix-download"
-                  onClick={() => handleDownloadExcel(
-                    aggregationDetails.excelBuffer,
-                    aggregationDetails.excelFilename
-                  )}
-                >
-                  <Download size={14} /> Download Excel
-                </button>
+                {canDownloadExcel && (
+                  <button
+                    className="felix-action-btn felix-download"
+                    onClick={() => handleDownloadExcel(
+                      aggregationDetails.excelBuffer,
+                      aggregationDetails.excelFilename
+                    )}
+                  >
+                    <Download size={14} /> Download Excel
+                  </button>
+                )}
                 <button 
                   className="felix-modal-close"
                   onClick={() => setAggregationDetails(null)}
@@ -766,7 +932,7 @@ export default function FelixPage() {
         </div>
       )}
 
-      {/* Report Chat Dialog */}
+      {/* Feedback Dialog */}
       {currentSessionId && (
         <ReportChatDialog
           sessionId={currentSessionId}
@@ -774,6 +940,26 @@ export default function FelixPage() {
           onClose={() => setShowReportDialog(false)}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDeleteDialog
+        isOpen={showDeleteDialog}
+        onClose={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
+        isDeleting={isDeleting}
+      />
+
+      {/* User Settings Dialog */}
+      <UserSettingsDialog
+        isOpen={showSettingsDialog}
+        onClose={() => setShowSettingsDialog(false)}
+      />
+
+      {/* First Time Setup Dialog */}
+      <FirstTimeSetupDialog
+        isOpen={showFirstTimeSetup}
+        onComplete={handleFirstTimeSetupComplete}
+      />
     </div>
   );
 }

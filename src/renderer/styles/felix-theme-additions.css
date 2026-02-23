@@ -1,0 +1,298 @@
+/* Theme Switcher Component */
+.theme-switcher {
+  position: fixed;
+  top: 0.75rem;
+  right: 0.75rem;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--calico-border);
+  background: var(--calico-secondary);
+  color: var(--calico-orange);
+  cursor: pointer;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px var(--calico-shadow);
+  transition: all 0.3s ease;
+  z-index: 100;
+}
+
+.theme-switcher:hover {
+  background: var(--calico-tertiary);
+  color: var(--calico-orange-light);
+  box-shadow: 0 4px 16px rgba(255, 140, 66, 0.3);
+  transform: translateY(-2px) scale(1.05);
+}
+
+.theme-switcher:active {
+  transform: translateY(0) scale(0.95);
+}
+
+.theme-icon {
+  transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.theme-switcher:hover .theme-icon {
+  transform: rotate(20deg) scale(1.1);
+}
+
+/* Smooth theme transition for all elements */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Adjust sidebar open button position when theme switcher is present */
+.felix-page .felix-sidebar-open-btn {
+  top: 0.75rem;
+  left: 0.75rem;
+}
+
+/* Bottom Input Gradient */
+.felix-bottom-input {
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  left: 260px;
+  padding: 1rem 2rem 1.5rem;
+  background: linear-gradient(transparent, var(--calico-primary) 30%);
+  transition: left 0.3s ease;
+}
+
+/* Typing Indicator */
+.felix-typing span {
+  background: var(--calico-orange);
+}
+
+/* Scrollbar */
+.felix-content::-webkit-scrollbar-track,
+.felix-sidebar-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.felix-content::-webkit-scrollbar-thumb,
+.felix-sidebar-content::-webkit-scrollbar-thumb {
+  background: var(--calico-tertiary);
+  border-radius: 3px;
+}
+
+.felix-content::-webkit-scrollbar-thumb:hover,
+.felix-sidebar-content::-webkit-scrollbar-thumb:hover {
+  background: var(--calico-orange);
+}
+
+/* Data Button */
+.felix-data-btn {
+  width: calc(100% - 0.5rem);
+  margin: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--calico-border);
+  background: var(--calico-secondary);
+  color: var(--calico-text);
+  font-size: 0.875rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.felix-data-btn:hover {
+  background: var(--calico-tertiary);
+  border-color: var(--calico-orange);
+}
+
+/* Modal */
+.felix-modal-overlay {
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(4px);
+}
+
+.felix-modal {
+  background: var(--calico-secondary);
+  border: 1px solid var(--calico-border);
+  box-shadow: 0 20px 60px var(--calico-shadow-strong), 0 0 0 1px rgba(255, 140, 66, 0.2);
+}
+
+.felix-modal-close {
+  background: var(--calico-secondary);
+  color: var(--calico-text-muted);
+  border: 1px solid var(--calico-border);
+}
+
+.felix-modal-close:hover {
+  background: var(--calico-tertiary);
+  color: var(--calico-orange);
+  border-color: var(--calico-orange);
+}
+
+/* Confirmation UI */
+.felix-suggestion-btn {
+  background: var(--calico-secondary);
+  border: 1px solid var(--calico-border);
+}
+
+.felix-suggestion-btn:hover:not(:disabled) {
+  background: var(--calico-tertiary);
+  border-color: var(--calico-orange);
+}
+
+.felix-suggestion-name {
+  color: var(--calico-text);
+}
+
+/* Aggregation Table */
+.felix-aggregation-table {
+  background: var(--calico-secondary);
+  border: 1px solid var(--calico-border);
+  box-shadow: 0 2px 8px var(--calico-shadow);
+}
+
+.felix-aggregation-table thead {
+  background: linear-gradient(135deg, var(--calico-tertiary) 0%, var(--calico-secondary) 100%);
+  border-bottom: 2px solid var(--calico-orange);
+}
+
+.felix-aggregation-table thead th {
+  color: var(--calico-text);
+}
+
+.felix-aggregation-table tbody tr {
+  border-bottom: 1px solid var(--calico-border);
+  background: var(--calico-secondary);
+}
+
+.felix-aggregation-table tbody tr:hover {
+  background-color: var(--calico-tertiary);
+  border-left: 3px solid var(--calico-orange);
+}
+
+.felix-aggregation-table tbody td {
+  color: var(--calico-text-muted);
+}
+
+.felix-group-value {
+  color: var(--calico-text);
+}
+
+.felix-count-value {
+  color: var(--calico-orange);
+}
+
+/* Modal Header */
+.felix-modal-header {
+  border-bottom: 2px solid var(--calico-orange);
+  background: linear-gradient(135deg, var(--calico-secondary) 0%, var(--calico-primary) 100%);
+  color: var(--calico-text);
+}
+
+.felix-modal-title {
+  color: var(--calico-text);
+}
+
+.felix-modal-actions .felix-action-btn {
+  background: var(--calico-tertiary);
+  border: 1px solid var(--calico-orange);
+  color: var(--calico-orange);
+}
+
+.felix-modal-actions .felix-action-btn:hover {
+  background: var(--calico-orange);
+  color: #ffffff;
+}
+
+.felix-modal-content {
+  background: var(--calico-primary);
+}
+
+/* Chart Styles */
+.felix-chart-container {
+  background: var(--calico-secondary);
+  border: 1px solid var(--calico-border);
+  box-shadow: 0 4px 12px var(--calico-shadow);
+}
+
+.felix-chart-wrapper {
+  background: var(--calico-primary);
+}
+
+.felix-chart-tooltip {
+  background: var(--calico-secondary);
+  border: 1px solid var(--calico-orange);
+  box-shadow: 0 4px 12px var(--calico-shadow-strong);
+}
+
+.felix-tooltip-label {
+  color: var(--calico-text);
+}
+
+.felix-tooltip-value {
+  color: var(--calico-text-muted);
+}
+
+.felix-tooltip-metric {
+  color: var(--calico-orange);
+}
+
+/* Chart Detail Panel */
+.felix-chart-detail-panel {
+  background: var(--calico-secondary);
+  border-top: 1px solid var(--calico-border);
+}
+
+.felix-chart-detail-header {
+  border-bottom: 2px solid var(--calico-border);
+}
+
+.felix-chart-detail-header button {
+  color: var(--calico-text-muted);
+}
+
+.felix-chart-detail-header button:hover {
+  background: var(--calico-tertiary);
+  color: var(--calico-orange);
+}
+
+.felix-chart-detail-item {
+  background: var(--calico-primary);
+  border: 1px solid var(--calico-border);
+}
+
+.felix-chart-detail-item:hover {
+  border-color: var(--calico-orange);
+  background: var(--calico-secondary);
+}
+
+.felix-chart-detail-label {
+  color: var(--calico-text-muted);
+}
+
+.felix-chart-detail-value {
+  color: var(--calico-orange);
+}
+
+.felix-chart-detail-summary {
+  background: var(--calico-primary);
+  border: 1px solid var(--calico-orange);
+}
+
+.felix-chart-detail-summary .text-muted-foreground {
+  color: var(--calico-text-muted);
+}
+
+.felix-chart-detail-summary .font-semibold {
+  color: var(--calico-orange);
+}
+
+/* Report Button */
+.felix-action-btn.felix-report {
+  color: #ff6b6b;
+  border-color: rgba(255, 107, 107, 0.2);
+}
+
+.felix-action-btn.felix-report:hover {
+  background: rgba(255, 107, 107, 0.1);
+  border-color: #ff6b6b;
+  color: #ff6b6b;
+}

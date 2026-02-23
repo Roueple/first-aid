@@ -39,10 +39,12 @@ export class FelixSessionService extends DatabaseService<FelixSession> {
         { field: 'isActive', operator: '==', value: true },
       ],
       sorts: [{ field: 'lastActivityAt', direction: 'desc' }],
-      limit: 1,
+      limit: 5, // Get a few extra to filter in memory
     });
 
-    return sessions.length > 0 ? sessions[0] : null;
+    // Filter out deleted sessions in memory
+    const activeSessions = sessions.filter(s => !s.deletedAt);
+    return activeSessions.length > 0 ? activeSessions[0] : null;
   }
 
   /**
@@ -111,26 +113,52 @@ export class FelixSessionService extends DatabaseService<FelixSession> {
    * Get all sessions for a user
    */
   async getUserSessions(userId: string, limit: number = 10): Promise<(FelixSession & { id: string })[]> {
-    return await this.getAll({
-      filters: [{ field: 'userId', operator: '==', value: userId }],
+    const sessions = await this.getAll({
+      filters: [
+        { field: 'userId', operator: '==', value: userId },
+      ],
       sorts: [{ field: 'createdAt', direction: 'desc' }],
-      limit,
+      limit: limit * 2, // Get extra to filter in memory
     });
+
+    // Filter out deleted sessions in memory
+    return sessions.filter(s => !s.deletedAt).slice(0, limit);
   }
 
   /**
-   * Delete a session and its associated chats
+   * Soft delete a session and its associated chats
    */
   async deleteSession(sessionId: string): Promise<void> {
+    const now = Timestamp.now();
+    
     // Import FelixChatService dynamically to avoid circular dependency
     const { default: FelixChatService } = await import('./FelixChatService');
     
-    // Delete all chats in this session
-    await FelixChatService.deleteSessionChats(sessionId);
+    // Soft delete all chats in this session
+    await FelixChatService.softDeleteSessionChats(sessionId);
     
-    // Delete the session itself
+    // Soft delete the session itself
+    await this.update(sessionId, {
+      deletedAt: now,
+      isActive: false,
+      updatedAt: now,
+    } as Partial<FelixSession>);
+    
+    console.log(`🗑️ Soft deleted Felix session: ${sessionId}`);
+  }
+
+  /**
+   * Permanently delete a session (hard delete - use with caution)
+   */
+  async permanentlyDeleteSession(sessionId: string): Promise<void> {
+    const { default: FelixChatService } = await import('./FelixChatService');
+    
+    // Permanently delete all chats in this session
+    await FelixChatService.permanentlyDeleteSessionChats(sessionId);
+    
+    // Permanently delete the session itself
     await this.delete(sessionId);
-    console.log(`🗑️ Deleted Felix session: ${sessionId}`);
+    console.log(`💀 Permanently deleted Felix session: ${sessionId}`);
   }
 
   /**
@@ -148,14 +176,35 @@ export class FelixSessionService extends DatabaseService<FelixSession> {
       ],
     });
 
+    // Filter out already deleted sessions in memory
+    const sessionsToDelete = oldSessions.filter(s => !s.deletedAt);
+
     let deletedCount = 0;
-    for (const session of oldSessions) {
-      await this.delete(session.id);
+    for (const session of sessionsToDelete) {
+      await this.deleteSession(session.id);
       deletedCount++;
     }
 
-    console.log(`🗑️ Deleted ${deletedCount} old Felix sessions`);
+    console.log(`🗑️ Soft deleted ${deletedCount} old Felix sessions`);
     return deletedCount;
+  }
+
+  /**
+   * Restore a soft-deleted session
+   */
+  async restoreSession(sessionId: string): Promise<void> {
+    const { default: FelixChatService } = await import('./FelixChatService');
+    
+    // Restore all chats in this session
+    await FelixChatService.restoreSessionChats(sessionId);
+    
+    // Restore the session itself
+    await this.update(sessionId, {
+      deletedAt: null,
+      updatedAt: Timestamp.now(),
+    } as Partial<FelixSession>);
+    
+    console.log(`♻️ Restored Felix session: ${sessionId}`);
   }
 }
 

@@ -26,6 +26,7 @@ export interface User {
   email: string | null;
   displayName: string | null;
   emailVerified: boolean;
+  role: UserRole;
 }
 
 /**
@@ -40,11 +41,21 @@ export interface DeviceSession {
 }
 
 /**
+ * User tier types
+ * - tier-0: Full access including downloads (highest privilege)
+ * - tier-1: Can download Excel files
+ * - tier-2: View only, no downloads (lowest privilege)
+ */
+export type UserRole = 'tier-0' | 'tier-1' | 'tier-2';
+
+/**
  * Whitelist entry interface
  */
 export interface WhitelistEntry {
   email: string;
+  fullName?: string;
   displayName?: string;
+  role: UserRole;
   addedAt: number;
   addedBy: string;
   active: boolean;
@@ -91,9 +102,12 @@ class AuthService {
    * This runs once when the service is instantiated
    */
   private initializeAuthStateListener(): void {
-    onAuthStateChanged(this.auth, (firebaseUser: FirebaseUser | null) => {
+    onAuthStateChanged(this.auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
-        this.currentUser = this.mapFirebaseUser(firebaseUser);
+        // Fetch role and display name from whitelist
+        const role = await this.getUserRole(firebaseUser.email || '');
+        const displayName = await this.getDisplayNameFromWhitelist(firebaseUser.email || '');
+        this.currentUser = this.mapFirebaseUser(firebaseUser, role, displayName);
       } else {
         this.currentUser = null;
       }
@@ -105,13 +119,15 @@ class AuthService {
 
   /**
    * Map Firebase User to our User interface
+   * Note: role and displayName will be fetched separately from whitelist
    */
-  private mapFirebaseUser(firebaseUser: FirebaseUser): User {
+  private mapFirebaseUser(firebaseUser: FirebaseUser, role: UserRole = 'tier-2', displayName: string | null = null): User {
     return {
       uid: firebaseUser.uid,
       email: firebaseUser.email,
-      displayName: firebaseUser.displayName,
+      displayName: displayName || firebaseUser.displayName,
       emailVerified: firebaseUser.emailVerified,
+      role,
     };
   }
 
@@ -149,14 +165,50 @@ class AuthService {
   }
 
   /**
+   * Get user role from whitelist
+   */
+  async getUserRole(email: string): Promise<UserRole> {
+    try {
+      const whitelistRef = doc(db, 'emailWhitelist', email.toLowerCase());
+      const whitelistDoc = await getDoc(whitelistRef);
+      
+      if (!whitelistDoc.exists()) {
+        return 'tier-2'; // Default tier
+      }
+
+      const data = whitelistDoc.data() as WhitelistEntry;
+      return data.role || 'tier-2';
+    } catch (error) {
+      console.error('Error getting user role:', error);
+      return 'tier-2';
+    }
+  }
+
+  /**
+   * Check if user has permission for a specific action
+   */
+  canDownloadExcel(user: User | null): boolean {
+    if (!user) return false;
+    return user.role === 'tier-0' || user.role === 'tier-1';
+  }
+
+  /**
    * Add email to whitelist (admin function)
    */
-  async addToWhitelist(email: string, addedBy: string, displayName?: string): Promise<void> {
+  async addToWhitelist(
+    email: string, 
+    addedBy: string, 
+    fullName?: string, 
+    displayName?: string,
+    role: UserRole = 'tier-2'
+  ): Promise<void> {
     try {
       const whitelistRef = doc(db, 'emailWhitelist', email.toLowerCase());
       const entry: WhitelistEntry = {
         email: email.toLowerCase(),
+        fullName,
         displayName,
+        role,
         addedAt: Date.now(),
         addedBy,
         active: true,
@@ -279,6 +331,34 @@ class AuthService {
   }
 
   /**
+   * Update display name in whitelist
+   */
+  async updateDisplayName(email: string, displayName: string): Promise<void> {
+    try {
+      const whitelistRef = doc(db, 'emailWhitelist', email.toLowerCase());
+      const whitelistDoc = await getDoc(whitelistRef);
+
+      if (!whitelistDoc.exists()) {
+        throw new Error('User not found in whitelist');
+      }
+
+      await setDoc(whitelistRef, { displayName }, { merge: true });
+      
+      // Update current user if it's the same email
+      if (this.currentUser && this.currentUser.email?.toLowerCase() === email.toLowerCase()) {
+        this.currentUser = {
+          ...this.currentUser,
+          displayName,
+        };
+        this.notifyAuthStateListeners(this.currentUser);
+      }
+    } catch (error) {
+      console.error('Error updating display name:', error);
+      throw new Error('Failed to update display name');
+    }
+  }
+
+  /**
    * Complete sign-in with email link
    */
   async completeSignInWithEmailLink(emailLink?: string): Promise<User> {
@@ -328,15 +408,16 @@ class AuthService {
       // Sign in with email link
       const userCredential = await signInWithEmailLink(this.auth, email, url);
       
-      // Get display name from whitelist
+      // Get display name and role from whitelist
       const displayName = await this.getDisplayNameFromWhitelist(email);
+      const role = await this.getUserRole(email);
       
       // Update Firebase user profile with display name if available
       if (displayName && userCredential.user) {
         await updateProfile(userCredential.user, { displayName });
       }
       
-      const user = this.mapFirebaseUser(userCredential.user);
+      const user = this.mapFirebaseUser(userCredential.user, role, displayName);
 
       // Create 90-day device session
       await this.createDeviceSession(email);
@@ -386,7 +467,10 @@ class AuthService {
         password
       );
 
-      const user = this.mapFirebaseUser(userCredential.user);
+      // Get role and display name from whitelist
+      const role = await this.getUserRole(email);
+      const displayName = await this.getDisplayNameFromWhitelist(email);
+      const user = this.mapFirebaseUser(userCredential.user, role, displayName);
       this.currentUser = user;
 
       // Log successful login
