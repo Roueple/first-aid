@@ -597,6 +597,66 @@
   }
 }
 
+/* Loading Status Indicator */
+.felix-loading-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.75rem;
+  background: var(--calico-secondary);
+  border: 1px solid var(--calico-border);
+  border-radius: 12px;
+  color: var(--calico-text-muted);
+  font-size: 0.875rem;
+  animation: fadeInSlide 0.3s ease;
+}
+
+.felix-loading-status-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  color: var(--calico-text-muted);
+  font-size: 0.875rem;
+  animation: fadeInSlide 0.3s ease;
+}
+
+.felix-loading-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--calico-orange);
+  border-radius: 50%;
+  animation: pulse 1.5s ease-in-out infinite;
+  box-shadow: 0 0 8px rgba(255, 140, 66, 0.5);
+}
+
+.felix-loading-text {
+  color: var(--calico-text-muted);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes fadeInSlide {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Bottom Input */
 .felix-bottom-input {
   position: fixed;
@@ -1327,4 +1387,161 @@
 .felix-btn-secondary:hover:not(:disabled) {
   background: var(--calico-hover);
   border-color: var(--calico-orange);
+}
+
+/* Help Button */
+.felix-help-btn {
+  position: fixed;
+  top: 1rem;
+  right: 5rem;
+  z-index: 1000;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: var(--felix-bg-secondary);
+  border: 1px solid var(--felix-border);
+  color: var(--felix-text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.felix-help-btn:hover {
+  background: var(--felix-bg-hover);
+  color: var(--felix-text-primary);
+  transform: scale(1.05);
+}
+
+/* Onboarding Tutorial Styles */
+.felix-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.felix-modal {
+  background: var(--felix-bg-primary);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.felix-modal-large {
+  width: 1200px;
+}
+
+.felix-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--felix-border);
+}
+
+.felix-modal-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.felix-modal-brand {
+  font-size: 1.25rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.felix-modal-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--felix-text-primary);
+  margin: 0;
+}
+
+.felix-modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.felix-modal-close {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 6px;
+  background: transparent;
+  border: none;
+  color: var(--felix-text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.felix-modal-close:hover {
+  background: var(--felix-bg-hover);
+  color: var(--felix-text-primary);
+}
+
+.felix-modal-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+
+/* Tutorial specific styles */
+.felix-aggregation-row-clickable {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.felix-aggregation-row-clickable:hover {
+  background-color: var(--felix-bg-hover);
+}
+
+/* Sidebar footer adjustments for new buttons */
+.felix-sidebar-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-top: 1px solid var(--felix-border);
+}
+
+.felix-settings-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--felix-text-secondary);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+  text-align: left;
+}
+
+.felix-settings-btn:hover {
+  background: var(--felix-bg-hover);
+  color: var(--felix-text-primary);
+}
+
+.felix-settings-btn svg {
+  flex-shrink: 0;
 }

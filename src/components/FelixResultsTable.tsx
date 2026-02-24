@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface FelixResultsTableProps {
   results: any[];
@@ -10,11 +11,12 @@ interface FelixResultsTableProps {
  * FelixResultsTable - Modern table display for Felix query results
  * 
  * Features:
- * - Max 20 rows display
+ * - Paginated display (20 rows per page)
  * - Clickable rows with expandable detail view
  * - Responsive design
  * - Table-specific column rendering
  * - Clean, modern styling
+ * - Auto-loads all data in background after first page
  */
 export const FelixResultsTable: React.FC<FelixResultsTableProps> = ({
   results,
@@ -22,16 +24,74 @@ export const FelixResultsTable: React.FC<FelixResultsTableProps> = ({
   maxRows = 20
 }) => {
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset to page 1 when results change
+  useEffect(() => {
+    setCurrentPage(1);
+    setExpandedRow(null);
+  }, [results]);
 
   if (!results || results.length === 0) {
     return null;
   }
 
-  const displayResults = results.slice(0, maxRows);
-  const hasMore = results.length > maxRows;
+  const totalPages = Math.ceil(results.length / maxRows);
+  const startIndex = (currentPage - 1) * maxRows;
+  const endIndex = Math.min(startIndex + maxRows, results.length);
+  const displayResults = results.slice(startIndex, endIndex);
 
   const toggleRow = (index: number) => {
     setExpandedRow(expandedRow === index ? null : index);
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+      setExpandedRow(null);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+      setExpandedRow(null);
+    }
+  };
+
+  const PaginationControls = () => {
+    if (totalPages <= 1) return null;
+
+    return (
+      <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
+        <div className="flex items-center gap-2 text-sm text-gray-700">
+          <span>
+            Showing {startIndex + 1}-{endIndex} of {results.length} results
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handlePrevPage}
+            disabled={currentPage === 1}
+            className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+          >
+            <ChevronLeft size={16} />
+            Previous
+          </button>
+          <span className="text-sm text-gray-700">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={handleNextPage}
+            disabled={currentPage === totalPages}
+            className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+          >
+            Next
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      </div>
+    );
   };
 
   // Render audit-results table
@@ -65,7 +125,7 @@ export const FelixResultsTable: React.FC<FelixResultsTableProps> = ({
                           <span className="text-gray-400 text-xs">
                             {expandedRow === index ? '▼' : '▶'}
                           </span>
-                          <span className="text-xs">{index + 1}</span>
+                          <span className="text-xs">{startIndex + index + 1}</span>
                         </div>
                       </td>
                       <td className="px-2 py-2 text-gray-900 whitespace-nowrap align-top text-xs">{result.year}</td>
@@ -146,7 +206,7 @@ export const FelixResultsTable: React.FC<FelixResultsTableProps> = ({
                     <span className="text-gray-400 text-xs">
                       {expandedRow === index ? '▼' : '▶'}
                     </span>
-                    <span className="text-xs font-semibold text-gray-500">#{index + 1}</span>
+                    <span className="text-xs font-semibold text-gray-500">#{startIndex + index + 1}</span>
                   </div>
                   <span className="text-xs font-medium text-gray-900 bg-gray-100 px-2 py-1 rounded">
                     {result.year}
@@ -209,11 +269,7 @@ export const FelixResultsTable: React.FC<FelixResultsTableProps> = ({
           ))}
         </div>
 
-        {hasMore && (
-          <div className="mt-2 text-xs text-gray-500 text-center">
-            Showing {maxRows} of {results.length} results. Download Excel to see all.
-          </div>
-        )}
+        <PaginationControls />
       </div>
     );
   }
@@ -249,7 +305,7 @@ export const FelixResultsTable: React.FC<FelixResultsTableProps> = ({
                           <span className="text-gray-400 text-xs">
                             {expandedRow === index ? '▼' : '▶'}
                           </span>
-                          <span className="text-xs">{index + 1}</span>
+                          <span className="text-xs">{startIndex + index + 1}</span>
                         </div>
                       </td>
                       <td className="px-2 py-2 text-gray-900 font-mono text-xs whitespace-nowrap">
@@ -338,7 +394,7 @@ export const FelixResultsTable: React.FC<FelixResultsTableProps> = ({
                     <span className="text-gray-400 text-xs">
                       {expandedRow === index ? '▼' : '▶'}
                     </span>
-                    <span className="text-xs font-semibold text-gray-500">#{index + 1}</span>
+                    <span className="text-xs font-semibold text-gray-500">#{startIndex + index + 1}</span>
                   </div>
                   <div className="flex gap-2">
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
@@ -385,11 +441,7 @@ export const FelixResultsTable: React.FC<FelixResultsTableProps> = ({
           ))}
         </div>
 
-        {hasMore && (
-          <div className="mt-2 text-xs text-gray-500 text-center">
-            Showing {maxRows} of {results.length} results. Download Excel to see all.
-          </div>
-        )}
+        <PaginationControls />
       </div>
     );
   }
@@ -422,7 +474,7 @@ export const FelixResultsTable: React.FC<FelixResultsTableProps> = ({
                           <span className="text-gray-400 text-xs">
                             {expandedRow === index ? '▼' : '▶'}
                           </span>
-                          <span className="text-xs">{index + 1}</span>
+                          <span className="text-xs">{startIndex + index + 1}</span>
                         </div>
                       </td>
                       <td className="px-2 py-2 text-gray-900 font-medium text-xs">{result.name}</td>
@@ -495,7 +547,7 @@ export const FelixResultsTable: React.FC<FelixResultsTableProps> = ({
                     <span className="text-gray-400 text-xs">
                       {expandedRow === index ? '▼' : '▶'}
                     </span>
-                    <span className="text-xs font-semibold text-gray-500">#{index + 1}</span>
+                    <span className="text-xs font-semibold text-gray-500">#{startIndex + index + 1}</span>
                   </div>
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                     {result.category}
@@ -538,11 +590,7 @@ export const FelixResultsTable: React.FC<FelixResultsTableProps> = ({
           ))}
         </div>
 
-        {hasMore && (
-          <div className="mt-2 text-xs text-gray-500 text-center">
-            Showing {maxRows} of {results.length} results. Download Excel to see all.
-          </div>
-        )}
+        <PaginationControls />
       </div>
     );
   }
@@ -572,7 +620,7 @@ export const FelixResultsTable: React.FC<FelixResultsTableProps> = ({
                         <span className="text-gray-400 text-xs">
                           {expandedRow === index ? '▼' : '▶'}
                         </span>
-                        <span className="text-xs">{index + 1}</span>
+                        <span className="text-xs">{startIndex + index + 1}</span>
                       </div>
                     </td>
                     <td className="px-2 py-2 text-gray-900">
@@ -611,7 +659,7 @@ export const FelixResultsTable: React.FC<FelixResultsTableProps> = ({
                 <span className="text-gray-400 text-xs">
                   {expandedRow === index ? '▼' : '▶'}
                 </span>
-                <span className="text-xs font-semibold text-gray-500">#{index + 1}</span>
+                <span className="text-xs font-semibold text-gray-500">#{startIndex + index + 1}</span>
               </div>
               
               <div className="text-xs text-gray-900 overflow-x-auto">
@@ -627,11 +675,7 @@ export const FelixResultsTable: React.FC<FelixResultsTableProps> = ({
         ))}
       </div>
 
-      {hasMore && (
-        <div className="mt-2 text-xs text-gray-500 text-center">
-          Showing {maxRows} of {results.length} results. Download Excel to see all.
-        </div>
-      )}
+      <PaginationControls />
     </div>
   );
 };

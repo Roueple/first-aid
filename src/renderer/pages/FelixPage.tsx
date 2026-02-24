@@ -61,6 +61,7 @@ export default function FelixPage() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [loadingStatus, setLoadingStatus] = useState<string>('');
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [sessions, setSessions] = useState<any[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -211,6 +212,13 @@ export default function FelixPage() {
     setInput('');
     setIsLoading(true);
     setIsStreaming(true);
+    
+    // Extract context from query for better status messages
+    const queryLower = messageContent.toLowerCase();
+    const hasProject = queryLower.match(/\b(sh\d+|[a-z]{2,4}\d*)\b/i);
+    const hasDepartment = queryLower.match(/\b(it|legal|finance|hr|marketing|sales|operations)\b/i);
+    
+    setLoadingStatus('Felix sedang berpikir...');
 
     try {
       const assistantMessageId = (Date.now() + 1).toString();
@@ -223,6 +231,17 @@ export default function FelixPage() {
         timestamp: new Date()
       }]);
 
+      // More contextual status
+      setTimeout(() => {
+        if (hasProject) {
+          setLoadingStatus(`Felix sedang mencari di ${hasProject[0].toUpperCase()}...`);
+        } else if (hasDepartment) {
+          setLoadingStatus(`Felix sedang menganalisis ${hasDepartment[0]}...`);
+        } else {
+          setLoadingStatus('Felix sedang mencari data...');
+        }
+      }, 500);
+      
       const stream = felixService.streamChat(
         userMessage.content,
         currentUser.uid,
@@ -231,12 +250,23 @@ export default function FelixPage() {
 
       let result: { sessionId: string; queryResult?: any } | undefined;
       let done = false;
+      let hasStartedStreaming = false;
       
       while (!done) {
         const { value, done: isDone } = await stream.next();
         done = isDone || false;
         
         if (!done && typeof value === 'string') {
+          if (!hasStartedStreaming) {
+            // Check if we got results
+            if (result?.queryResult?.resultsCount !== undefined) {
+              const count = result.queryResult.resultsCount;
+              setLoadingStatus(count > 0 ? `Felix menemukan ${count} hasil ✓` : 'Tidak ada hasil ditemukan');
+            } else {
+              setLoadingStatus('Felix menyiapkan hasil...');
+            }
+            hasStartedStreaming = true;
+          }
           assistantContent += value;
           setMessages(prev => prev.map(msg => 
             msg.id === assistantMessageId 
@@ -245,6 +275,14 @@ export default function FelixPage() {
           ));
         } else if (done && value) {
           result = value as { sessionId: string; queryResult?: any };
+          
+          // Update status with actual results
+          if (result.queryResult?.resultsCount !== undefined) {
+            const count = result.queryResult.resultsCount;
+            if (count > 0) {
+              setLoadingStatus(`Felix menemukan ${count} hasil ✓`);
+            }
+          }
         }
       }
 
@@ -291,6 +329,7 @@ export default function FelixPage() {
     } finally {
       setIsLoading(false);
       setIsStreaming(false);
+      setLoadingStatus('');
     }
   };
 
@@ -439,6 +478,7 @@ export default function FelixPage() {
     if (!currentUser || !currentSessionId) return;
     
     setIsLoading(true);
+    setLoadingStatus(`Felix sedang mencari di ${projectName}...`);
     try {
       const result = await felixService.executeConfirmedQuery(
         originalQuery,
@@ -474,6 +514,7 @@ export default function FelixPage() {
       }]);
     } finally {
       setIsLoading(false);
+      setLoadingStatus('');
     }
   };
 
@@ -572,7 +613,9 @@ export default function FelixPage() {
   return (
     <div className={`felix-page ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
       {/* Theme Switcher */}
-      <ThemeSwitcher />
+      <div>
+        <ThemeSwitcher />
+      </div>
 
       {/* Sidebar */}
       <aside className={`felix-sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
@@ -633,6 +676,14 @@ export default function FelixPage() {
             <Settings size={18} />
             <span>Settings</span>
           </button>
+          <button 
+            className="felix-settings-btn"
+            onClick={() => setShowReportDialog(true)}
+            title="Send Feedback"
+          >
+            <Flag size={18} />
+            <span>Feedback</span>
+          </button>
         </div>
       </aside>
 
@@ -668,6 +719,12 @@ export default function FelixPage() {
                 </h1>
               )}
               <div className="w-full max-w-2xl px-4">
+                {loadingStatus && (
+                  <div className="felix-loading-status">
+                    <span className="felix-loading-dot"></span>
+                    <span className="felix-loading-text">{loadingStatus}</span>
+                  </div>
+                )}
                 <FelixVanishInput 
                   onSubmit={handleSend}
                   disabled={isLoading}
@@ -686,6 +743,11 @@ export default function FelixPage() {
                       <div className="felix-assistant-message">
                         {message.content ? (
                           <div className="felix-message-text">{message.content}</div>
+                        ) : isStreaming && loadingStatus ? (
+                          <div className="felix-loading-status-inline">
+                            <span className="felix-loading-dot"></span>
+                            <span className="felix-loading-text">{loadingStatus}</span>
+                          </div>
                         ) : isStreaming ? (
                           <div className="felix-typing">
                             <span></span><span></span><span></span>

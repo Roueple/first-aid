@@ -225,19 +225,15 @@ Return ONLY the JSON object.`;
         console.log(`📊 Generated ${yearAggregation.length} year groups for chart`);
       }
 
-      const message = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📋 ${userIntent}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-✅ QUERY EXECUTED SUCCESSFULLY
-
-Found ${results.length} result${results.length !== 1 ? 's' : ''}
-
-${this.describeFilters(filters)}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+      // More personalized, conversational response
+      const resultText = results.length === 0 
+        ? 'Tidak ada hasil yang ditemukan' 
+        : results.length === 1 
+          ? 'Ditemukan 1 hasil'
+          : `Ditemukan ${results.length} hasil`;
+      
+      const filterDesc = this.describeFilters(filters);
+      const message = `${userIntent}...\n\n${resultText}${filterDesc ? ' dengan filter:\n' + filterDesc : '.'}`
 
       const queryResult: QueryResult = {
         success: true,
@@ -927,22 +923,8 @@ Return ONLY the JSON object.`;
         const groupByDisplay = Array.isArray(groupBy) ? groupBy.join(' + ') : groupBy;
         const isMultiDimensional = Array.isArray(groupBy);
         
-        const message = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📊 ${userIntent}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-✅ ${isMultiDimensional ? 'MULTI-DIMENSIONAL ' : ''}AGGREGATION COMPLETED
-
-Grouped by: ${groupByDisplay}
-Aggregation: ${aggregationType}${aggregateField ? ` (${aggregateField})` : ''}
-Groups found: ${aggregatedResults.length}
-Total findings: ${results.length}
-
-${this.describeFilters(filters)}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+        const groupText = isMultiDimensional ? 'Multi-dimensional aggregation' : 'Agregasi';
+        const message = `${userIntent}...\n\n${groupText} berdasarkan ${groupByDisplay}\nDitemukan ${aggregatedResults.length} grup dari ${results.length} temuan\n\n${this.describeFilters(filters)}`;
 
         return {
           success: true,
@@ -972,20 +954,15 @@ ${this.describeFilters(filters)}
         console.log(`📊 Generated ${yearAggregation.length} year groups for chart`);
       }
 
-      // Format response
-      const message = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📋 ${userIntent}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-✅ QUERY EXECUTED SUCCESSFULLY
-
-Found ${results.length} result${results.length !== 1 ? 's' : ''}
-
-${this.describeFilters(filters)}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+      // More personalized, conversational response
+      const resultText = results.length === 0 
+        ? 'Tidak ada hasil yang ditemukan' 
+        : results.length === 1 
+          ? 'Ditemukan 1 hasil'
+          : `Ditemukan ${results.length} hasil`;
+      
+      const filterDesc = this.describeFilters(filters);
+      const message = `${userIntent}...\n\n${resultText}${filterDesc ? ' dengan filter:\n' + filterDesc : '.'}`;
 
       return {
         success: true,
@@ -1441,28 +1418,53 @@ ${this.describeFilters(filters)}
       description: '📝'
     };
 
+    const fieldNames: Record<string, string> = {
+      department: 'department',
+      year: 'tahun',
+      projectName: 'proyek',
+      projectId: 'ID proyek',
+      initials: 'inisial',
+      code: 'kode',
+      nilai: 'nilai',
+      bobot: 'bobot',
+      kadar: 'kadar',
+      riskArea: 'area risiko',
+      sh: 'SH',
+      tags: 'tag',
+      finding: 'temuan',
+      nonFinding: 'non-temuan',
+      total: 'total',
+      category: 'kategori',
+      name: 'nama',
+      projectType: 'tipe proyek',
+      subtype: 'subtipe',
+      description: 'deskripsi'
+    };
+
     return filters.map(f => {
       const icon = icons[f.field] || '•';
+      const fieldName = fieldNames[f.field] || f.field;
       
       // Format value display for arrays
       let displayValue: string;
       if (Array.isArray(f.value)) {
         if (f.value.length <= 3) {
-          displayValue = f.value.join(' OR ');
+          displayValue = f.value.join(', ');
         } else {
-          displayValue = `${f.value.slice(0, 3).join(', ')} + ${f.value.length - 3} more`;
+          displayValue = `${f.value.slice(0, 3).join(', ')} dan ${f.value.length - 3} lainnya`;
         }
       } else {
         displayValue = String(f.value);
       }
       
-      // Simplify operator display
-      const operatorDisplay = f.operator === 'in' ? 'IN' : 
-                             f.operator === 'array-contains-any' ? 'CONTAINS ANY' :
-                             f.operator === 'contains' ? 'CONTAINS' :
-                             f.operator;
+      // More conversational operator display
+      const operatorText = f.operator === 'in' ? '' : 
+                          f.operator === 'array-contains-any' ? 'mengandung' :
+                          f.operator === 'contains' ? 'mengandung' :
+                          f.operator === '==' ? '' :
+                          f.operator;
       
-      return `${icon} ${f.field} ${operatorDisplay} ${displayValue}`;
+      return `${icon} ${fieldName}: ${displayValue}`;
     }).join('\n');
   }
 
