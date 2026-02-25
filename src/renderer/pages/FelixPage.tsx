@@ -3,6 +3,7 @@ import { felixService } from '../../services/FelixService';
 import FelixSessionService from '../../services/FelixSessionService';
 import FelixChatService from '../../services/FelixChatService';
 import FelixGreetingService from '../../services/FelixGreetingService';
+import OnboardingService from '../../services/OnboardingService';
 import authService from '../../services/AuthService';
 import { useAuth } from '../../contexts/AuthContext';
 import FelixResultsTable from '../../components/FelixResultsTable';
@@ -11,6 +12,7 @@ import { ReportChatDialog } from '../../components/ReportChatDialog';
 import { ConfirmDeleteDialog } from '../../components/ConfirmDeleteDialog';
 import { UserSettingsDialog } from '../../components/UserSettingsDialog';
 import { FirstTimeSetupDialog } from '../../components/FirstTimeSetupDialog';
+import { OnboardingTutorial } from '../../components/OnboardingTutorial';
 import { ThemeSwitcher } from '../../components/ThemeSwitcher';
 import { CatAnimation } from '../../components/ui/cat-animation';
 import { FelixVanishInput } from '../../components/ui/felix-vanish-input';
@@ -69,6 +71,9 @@ export default function FelixPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [showFirstTimeSetup, setShowFirstTimeSetup] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [isTutorialManualRestart, setIsTutorialManualRestart] = useState(false);
+  const [tutorialDemoQuery, setTutorialDemoQuery] = useState<string | undefined>(undefined);
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [greeting, setGreeting] = useState<string | null>(null);
@@ -88,6 +93,7 @@ export default function FelixPage() {
       loadUserSessions();
       loadPersonalizedGreeting();
       checkFirstTimeSetup();
+      checkTutorialStatus();
     }
   }, [currentUser]);
 
@@ -106,11 +112,62 @@ export default function FelixPage() {
     }
   };
 
+  const checkTutorialStatus = async () => {
+    if (!currentUser) return;
+    
+    try {
+      // Check if tutorial should be shown (Requirements 9.2-9.5, 10.2-10.5)
+      const shouldShow = await OnboardingService.shouldShowTutorial(currentUser.uid);
+      
+      if (shouldShow) {
+        // If tutorial should show, it's a resume (not manual restart)
+        setIsTutorialManualRestart(false);
+        setShowTutorial(true);
+      }
+    } catch (error) {
+      console.error('Error checking tutorial status:', error);
+      // Don't show tutorial on error
+    }
+  };
+
   const handleFirstTimeSetupComplete = () => {
     if (currentUser) {
       localStorage.setItem(`firstTimeSetup_${currentUser.uid}`, 'true');
     }
     setShowFirstTimeSetup(false);
+    // Start tutorial after setup completes (Requirements 1.1-1.3)
+    setIsTutorialManualRestart(false);
+    setShowTutorial(true);
+  };
+
+  const handleTutorialComplete = async () => {
+    if (!currentUser) return;
+    
+    try {
+      // Mark tutorial as completed in Firebase (Requirements 9.4, 10.4)
+      await OnboardingService.completeTutorial(currentUser.uid);
+    } catch (error) {
+      console.error('Error completing tutorial:', error);
+      // Continue even if Firebase save fails
+    }
+    
+    setShowTutorial(false);
+    setIsTutorialManualRestart(false);
+  };
+
+  const handleTutorialRestart = async () => {
+    if (!currentUser) return;
+    
+    try {
+      // Reset tutorial state for manual restart (Requirements 10.1-10.5)
+      await OnboardingService.resetTutorial(currentUser.uid);
+      setIsTutorialManualRestart(true);
+      setShowTutorial(true);
+      setShowSettingsDialog(false);
+    } catch (error) {
+      console.error('Error restarting tutorial:', error);
+      // Could show error toast here
+    }
   };
 
   const loadPersonalizedGreeting = async () => {
@@ -620,7 +677,7 @@ export default function FelixPage() {
       {/* Sidebar */}
       <aside className={`felix-sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
         <div className="felix-sidebar-header">
-          <button className="felix-new-chat-btn" onClick={handleNewChat}>
+          <button className="felix-new-chat-btn" onClick={handleNewChat} data-tutorial="new-chat-btn">
             <Plus size={18} />
             <span>New chat</span>
           </button>
@@ -628,6 +685,7 @@ export default function FelixPage() {
             className="felix-sidebar-toggle" 
             onClick={() => setSidebarOpen(false)}
             title="Close sidebar"
+            data-tutorial="sidebar-close-btn"
           >
             <PanelLeftClose size={18} />
           </button>
@@ -693,6 +751,7 @@ export default function FelixPage() {
           className="felix-sidebar-open-btn"
           onClick={() => setSidebarOpen(true)}
           title="Open sidebar"
+          data-tutorial="hamburger-menu"
         >
           <PanelLeft size={20} />
         </button>
@@ -708,10 +767,10 @@ export default function FelixPage() {
 
       {/* Main Content */}
       <div className="felix-main">
-        <div className="felix-content" ref={chatAreaRef}>
+        <div className="felix-content" ref={chatAreaRef} data-tutorial="chat-area">
           {messages.length === 0 ? (
             /* Welcome Screen */
-            <div className="felix-welcome">
+            <div className="felix-welcome" data-tutorial="welcome-screen">
               <CatAnimation size={140} className="felix-cat" />
               {greeting !== null && (
                 <h1 className={`felix-greeting ${getGreetingClass()}`}>
@@ -720,7 +779,7 @@ export default function FelixPage() {
               )}
               <div className="w-full max-w-2xl px-4">
                 {loadingStatus && (
-                  <div className="felix-loading-status">
+                  <div className="felix-loading-status" data-tutorial="loading-indicator">
                     <span className="felix-loading-dot"></span>
                     <span className="felix-loading-text">{loadingStatus}</span>
                   </div>
@@ -728,6 +787,8 @@ export default function FelixPage() {
                 <FelixVanishInput 
                   onSubmit={handleSend}
                   disabled={isLoading}
+                  initialValue={tutorialDemoQuery}
+                  data-tutorial="input-field"
                 />
               </div>
             </div>
@@ -744,7 +805,7 @@ export default function FelixPage() {
                         {message.content ? (
                           <div className="felix-message-text">{message.content}</div>
                         ) : isStreaming && loadingStatus ? (
-                          <div className="felix-loading-status-inline">
+                          <div className="felix-loading-status-inline" data-tutorial="loading-indicator">
                             <span className="felix-loading-dot"></span>
                             <span className="felix-loading-text">{loadingStatus}</span>
                           </div>
@@ -881,6 +942,7 @@ export default function FelixPage() {
                               <button 
                                 className="felix-action-btn"
                                 onClick={() => handleCopyMessage(message)}
+                                data-tutorial="copy-button"
                               >
                                 <Copy size={14} /> Copy
                               </button>
@@ -939,6 +1001,7 @@ export default function FelixPage() {
                       className="felix-send-btn"
                       onClick={() => handleSend()}
                       disabled={!input.trim() || isLoading}
+                      data-tutorial="send-button"
                     >
                       <ChevronUp size={18} />
                     </button>
@@ -1015,12 +1078,23 @@ export default function FelixPage() {
       <UserSettingsDialog
         isOpen={showSettingsDialog}
         onClose={() => setShowSettingsDialog(false)}
+        onRestartTutorial={handleTutorialRestart}
       />
 
       {/* First Time Setup Dialog */}
       <FirstTimeSetupDialog
         isOpen={showFirstTimeSetup}
         onComplete={handleFirstTimeSetupComplete}
+      />
+
+      {/* Onboarding Tutorial */}
+      <OnboardingTutorial
+        isActive={showTutorial}
+        onComplete={handleTutorialComplete}
+        isManualRestart={isTutorialManualRestart}
+        onSetDemoQuery={setTutorialDemoQuery}
+        isSidebarOpen={sidebarOpen}
+        hasResults={messages.some(m => m.queryResult?.results && m.queryResult.results.length > 0)}
       />
     </div>
   );

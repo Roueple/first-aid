@@ -1,0 +1,687 @@
+/* ============================================
+   Interactive Onboarding Tutorial Styles
+   ============================================ */
+
+/* ============================================
+   CSS Variables - Theme-Aware Colors
+   ============================================ */
+
+:root {
+  /* Light theme colors - Felix Orange Theme */
+  --tutorial-overlay-bg-light: rgba(0, 0, 0, 0.6);
+  --tutorial-tooltip-bg-light: #ffffff;
+  --tutorial-tooltip-text-light: #1f2937;
+  --tutorial-tooltip-border-light: #e5e7eb;
+  --tutorial-tooltip-shadow-light: 0 10px 25px rgba(0, 0, 0, 0.15);
+  --tutorial-button-bg-light: #ff8c42;
+  --tutorial-button-hover-light: #e67a35;
+  --tutorial-button-text-light: #ffffff;
+  --tutorial-button-secondary-bg-light: #f3f4f6;
+  --tutorial-button-secondary-hover-light: #e5e7eb;
+  --tutorial-button-secondary-text-light: #4b5563;
+  --tutorial-step-number-bg-light: #ffb380;
+  --tutorial-step-number-text-light: #8b4513;
+  --tutorial-focus-ring-light: #ff8c42;
+  
+  /* Dark theme colors - Felix Orange Theme */
+  --tutorial-overlay-bg-dark: rgba(0, 0, 0, 0.75);
+  --tutorial-tooltip-bg-dark: #1f2937;
+  --tutorial-tooltip-text-dark: #f9fafb;
+  --tutorial-tooltip-border-dark: #374151;
+  --tutorial-tooltip-shadow-dark: 0 10px 25px rgba(0, 0, 0, 0.5);
+  --tutorial-button-bg-dark: #ff8c42;
+  --tutorial-button-hover-dark: #e67a35;
+  --tutorial-button-text-dark: #ffffff;
+  --tutorial-button-secondary-bg-dark: #374151;
+  --tutorial-button-secondary-hover-dark: #4b5563;
+  --tutorial-button-secondary-text-dark: #d1d5db;
+  --tutorial-step-number-bg-dark: #8b4513;
+  --tutorial-step-number-text-dark: #ffb380;
+  --tutorial-focus-ring-dark: #ff8c42;
+  
+  /* Z-index hierarchy */
+  --tutorial-overlay-z: 9998;
+  --tutorial-spotlight-z: 9999;
+  --tutorial-tooltip-z: 10000;
+  
+  /* Animation durations */
+  --tutorial-transition-fast: 200ms;
+  --tutorial-transition-normal: 300ms;
+  --tutorial-transition-slow: 500ms;
+  
+  /* Spacing */
+  --tutorial-tooltip-padding: 1.5rem;
+  --tutorial-tooltip-gap: 1rem;
+  --tutorial-arrow-size: 12px;
+}
+
+/* ============================================
+   Tutorial Overlay - Dimmed Background
+   ============================================ */
+
+.tutorial-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: var(--tutorial-overlay-z);
+  pointer-events: none !important;
+  transition: opacity var(--tutorial-transition-normal) ease-in-out;
+}
+
+.tutorial-overlay-light {
+  background: var(--tutorial-overlay-bg-light);
+}
+
+.tutorial-overlay-dark {
+  background: var(--tutorial-overlay-bg-dark);
+}
+
+/* Spotlight effect using SVG mask */
+.tutorial-overlay svg {
+  width: 100%;
+  height: 100%;
+}
+
+.tutorial-spotlight-mask {
+  transition: all var(--tutorial-transition-slow) cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============================================
+   Tutorial Tooltip - Content Container
+   ============================================ */
+
+.tutorial-tooltip {
+  position: fixed;
+  z-index: var(--tutorial-tooltip-z);
+  max-width: 400px;
+  border-radius: 12px;
+  padding: var(--tutorial-tooltip-padding);
+  pointer-events: auto !important;
+  transition: all var(--tutorial-transition-normal) cubic-bezier(0.4, 0, 0.2, 1);
+  animation: tutorial-tooltip-enter var(--tutorial-transition-normal) ease-out;
+}
+
+@keyframes tutorial-tooltip-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.tutorial-tooltip-light {
+  background: var(--tutorial-tooltip-bg-light);
+  color: var(--tutorial-tooltip-text-light);
+  border: 1px solid var(--tutorial-tooltip-border-light);
+  box-shadow: var(--tutorial-tooltip-shadow-light);
+}
+
+.tutorial-tooltip-dark {
+  background: var(--tutorial-tooltip-bg-dark);
+  color: var(--tutorial-tooltip-text-dark);
+  border: 1px solid var(--tutorial-tooltip-border-dark);
+  box-shadow: var(--tutorial-tooltip-shadow-dark);
+}
+
+/* ============================================
+   Tooltip Arrow
+   ============================================ */
+
+.tutorial-tooltip-arrow {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-style: solid;
+}
+
+/* Arrow pointing up (tooltip below target) */
+.tutorial-tooltip-arrow-top {
+  top: calc(-1 * var(--tutorial-arrow-size));
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 0 var(--tutorial-arrow-size) var(--tutorial-arrow-size) var(--tutorial-arrow-size);
+}
+
+.tutorial-tooltip-light .tutorial-tooltip-arrow-top {
+  border-color: transparent transparent var(--tutorial-tooltip-bg-light) transparent;
+}
+
+.tutorial-tooltip-dark .tutorial-tooltip-arrow-top {
+  border-color: transparent transparent var(--tutorial-tooltip-bg-dark) transparent;
+}
+
+/* Arrow pointing down (tooltip above target) */
+.tutorial-tooltip-arrow-bottom {
+  bottom: calc(-1 * var(--tutorial-arrow-size));
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: var(--tutorial-arrow-size) var(--tutorial-arrow-size) 0 var(--tutorial-arrow-size);
+}
+
+.tutorial-tooltip-light .tutorial-tooltip-arrow-bottom {
+  border-color: var(--tutorial-tooltip-bg-light) transparent transparent transparent;
+}
+
+.tutorial-tooltip-dark .tutorial-tooltip-arrow-bottom {
+  border-color: var(--tutorial-tooltip-bg-dark) transparent transparent transparent;
+}
+
+/* Arrow pointing left (tooltip to the right) */
+.tutorial-tooltip-arrow-left {
+  left: calc(-1 * var(--tutorial-arrow-size));
+  top: 50%;
+  transform: translateY(-50%);
+  border-width: var(--tutorial-arrow-size) var(--tutorial-arrow-size) var(--tutorial-arrow-size) 0;
+}
+
+.tutorial-tooltip-light .tutorial-tooltip-arrow-left {
+  border-color: transparent var(--tutorial-tooltip-bg-light) transparent transparent;
+}
+
+.tutorial-tooltip-dark .tutorial-tooltip-arrow-left {
+  border-color: transparent var(--tutorial-tooltip-bg-dark) transparent transparent;
+}
+
+/* Arrow pointing right (tooltip to the left) */
+.tutorial-tooltip-arrow-right {
+  right: calc(-1 * var(--tutorial-arrow-size));
+  top: 50%;
+  transform: translateY(-50%);
+  border-width: var(--tutorial-arrow-size) 0 var(--tutorial-arrow-size) var(--tutorial-arrow-size);
+}
+
+.tutorial-tooltip-light .tutorial-tooltip-arrow-right {
+  border-color: transparent transparent transparent var(--tutorial-tooltip-bg-light);
+}
+
+.tutorial-tooltip-dark .tutorial-tooltip-arrow-right {
+  border-color: transparent transparent transparent var(--tutorial-tooltip-bg-dark);
+}
+
+/* ============================================
+   Tooltip Content Structure
+   ============================================ */
+
+.tutorial-tooltip-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: var(--tutorial-tooltip-gap);
+}
+
+.tutorial-step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-weight: 600;
+  font-size: 0.875rem;
+  flex-shrink: 0;
+}
+
+.tutorial-tooltip-light .tutorial-step-number {
+  background: var(--tutorial-step-number-bg-light);
+  color: var(--tutorial-step-number-text-light);
+}
+
+.tutorial-tooltip-dark .tutorial-step-number {
+  background: var(--tutorial-step-number-bg-dark);
+  color: var(--tutorial-step-number-text-dark);
+}
+
+.tutorial-step-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.tutorial-step-description {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  margin: 0 0 var(--tutorial-tooltip-gap) 0;
+  opacity: 0.9;
+}
+
+/* ============================================
+   Navigation Controls
+   ============================================ */
+
+.tutorial-nav-controls {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.tutorial-btn {
+  padding: 0.625rem 1.25rem;
+  border-radius: 8px;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: all var(--tutorial-transition-fast) ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 1;
+}
+
+.tutorial-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Primary button (Next, Finish) */
+.tutorial-btn-primary {
+  flex: 1;
+  min-width: 100px;
+}
+
+.tutorial-tooltip-light .tutorial-btn-primary {
+  background: var(--tutorial-button-bg-light);
+  color: var(--tutorial-button-text-light);
+}
+
+.tutorial-tooltip-light .tutorial-btn-primary:hover:not(:disabled) {
+  background: var(--tutorial-button-hover-light);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 140, 66, 0.3);
+}
+
+.tutorial-tooltip-dark .tutorial-btn-primary {
+  background: var(--tutorial-button-bg-dark);
+  color: var(--tutorial-button-text-dark);
+}
+
+.tutorial-tooltip-dark .tutorial-btn-primary:hover:not(:disabled) {
+  background: var(--tutorial-button-hover-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 140, 66, 0.4);
+}
+
+/* Secondary button (Back, Skip) */
+.tutorial-btn-secondary {
+  flex: 0 0 auto;
+}
+
+.tutorial-tooltip-light .tutorial-btn-secondary {
+  background: var(--tutorial-button-secondary-bg-light);
+  color: var(--tutorial-button-secondary-text-light);
+}
+
+.tutorial-tooltip-light .tutorial-btn-secondary:hover:not(:disabled) {
+  background: var(--tutorial-button-secondary-hover-light);
+}
+
+.tutorial-tooltip-dark .tutorial-btn-secondary {
+  background: var(--tutorial-button-secondary-bg-dark);
+  color: var(--tutorial-button-secondary-text-dark);
+}
+
+.tutorial-tooltip-dark .tutorial-btn-secondary:hover:not(:disabled) {
+  background: var(--tutorial-button-secondary-hover-dark);
+}
+
+/* ============================================
+   Accessibility - Focus Indicators
+   ============================================ */
+
+.tutorial-btn:focus-visible {
+  outline: 3px solid;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 3px rgba(255, 140, 66, 0.1);
+}
+
+.tutorial-tooltip-light .tutorial-btn:focus-visible {
+  outline-color: var(--tutorial-focus-ring-light);
+}
+
+.tutorial-tooltip-dark .tutorial-btn:focus-visible {
+  outline-color: var(--tutorial-focus-ring-dark);
+}
+
+/* Ensure sufficient color contrast for WCAG AA compliance */
+.tutorial-tooltip-light .tutorial-btn-primary {
+  /* Felix orange button on white background - contrast ratio 4.5:1 */
+  background: #ff8c42;
+  color: #ffffff;
+}
+
+.tutorial-tooltip-dark .tutorial-btn-primary {
+  /* Felix orange button on dark background - contrast ratio 4.5:1 */
+  background: #ff8c42;
+  color: #ffffff;
+}
+
+.tutorial-tooltip-light .tutorial-btn-secondary {
+  /* Gray button on white background - contrast ratio 4.5:1 */
+  background: #e5e7eb;
+  color: #1f2937;
+}
+
+.tutorial-tooltip-dark .tutorial-btn-secondary {
+  /* Gray button on dark background - contrast ratio 4.5:1 */
+  background: #4b5563;
+  color: #f9fafb;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .tutorial-overlay-light {
+    background: rgba(0, 0, 0, 0.8);
+  }
+  
+  .tutorial-overlay-dark {
+    background: rgba(0, 0, 0, 0.9);
+  }
+  
+  .tutorial-tooltip-light {
+    border-width: 2px;
+  }
+  
+  .tutorial-tooltip-dark {
+    border-width: 2px;
+  }
+}
+
+/* ============================================
+   Responsive Design - Mobile Breakpoints
+   ============================================ */
+
+/* Mobile devices (< 768px) */
+@media (max-width: 767px) {
+  .tutorial-tooltip {
+    max-width: calc(100vw - 2rem);
+    padding: 1.25rem;
+    margin: 1rem;
+  }
+  
+  .tutorial-step-title {
+    font-size: 1rem;
+  }
+  
+  .tutorial-step-description {
+    font-size: 0.875rem;
+  }
+  
+  .tutorial-nav-controls {
+    flex-direction: column;
+  }
+  
+  .tutorial-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .tutorial-btn-primary,
+  .tutorial-btn-secondary {
+    flex: 1 1 auto;
+  }
+  
+  /* Ensure tooltip arrows are visible on mobile */
+  .tutorial-tooltip-arrow {
+    display: block;
+  }
+}
+
+/* Tablet devices (768px - 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .tutorial-tooltip {
+    max-width: 380px;
+  }
+}
+
+/* Desktop devices (>= 1024px) */
+@media (min-width: 1024px) {
+  .tutorial-tooltip {
+    max-width: 420px;
+  }
+}
+
+/* ============================================
+   Positioning Classes
+   ============================================ */
+
+.tutorial-tooltip-position-top {
+  /* Tooltip above target */
+  transform-origin: bottom center;
+}
+
+.tutorial-tooltip-position-bottom {
+  /* Tooltip below target */
+  transform-origin: top center;
+}
+
+.tutorial-tooltip-position-left {
+  /* Tooltip to the left of target */
+  transform-origin: right center;
+}
+
+.tutorial-tooltip-position-right {
+  /* Tooltip to the right of target */
+  transform-origin: left center;
+}
+
+/* ============================================
+   Animations and Transitions
+   ============================================ */
+
+/* Fade in animation for overlay - GPU accelerated */
+@keyframes tutorial-overlay-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.tutorial-overlay-enter {
+  animation: tutorial-overlay-fade-in var(--tutorial-transition-normal) ease-in;
+  will-change: opacity;
+}
+
+/* Spotlight pulse animation for emphasis - GPU accelerated */
+@keyframes tutorial-spotlight-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 0 rgba(255, 140, 66, 0));
+  }
+  50% {
+    filter: drop-shadow(0 0 20px rgba(255, 140, 66, 0.5));
+  }
+}
+
+.tutorial-spotlight-pulse {
+  animation: tutorial-spotlight-pulse 2s ease-in-out infinite;
+  will-change: filter;
+}
+
+/* Button press animation - GPU accelerated */
+.tutorial-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/* GPU-accelerated transforms for smooth animations */
+.tutorial-overlay,
+.tutorial-tooltip,
+.tutorial-spotlight-mask {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Smooth transitions using GPU-accelerated properties */
+.tutorial-tooltip {
+  transition: transform var(--tutorial-transition-normal) cubic-bezier(0.4, 0, 0.2, 1),
+              opacity var(--tutorial-transition-normal) cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tutorial-btn {
+  transition: transform var(--tutorial-transition-fast) ease,
+              background-color var(--tutorial-transition-fast) ease,
+              box-shadow var(--tutorial-transition-fast) ease;
+}
+
+/* ============================================
+   Reduced Motion Support
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .tutorial-overlay,
+  .tutorial-tooltip,
+  .tutorial-spotlight-mask,
+  .tutorial-btn {
+    transition: none;
+    animation: none;
+    will-change: auto;
+  }
+  
+  .tutorial-tooltip {
+    animation: none;
+  }
+  
+  .tutorial-btn:hover:not(:disabled) {
+    transform: none;
+  }
+}
+
+/* ============================================
+   Print Styles - Hide Tutorial
+   ============================================ */
+
+@media print {
+  .tutorial-overlay,
+  .tutorial-tooltip {
+    display: none !important;
+  }
+}
+
+/* ============================================
+   Utility Classes
+   ============================================ */
+
+.tutorial-hidden {
+  display: none !important;
+}
+
+.tutorial-visible {
+  display: block;
+}
+
+/* Spotlight target z-index elevation */
+.tutorial-spotlight-target {
+  z-index: 9999 !important; /* Between overlay (9998) and tooltip (10002) */
+  isolation: isolate !important; /* Create stacking context for children */
+  pointer-events: auto !important; /* Allow interactions with spotlight targets */
+}
+
+/* Apply relative positioning only to elements that aren't already fixed or absolute */
+.tutorial-spotlight-target:not(.tutorial-spotlight-target-fixed) {
+  position: relative !important;
+}
+
+/* Screen reader only content */
+.tutorial-sr-only,
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Focus visible for keyboard navigation */
+.tutorial-tooltip:focus-visible {
+  outline: 3px solid;
+  outline-offset: 2px;
+}
+
+.tutorial-tooltip-light:focus-visible {
+  outline-color: var(--tutorial-focus-ring-light);
+}
+
+.tutorial-tooltip-dark:focus-visible {
+  outline-color: var(--tutorial-focus-ring-dark);
+}
+
+/* ============================================
+   Error Dialog Styles
+   ============================================ */
+
+.tutorial-error-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: var(--tutorial-tooltip-z);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(4px);
+}
+
+.tutorial-error-dialog {
+  background: var(--tutorial-tooltip-bg-light);
+  color: var(--tutorial-tooltip-text-light);
+  padding: 2rem;
+  border-radius: 12px;
+  max-width: 400px;
+  box-shadow: var(--tutorial-tooltip-shadow-light);
+  text-align: center;
+}
+
+.dark .tutorial-error-dialog {
+  background: var(--tutorial-tooltip-bg-dark);
+  color: var(--tutorial-tooltip-text-dark);
+  box-shadow: var(--tutorial-tooltip-shadow-dark);
+}
+
+.tutorial-error-dialog h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.tutorial-error-dialog p {
+  margin: 0 0 1.5rem 0;
+  line-height: 1.6;
+}
+
+/* ============================================
+   Loading State
+   ============================================ */
+
+.tutorial-loading {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: tutorial-spin 0.6s linear infinite;
+}
+
+@keyframes tutorial-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

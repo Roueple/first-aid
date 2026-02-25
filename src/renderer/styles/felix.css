@@ -633,6 +633,8 @@
 
 .felix-loading-text {
   color: var(--calico-text-muted);
+  position: relative;
+  z-index: 1;
 }
 
 @keyframes pulse {
@@ -1057,6 +1059,15 @@
 .felix-chart-wrapper {
   padding: 1.5rem;
   background: #0a0a0a;
+}
+
+/* Force white background for chart regardless of theme */
+.felix-chart-white-bg {
+  background: #ffffff !important;
+}
+
+.felix-chart-white-bg .recharts-surface {
+  background: #ffffff !important;
 }
 
 .felix-chart-tooltip {

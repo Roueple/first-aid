@@ -7,10 +7,12 @@ export function PlaceholdersAndVanishInput({
   placeholders,
   onChange,
   onSubmit,
+  initialValue,
 }: {
   placeholders: string[];
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+  initialValue?: string;
 }) {
   const [currentPlaceholder, setCurrentPlaceholder] = useState(0);
   
@@ -23,7 +25,14 @@ export function PlaceholdersAndVanishInput({
   }, [placeholders.length]);
 
   const inputRef = useRef<HTMLInputElement>(null);
-  const [value, setValue] = useState("");
+  const [value, setValue] = useState(initialValue || "");
+
+  // Update value when initialValue changes
+  useEffect(() => {
+    if (initialValue !== undefined) {
+      setValue(initialValue);
+    }
+  }, [initialValue]);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -36,6 +45,7 @@ export function PlaceholdersAndVanishInput({
         value && "bg-gray-50"
       )}
       onSubmit={handleSubmit}
+      data-tutorial="input-field"
     >
       <input
         onChange={(e) => {

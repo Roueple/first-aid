@@ -179,7 +179,7 @@ export const FelixAggregationChart: React.FC<FelixAggregationChartProps> = ({
   };
 
   return (
-    <div className="felix-chart-container">
+    <div className="felix-chart-container" data-tutorial="aggregation-chart">
       <div className="felix-chart-header">
         <span className="felix-chart-title">
           📊 {isMultiDimensional ? 'Multi-Dimensional ' : ''}Trend Analysis
@@ -189,25 +189,24 @@ export const FelixAggregationChart: React.FC<FelixAggregationChartProps> = ({
         </span>
       </div>
       
-      <div className="felix-chart-wrapper">
+      <div className="felix-chart-wrapper felix-chart-white-bg">
         <ChartContainer config={chartConfig} className="h-[400px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
               data={chartData}
               margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
             >
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis
                 dataKey="name"
                 angle={-45}
                 textAnchor="end"
                 height={100}
-                tick={{ fontSize: 12 }}
-                className="text-muted-foreground"
+                tick={{ fontSize: 12, fill: '#6b7280' }}
               />
               <YAxis 
-                className="text-muted-foreground"
-                label={{ value: metricLabel, angle: -90, position: 'insideLeft' }}
+                tick={{ fill: '#6b7280' }}
+                label={{ value: metricLabel, angle: -90, position: 'insideLeft', fill: '#6b7280' }}
               />
               <ChartTooltip
                 content={<ChartTooltipContent indicator="line" />}
@@ -235,14 +234,14 @@ export const FelixAggregationChart: React.FC<FelixAggregationChartProps> = ({
                     r: activeLine === null || activeLine === key ? 4 : 2,
                     fill: chartConfig[key]?.color || COLORS[index % COLORS.length],
                     strokeWidth: 2,
-                    stroke: 'hsl(var(--background))',
+                    stroke: '#ffffff',
                     style: { cursor: 'pointer' },
                   }}
                   activeDot={{
                     r: 6,
                     fill: chartConfig[key]?.color || COLORS[index % COLORS.length],
                     strokeWidth: 2,
-                    stroke: 'hsl(var(--background))',
+                    stroke: '#ffffff',
                     style: { cursor: 'pointer' },
                     onClick: () => handleLineClick(key),
                   }}

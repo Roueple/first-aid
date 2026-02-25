@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
-import { X, User, Save } from 'lucide-react';
+import { X, User, Save, PlayCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import authService from '../services/AuthService';
 
 interface UserSettingsDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  onRestartTutorial?: () => void;
 }
 
-export function UserSettingsDialog({ isOpen, onClose }: UserSettingsDialogProps) {
+export function UserSettingsDialog({ isOpen, onClose, onRestartTutorial }: UserSettingsDialogProps) {
   const { currentUser } = useAuth();
   const [displayName, setDisplayName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -97,6 +98,23 @@ export function UserSettingsDialog({ isOpen, onClose }: UserSettingsDialogProps)
             />
             <p className="felix-settings-hint">
               This name will be used in greetings and throughout the app
+            </p>
+          </div>
+
+          <div className="felix-settings-section">
+            <label className="felix-settings-label">
+              Tutorial
+            </label>
+            <button
+              className="felix-btn felix-btn-secondary"
+              onClick={onRestartTutorial}
+              disabled={isSaving}
+            >
+              <PlayCircle size={16} />
+              Restart Tutorial
+            </button>
+            <p className="felix-settings-hint">
+              Replay the onboarding tutorial to refresh your knowledge of Felix features
             </p>
           </div>
 

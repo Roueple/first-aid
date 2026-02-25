@@ -3,9 +3,11 @@ import { PlaceholdersAndVanishInput } from "./placeholders-and-vanish-input";
 interface FelixVanishInputProps {
   onSubmit: (query: string) => void;
   disabled?: boolean;
+  initialValue?: string;
+  'data-tutorial'?: string;
 }
 
-export function FelixVanishInput({ onSubmit, disabled }: FelixVanishInputProps) {
+export function FelixVanishInput({ onSubmit, disabled, initialValue, 'data-tutorial': dataTutorial }: FelixVanishInputProps) {
   // Indonesian real estate audit finding placeholders
   const placeholders = [
     "Tampilkan semua temuan audit AJB di CitraGarden City Jakarta",
@@ -33,11 +35,12 @@ export function FelixVanishInput({ onSubmit, disabled }: FelixVanishInputProps) 
   };
 
   return (
-    <div className={disabled ? "opacity-50 pointer-events-none" : ""}>
+    <div className={disabled ? "opacity-50 pointer-events-none" : ""} data-tutorial={dataTutorial}>
       <PlaceholdersAndVanishInput
         placeholders={placeholders}
         onChange={handleChange}
         onSubmit={handleSubmit}
+        initialValue={initialValue}
       />
     </div>
   );

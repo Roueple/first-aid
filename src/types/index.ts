@@ -38,3 +38,6 @@ export * from './docAI.types';
 
 // Complaint types
 export * from './complaint.types';
+
+// Tutorial types
+export * from './tutorial.types';

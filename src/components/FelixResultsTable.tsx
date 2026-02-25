@@ -97,7 +97,7 @@ export const FelixResultsTable: React.FC<FelixResultsTableProps> = ({
   // Render audit-results table
   if (table === 'audit-results') {
     return (
-      <div className="felix-results-table w-full">
+      <div className="felix-results-table w-full" data-tutorial="results-table">
         {/* Desktop/Tablet Table View - hidden on mobile */}
         <div className="hidden md:block border border-gray-200 rounded-lg shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
@@ -119,6 +119,7 @@ export const FelixResultsTable: React.FC<FelixResultsTableProps> = ({
                     <tr 
                       onClick={() => toggleRow(index)}
                       className="hover:bg-blue-50 cursor-pointer transition-colors"
+                      data-tutorial={index === 0 ? "table-row-first" : undefined}
                     >
                       <td className="px-2 py-2 text-gray-500 whitespace-nowrap align-top">
                         <div className="flex items-center gap-1">

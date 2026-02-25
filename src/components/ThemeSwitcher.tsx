@@ -10,6 +10,7 @@ export function ThemeSwitcher() {
       onClick={toggleTheme}
       title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
       aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+      data-tutorial="theme-switcher"
     >
       {theme === 'dark' ? (
         <Sun size={20} className="theme-icon" />
