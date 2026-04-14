@@ -48,11 +48,6 @@ export {
 } from './FilterExtractor';
 
 export {
-  ContextBuilder,
-  contextBuilder,
-} from './ContextBuilder';
-
-export {
   ResponseFormatter,
   responseFormatter,
 } from './ResponseFormatter';

@@ -39,11 +39,9 @@ export interface SmartQueryResult extends QueryResponse {
 }
 
 export class SmartQueryRouter {
-  // private contextBuilder: ContextBuilder;
   private responseFormatter: ResponseFormatter;
 
   constructor() {
-    // this.contextBuilder = new ContextBuilder();
     this.responseFormatter = new ResponseFormatter();
   }
 

@@ -6,7 +6,7 @@
  * Deletes all existing whitelist entries and adds new users with the updated structure:
  * - email (serves as username)
  * - fullName (full legal name)
- * - displayName (name shown in Felix chat)
+ * - displayName (name shown in Bernard chat)
  * 
  * Usage:
  *   node scripts/reset-and-add-users.mjs [--dry-run]

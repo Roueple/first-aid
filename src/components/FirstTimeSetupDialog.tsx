@@ -57,28 +57,28 @@ export function FirstTimeSetupDialog({ isOpen, onComplete }: FirstTimeSetupDialo
   if (!isOpen) return null;
 
   return (
-    <div className="felix-modal-overlay" style={{ zIndex: 9999 }}>
-      <div className="felix-modal felix-settings-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="felix-modal-header">
-          <div className="felix-modal-header-left">
+    <div className="bernard-modal-overlay" style={{ zIndex: 9999 }}>
+      <div className="bernard-modal bernard-settings-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="bernard-modal-header">
+          <div className="bernard-modal-header-left">
             <UserIcon size={20} />
-            <h2 className="felix-modal-title">Welcome to FIRST-AID!</h2>
+            <h2 className="bernard-modal-title">Welcome to FIRST-AID!</h2>
           </div>
         </div>
         
-        <div className="felix-modal-content">
-          <p className="felix-settings-hint" style={{ marginBottom: '1rem' }}>
+        <div className="bernard-modal-content">
+          <p className="bernard-settings-hint" style={{ marginBottom: '1rem' }}>
             Before you start, would you like to set a custom display name? 
             This will be used in greetings and throughout the app.
           </p>
 
-          <div className="felix-settings-section">
-            <label className="felix-settings-label">
+          <div className="bernard-settings-section">
+            <label className="bernard-settings-label">
               Display Name
             </label>
             <input
               type="text"
-              className="felix-settings-input"
+              className="bernard-settings-input"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -86,21 +86,21 @@ export function FirstTimeSetupDialog({ isOpen, onComplete }: FirstTimeSetupDialo
               disabled={isSaving}
               autoFocus
             />
-            <p className="felix-settings-hint">
+            <p className="bernard-settings-hint">
               Current: {currentUser?.displayName || 'Not set'}
             </p>
           </div>
 
           {error && (
-            <div className="felix-settings-error">
+            <div className="bernard-settings-error">
               {error}
             </div>
           )}
         </div>
 
-        <div className="felix-modal-footer">
+        <div className="bernard-modal-footer">
           <button
-            className="felix-btn felix-btn-secondary"
+            className="bernard-btn bernard-btn-secondary"
             onClick={handleSkip}
             disabled={isSaving}
           >
@@ -108,7 +108,7 @@ export function FirstTimeSetupDialog({ isOpen, onComplete }: FirstTimeSetupDialo
             Skip for Now
           </button>
           <button
-            className="felix-btn felix-btn-primary"
+            className="bernard-btn bernard-btn-primary"
             onClick={handleSave}
             disabled={isSaving || !displayName.trim()}
           >

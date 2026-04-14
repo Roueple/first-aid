@@ -58,8 +58,15 @@ export const pseudonymizeFindings = functions.https.onCall(
       );
     }
 
-    // Support both sessionId (new) and batchId (backward compatibility)
-    const sessionId = data.sessionId || data.batchId || `session_${Date.now()}_${context.auth.uid}`;
+    // Validate sessionId
+    if (!data.sessionId) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'sessionId is required for session-based pseudonymization'
+      );
+    }
+
+    const sessionId = data.sessionId;
 
     try {
       // Log the operation for audit purposes
@@ -121,14 +128,15 @@ export const depseudonymizeResults = functions.https.onCall(
       );
     }
 
-    // Support both sessionId (new) and batchId (backward compatibility)
-    const sessionId = data.sessionId || data.batchId;
-    if (!sessionId) {
+    // Validate sessionId
+    if (!data.sessionId) {
       throw new functions.https.HttpsError(
         'invalid-argument',
         'sessionId is required for session-based depseudonymization'
       );
     }
+
+    const sessionId = data.sessionId;
 
     try {
       // Log the operation for audit purposes
@@ -511,7 +519,7 @@ function escapeHtml(text: string): string {
 function getPriorityColor(priority: string): string {
   const colors: Record<string, string> = {
     low: '#10b981',
-    medium: '#f59e0b',
+    medium: '#1e40af',
     high: '#ef4444',
     critical: '#dc2626',
   };

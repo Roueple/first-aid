@@ -64,14 +64,14 @@ async function convertPngToIco(pngPath, icoPath) {
 }
 
 async function main() {
-  const pngPath = path.join(rootDir, 'felix_logov2.png');
+  const pngPath = path.join(rootDir, 'public', 'bernardlogo.png');
   const buildDir = path.join(rootDir, 'build');
   const icoPath = path.join(buildDir, 'icon.ico');
   const pngOutputPath = path.join(buildDir, 'icon.png');
 
   // Check if source file exists
   if (!fs.existsSync(pngPath)) {
-    console.error('❌ Error: felix_logov2.png not found!');
+    console.error('❌ Error: public/bernardlogo.png not found!');
     process.exit(1);
   }
 

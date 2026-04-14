@@ -112,15 +112,54 @@ export function findAllMatches(
     }
     
     // Check for word-level matches (all words in query appear in candidate)
-    const queryWords = queryLower.split(/\s+/);
-    const candidateWords = candidateLower.split(/\s+/);
+    const queryWords = queryLower.split(/\s+/).filter(w => w.length > 0);
+    const candidateWords = candidateLower.split(/\s+/).filter(w => w.length > 0);
+    
+    // Count matching words
     const matchingWords = queryWords.filter(qw => 
-      candidateWords.some(cw => cw.includes(qw) || qw.includes(cw))
+      candidateWords.some(cw => {
+        // Exact word match
+        if (cw === qw) return true;
+        // Partial word match (one contains the other)
+        if (cw.includes(qw) || qw.includes(cw)) return true;
+        // Fuzzy word match (high similarity)
+        return similarityScore(qw, cw) >= 0.8;
+      })
     );
     
-    if (matchingWords.length === queryWords.length && queryWords.length > 1) {
-      // All query words found in candidate
-      score = Math.max(score, 0.75);
+    if (matchingWords.length > 0 && queryWords.length > 0) {
+      const wordMatchRatio = matchingWords.length / queryWords.length;
+      
+      // If all query words found in candidate, boost significantly
+      if (wordMatchRatio === 1.0) {
+        score = Math.max(score, 0.75);
+      }
+      // If most query words found (>= 75%), boost moderately
+      else if (wordMatchRatio >= 0.75) {
+        score = Math.max(score, 0.65);
+      }
+      // If some query words found (>= 50%), boost slightly
+      else if (wordMatchRatio >= 0.5) {
+        score = Math.max(score, 0.55);
+      }
+    }
+    
+    // Check for acronym/initials match (e.g., "CL" matches "CitraLand")
+    const candidateInitials = candidateWords
+      .map(w => w[0])
+      .join('')
+      .toLowerCase();
+    
+    if (queryLower === candidateInitials || candidateInitials.includes(queryLower)) {
+      score = Math.max(score, 0.70);
+    }
+    
+    // Check for partial acronym match (e.g., "Citra" matches "CitraLand")
+    const queryInitial = queryWords[0]?.[0]?.toLowerCase();
+    const candidateInitial = candidateWords[0]?.[0]?.toLowerCase();
+    if (queryInitial && candidateInitial && queryInitial === candidateInitial) {
+      // First letter matches, give small boost (capped at 1.0)
+      score = Math.min(1.0, Math.max(score, score * 1.05));
     }
     
     if (score >= minScore) {
@@ -129,8 +168,13 @@ export function findAllMatches(
     }
   }
   
-  // Sort by score descending
-  matches.sort((a, b) => b.score - a.score);
+  // Sort by score descending, then by distance ascending (lower distance = better)
+  matches.sort((a, b) => {
+    if (Math.abs(a.score - b.score) < 0.01) {
+      return a.distance - b.distance;
+    }
+    return b.score - a.score;
+  });
   
   return matches.slice(0, maxResults);
 }

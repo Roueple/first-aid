@@ -30,8 +30,8 @@ export * from './queryRouter.types';
 // Category types
 export * from './category.types';
 
-// Felix types
-export * from './felix.types';
+// Bernard types
+export * from './bernard.types';
 
 // DocAI types
 export * from './docAI.types';
@@ -41,3 +41,9 @@ export * from './complaint.types';
 
 // Tutorial types
 export * from './tutorial.types';
+
+// Project types
+export * from './project.types';
+
+// Audit Result types
+export * from './auditResult.types';

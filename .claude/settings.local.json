@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(npx tsc:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npm run build:renderer:*)"
     ],
     "deny": [],
     "ask": []

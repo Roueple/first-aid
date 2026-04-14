@@ -21,7 +21,7 @@ describe('DashboardPage', () => {
     },
     riskDistribution: [
       { name: 'Critical', value: 5, color: '#ef4444' },
-      { name: 'High', value: 12, color: '#f97316' },
+      { name: 'High', value: 12, color: '#1e40af' },
       { name: 'Medium', value: 28, color: '#eab308' },
       { name: 'Low', value: 105, color: '#22c55e' },
     ],

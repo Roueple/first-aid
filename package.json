@@ -35,7 +35,12 @@
     "recalc:projects": "node scripts/recalculate-project-stats.mjs",
     "update:project-counts": "node scripts/update-project-counts-from-audit.mjs",
     "migrate:projects": "node scripts/migrate-to-summary.mjs",
-    "test:hybrid-rag": "node test-hybrid-rag.mjs"
+    "migrate:remove-batchid": "node scripts/migrate-remove-batchid.mjs",
+    "seed:department-tags": "node scripts/seed-department-tags.mjs",
+    "update:department-counts": "node scripts/update-department-findings-count.mjs",
+    "test:hybrid-rag": "node test-hybrid-rag.mjs",
+    "icons:convert": "node scripts/convert-logo-to-icons.mjs",
+    "icons:verify": "scripts/verify-icons.bat"
   },
   "keywords": [
     "audit",

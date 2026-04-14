@@ -7,37 +7,37 @@
    ============================================ */
 
 :root {
-  /* Light theme colors - Felix Orange Theme */
+  /* Light theme colors - Bernard Deep Blue Theme */
   --tutorial-overlay-bg-light: rgba(0, 0, 0, 0.6);
   --tutorial-tooltip-bg-light: #ffffff;
   --tutorial-tooltip-text-light: #1f2937;
   --tutorial-tooltip-border-light: #e5e7eb;
   --tutorial-tooltip-shadow-light: 0 10px 25px rgba(0, 0, 0, 0.15);
-  --tutorial-button-bg-light: #ff8c42;
-  --tutorial-button-hover-light: #e67a35;
+  --tutorial-button-bg-light: #1e40af;
+  --tutorial-button-hover-light: #1e3a8a;
   --tutorial-button-text-light: #ffffff;
   --tutorial-button-secondary-bg-light: #f3f4f6;
   --tutorial-button-secondary-hover-light: #e5e7eb;
   --tutorial-button-secondary-text-light: #4b5563;
-  --tutorial-step-number-bg-light: #ffb380;
-  --tutorial-step-number-text-light: #8b4513;
-  --tutorial-focus-ring-light: #ff8c42;
+  --tutorial-step-number-bg-light: #3b82f6;
+  --tutorial-step-number-text-light: #1e3a8a;
+  --tutorial-focus-ring-light: #1e40af;
   
-  /* Dark theme colors - Felix Orange Theme */
+  /* Dark theme colors - Bernard Deep Blue Theme */
   --tutorial-overlay-bg-dark: rgba(0, 0, 0, 0.75);
   --tutorial-tooltip-bg-dark: #1f2937;
   --tutorial-tooltip-text-dark: #f9fafb;
   --tutorial-tooltip-border-dark: #374151;
   --tutorial-tooltip-shadow-dark: 0 10px 25px rgba(0, 0, 0, 0.5);
-  --tutorial-button-bg-dark: #ff8c42;
-  --tutorial-button-hover-dark: #e67a35;
+  --tutorial-button-bg-dark: #1e40af;
+  --tutorial-button-hover-dark: #1e3a8a;
   --tutorial-button-text-dark: #ffffff;
   --tutorial-button-secondary-bg-dark: #374151;
   --tutorial-button-secondary-hover-dark: #4b5563;
   --tutorial-button-secondary-text-dark: #d1d5db;
-  --tutorial-step-number-bg-dark: #8b4513;
-  --tutorial-step-number-text-dark: #ffb380;
-  --tutorial-focus-ring-dark: #ff8c42;
+  --tutorial-step-number-bg-dark: #1e3a8a;
+  --tutorial-step-number-text-dark: #3b82f6;
+  --tutorial-focus-ring-dark: #1e40af;
   
   /* Z-index hierarchy */
   --tutorial-overlay-z: 9998;
@@ -68,6 +68,10 @@
   z-index: var(--tutorial-overlay-z);
   pointer-events: none !important;
   transition: opacity var(--tutorial-transition-normal) ease-in-out;
+}
+
+.tutorial-overlay svg {
+  pointer-events: none !important;
 }
 
 .tutorial-overlay-light {
@@ -141,7 +145,7 @@
 
 /* Arrow pointing up (tooltip below target) */
 .tutorial-tooltip-arrow-top {
-  top: calc(-1 * var(--tutorial-arrow-size));
+  top: calc(-1 * var(--tutorial-arrow-size) - 1px); /* -1px to cover border */
   left: 50%;
   transform: translateX(-50%);
   border-width: 0 var(--tutorial-arrow-size) var(--tutorial-arrow-size) var(--tutorial-arrow-size);
@@ -157,7 +161,7 @@
 
 /* Arrow pointing down (tooltip above target) */
 .tutorial-tooltip-arrow-bottom {
-  bottom: calc(-1 * var(--tutorial-arrow-size));
+  bottom: calc(-1 * var(--tutorial-arrow-size) - 1px); /* -1px to cover border */
   left: 50%;
   transform: translateX(-50%);
   border-width: var(--tutorial-arrow-size) var(--tutorial-arrow-size) 0 var(--tutorial-arrow-size);
@@ -173,7 +177,7 @@
 
 /* Arrow pointing left (tooltip to the right) */
 .tutorial-tooltip-arrow-left {
-  left: calc(-1 * var(--tutorial-arrow-size));
+  left: calc(-1 * var(--tutorial-arrow-size) - 1px); /* -1px to cover border */
   top: 50%;
   transform: translateY(-50%);
   border-width: var(--tutorial-arrow-size) var(--tutorial-arrow-size) var(--tutorial-arrow-size) 0;
@@ -189,7 +193,7 @@
 
 /* Arrow pointing right (tooltip to the left) */
 .tutorial-tooltip-arrow-right {
-  right: calc(-1 * var(--tutorial-arrow-size));
+  right: calc(-1 * var(--tutorial-arrow-size) - 1px); /* -1px to cover border */
   top: 50%;
   transform: translateY(-50%);
   border-width: var(--tutorial-arrow-size) 0 var(--tutorial-arrow-size) var(--tutorial-arrow-size);
@@ -297,7 +301,7 @@
 .tutorial-tooltip-light .tutorial-btn-primary:hover:not(:disabled) {
   background: var(--tutorial-button-hover-light);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(255, 140, 66, 0.3);
+  box-shadow: 0 4px 12px rgba(30, 64, 175, 0.3);
 }
 
 .tutorial-tooltip-dark .tutorial-btn-primary {
@@ -308,7 +312,7 @@
 .tutorial-tooltip-dark .tutorial-btn-primary:hover:not(:disabled) {
   background: var(--tutorial-button-hover-dark);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(255, 140, 66, 0.4);
+  box-shadow: 0 4px 12px rgba(30, 64, 175, 0.4);
 }
 
 /* Secondary button (Back, Skip) */
@@ -341,7 +345,7 @@
 .tutorial-btn:focus-visible {
   outline: 3px solid;
   outline-offset: 3px;
-  box-shadow: 0 0 0 3px rgba(255, 140, 66, 0.1);
+  box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
 }
 
 .tutorial-tooltip-light .tutorial-btn:focus-visible {
@@ -354,14 +358,14 @@
 
 /* Ensure sufficient color contrast for WCAG AA compliance */
 .tutorial-tooltip-light .tutorial-btn-primary {
-  /* Felix orange button on white background - contrast ratio 4.5:1 */
-  background: #ff8c42;
+  /* Bernard deep blue button on white background - contrast ratio 4.5:1 */
+  background: #1e40af;
   color: #ffffff;
 }
 
 .tutorial-tooltip-dark .tutorial-btn-primary {
-  /* Felix orange button on dark background - contrast ratio 4.5:1 */
-  background: #ff8c42;
+  /* Bernard deep blue button on dark background - contrast ratio 4.5:1 */
+  background: #1e40af;
   color: #ffffff;
 }
 
@@ -496,10 +500,10 @@
 /* Spotlight pulse animation for emphasis - GPU accelerated */
 @keyframes tutorial-spotlight-pulse {
   0%, 100% {
-    filter: drop-shadow(0 0 0 rgba(255, 140, 66, 0));
+    filter: drop-shadow(0 0 0 rgba(30, 64, 175, 0));
   }
   50% {
-    filter: drop-shadow(0 0 20px rgba(255, 140, 66, 0.5));
+    filter: drop-shadow(0 0 20px rgba(30, 64, 175, 0.5));
   }
 }
 
@@ -583,14 +587,27 @@
 
 /* Spotlight target z-index elevation */
 .tutorial-spotlight-target {
-  z-index: 9999 !important; /* Between overlay (9998) and tooltip (10002) */
+  z-index: 9999 !important; /* Between overlay (9998) and tooltip (10000) */
   isolation: isolate !important; /* Create stacking context for children */
   pointer-events: auto !important; /* Allow interactions with spotlight targets */
+}
+
+/* Ensure all children of spotlight target inherit the elevated context */
+.tutorial-spotlight-target * {
+  z-index: inherit !important;
 }
 
 /* Apply relative positioning only to elements that aren't already fixed or absolute */
 .tutorial-spotlight-target:not(.tutorial-spotlight-target-fixed) {
   position: relative !important;
+}
+
+/* Special handling for sidebar buttons (steps 10 and 11) - ensure parent sidebar is also elevated */
+.bernard-sidebar:has([data-tutorial="new-chat-btn"].tutorial-spotlight-target),
+.bernard-sidebar:has([data-tutorial="sidebar-close-btn"].tutorial-spotlight-target),
+.tutorial-sidebar-elevated {
+  z-index: 9999 !important;
+  isolation: isolate !important;
 }
 
 /* Screen reader only content */

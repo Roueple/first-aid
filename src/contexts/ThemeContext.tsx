@@ -11,12 +11,12 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
-    const saved = localStorage.getItem('felix-theme');
+    const saved = localStorage.getItem('bernard-theme');
     return (saved as Theme) || 'dark';
   });
 
   useEffect(() => {
-    localStorage.setItem('felix-theme', theme);
+    localStorage.setItem('bernard-theme', theme);
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 

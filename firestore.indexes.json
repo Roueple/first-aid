@@ -216,7 +216,7 @@
       ]
     },
     {
-      "collectionGroup": "felix_sessions",
+      "collectionGroup": "bernard_sessions",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "userId", "order": "ASCENDING" },
@@ -225,7 +225,7 @@
       ]
     },
     {
-      "collectionGroup": "felix_sessions",
+      "collectionGroup": "bernard_sessions",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "userId", "order": "ASCENDING" },
@@ -233,7 +233,7 @@
       ]
     },
     {
-      "collectionGroup": "felix_sessions",
+      "collectionGroup": "bernard_sessions",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "deletedAt", "order": "ASCENDING" },
@@ -242,7 +242,7 @@
       ]
     },
     {
-      "collectionGroup": "felix_sessions",
+      "collectionGroup": "bernard_sessions",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "isActive", "order": "ASCENDING" },
@@ -252,7 +252,7 @@
       ]
     },
     {
-      "collectionGroup": "felix_sessions",
+      "collectionGroup": "bernard_sessions",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "isActive", "order": "ASCENDING" },
@@ -260,7 +260,7 @@
       ]
     },
     {
-      "collectionGroup": "felix_chats",
+      "collectionGroup": "bernard_chats",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "sessionId", "order": "ASCENDING" },
@@ -268,7 +268,7 @@
       ]
     },
     {
-      "collectionGroup": "felix_chats",
+      "collectionGroup": "bernard_chats",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "sessionId", "order": "ASCENDING" },
@@ -276,7 +276,7 @@
       ]
     },
     {
-      "collectionGroup": "felix_chats",
+      "collectionGroup": "bernard_chats",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "userId", "order": "ASCENDING" },
@@ -333,6 +333,59 @@
       "fields": [
         { "fieldPath": "code", "order": "ASCENDING" },
         { "fieldPath": "kadar", "order": "ASCENDING" },
+        { "fieldPath": "year", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "audit_results",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "code", "order": "ASCENDING" },
+        { "fieldPath": "department", "order": "ASCENDING" },
+        { "fieldPath": "year", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "audit_results",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "code", "order": "ASCENDING" },
+        { "fieldPath": "department", "order": "ASCENDING" },
+        { "fieldPath": "year", "order": "ASCENDING" },
+        { "fieldPath": "year", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "audit_results",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "department", "order": "ASCENDING" },
+        { "fieldPath": "year", "order": "ASCENDING" },
+        { "fieldPath": "year", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "audit_results",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "department", "order": "ASCENDING" },
+        { "fieldPath": "year", "order": "ASCENDING" },
+        { "fieldPath": "code", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "audit_results",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "year", "order": "ASCENDING" },
+        { "fieldPath": "subholding", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "audit_results",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "projectName", "order": "ASCENDING" },
         { "fieldPath": "year", "order": "DESCENDING" }
       ]
     },

@@ -29,7 +29,7 @@ export const ReportChatDialog: React.FC<ReportChatDialogProps> = ({
     }
 
     if (!description.trim()) {
-      setError('Please share your feedback or suggestion.');
+      setError('Please share your feedback.');
       return;
     }
 
@@ -96,7 +96,7 @@ export const ReportChatDialog: React.FC<ReportChatDialogProps> = ({
                   Feedback submitted successfully!
                 </p>
                 <p className="text-sm text-green-700 dark:text-green-300 mt-1">
-                  Thank you for your suggestion! We'll review it soon.
+                  Thank you for your feedback! We'll review it soon.
                 </p>
               </div>
             </div>
@@ -112,7 +112,7 @@ export const ReportChatDialog: React.FC<ReportChatDialogProps> = ({
                 htmlFor="description"
                 className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
               >
-                Share your thoughts or suggestions
+                Share your feedback
               </label>
               <textarea
                 id="description"

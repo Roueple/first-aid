@@ -255,7 +255,7 @@ If you see decryption errors in logs:
 If mapping operations are slow:
 
 1. **Check Batch Size**: Limit findings to reasonable batch sizes
-2. **Index Firestore**: Ensure `batchId` and `mappingType` are indexed
+2. **Index Firestore**: Ensure `sessionId` and `mappingType` are indexed
 3. **Monitor Usage**: Check if cleanup is running efficiently
 
 ## References

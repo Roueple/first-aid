@@ -2,7 +2,7 @@
  * Type definitions for the Interactive Onboarding Tutorial system
  * 
  * This module defines the core types for the 12-step guided tutorial that introduces
- * first-time users to the Felix chat interface. The tutorial uses spotlight highlighting,
+ * first-time users to the Bernard chat interface. The tutorial uses spotlight highlighting,
  * tooltips, and gated interactions to ensure hands-on learning.
  */
 
@@ -83,15 +83,15 @@ export interface TutorialConfig {
 export const TUTORIAL_STEPS: TutorialStep[] = [
   {
     id: 1,
-    title: "Welcome to Felix!",
-    description: "Let's take a quick tour of Felix's key features. This will only take a minute.",
+    title: "Welcome to Bernard!",
+    description: "Let's take a quick tour of Bernard's key features. This will only take a minute.",
     targetSelector: "welcome-screen",
     isGated: false,
   },
   {
     id: 2,
-    title: "Ask Felix Anything",
-    description: "Type your questions in natural language. Felix understands Indonesian real estate terminology and can search through thousands of audit findings.",
+    title: "Ask Bernard Anything",
+    description: "Type your questions in natural language. Bernard understands Indonesian real estate terminology and can search through thousands of audit findings.",
     targetSelector: "input-field",
     isGated: false,
   },
@@ -108,9 +108,9 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   },
   {
     id: 4,
-    title: "Felix is Thinking",
-    description: "Watch Felix process your query and search through thousands of audit findings. This usually takes just a few seconds.",
-    targetSelector: "chat-area",
+    title: "Bernard is Thinking",
+    description: "Watch Bernard process your query and search through thousands of audit findings. This usually takes just a few seconds.",
+    targetSelector: "loading-indicator",
     isGated: true,
     gateCondition: {
       type: 'state-change',
@@ -120,14 +120,14 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   {
     id: 5,
     title: "View Results",
-    description: "Felix displays results in an easy-to-read table format. You can see key information at a glance.",
+    description: "Bernard displays results in an easy-to-read table format. You can see key information at a glance.",
     targetSelector: "results-table",
     isGated: false,
   },
   {
     id: 6,
     title: "Visual Insights",
-    description: "Felix automatically generates charts to help you visualize patterns in the data.",
+    description: "Bernard automatically generates charts to help you visualize patterns in the data.",
     targetSelector: "aggregation-chart",
     isGated: false,
   },
@@ -145,7 +145,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   {
     id: 8,
     title: "Copy and Export",
-    description: "Use the copy button to copy results to your clipboard, or download as Excel for further analysis.",
+    description: "Use the Copy button to copy results to your clipboard, or click Download Excel for further analysis. You can also provide feedback here to improve your experience.",
     targetSelector: "copy-button",
     isGated: false,
   },
@@ -163,7 +163,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   {
     id: 10,
     title: "Start a New Chat",
-    description: "Click the 'New chat' button to start a fresh conversation with Felix.",
+    description: "Click the 'New chat' button to start a fresh conversation with Bernard.",
     targetSelector: "new-chat-btn",
     isGated: true,
     gateCondition: {

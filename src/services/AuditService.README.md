@@ -106,7 +106,7 @@ await auditService.logReportDownload(reportId: string);
 ```typescript
 // Log data import
 await auditService.logImport(
-  batchId: string,
+  importId: string,
   findingsCount: number,
   successCount: number,
   failureCount: number

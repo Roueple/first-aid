@@ -34,7 +34,7 @@ export interface User {
   id: string; // Firebase Auth UID
   email: string; // Also serves as username
   fullName: string; // Full legal name
-  displayName: string; // Name displayed in Felix chat
+  displayName: string; // Name displayed in Bernard chat
   role: UserRole;
   department?: string;
   preferences: UserPreferences;

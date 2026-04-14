@@ -14,7 +14,7 @@
  * Fields:
  *   - email: User's email address (also serves as username)
  *   - full-name: Full legal name
- *   - display-name: Name shown in Felix chat (optional, defaults to first name from full-name)
+ *   - display-name: Name shown in Bernard chat (optional, defaults to first name from full-name)
  *   - tier: User tier - tier-0, tier-1, or tier-2 (optional, defaults to tier-2)
  * 
  * Tiers:
@@ -220,7 +220,7 @@ async function main() {
       console.log('Fields:');
       console.log('  email        - User email address (also serves as username)');
       console.log('  full-name    - Full legal name');
-      console.log('  display-name - Name shown in Felix chat (optional, defaults to first name)');
+      console.log('  display-name - Name shown in Bernard chat (optional, defaults to first name)');
       console.log('  tier         - User tier: tier-0, tier-1, or tier-2 (optional, defaults to tier-2)');
       console.log('');
       console.log('Tiers:');

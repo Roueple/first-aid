@@ -38,7 +38,7 @@ class TransparentLogger {
     INFO: 'color: #3b82f6; font-weight: bold',      // Blue
     SUCCESS: 'color: #10b981; font-weight: bold',   // Green
     ERROR: 'color: #ef4444; font-weight: bold',     // Red
-    WARN: 'color: #f59e0b; font-weight: bold',      // Orange
+    WARN: 'color: #1e40af; font-weight: bold',      // Deep Blue
     STEP: 'color: #8b5cf6; font-weight: bold; font-size: 14px', // Purple
     SUBSTEP: 'color: #6366f1; font-weight: normal', // Indigo
     DATA: 'color: #6b7280; font-style: italic',     // Gray

@@ -47,7 +47,8 @@ const TutorialOverlayComponent: React.FC<TutorialOverlayProps> = ({
   const spotlightY = adjustedRect.top - spotlightPadding;
   const spotlightWidth = adjustedRect.width + spotlightPadding * 2;
   const spotlightHeight = adjustedRect.height + spotlightPadding * 2;
-  const spotlightRadius = 8;
+
+  const overlayColor = theme === 'dark' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.5)';
 
   return (
     <div
@@ -56,42 +57,57 @@ const TutorialOverlayComponent: React.FC<TutorialOverlayProps> = ({
       role="presentation"
       aria-hidden="true"
     >
-      <svg
-        width="100%"
-        height="100%"
+      {/* Top overlay */}
+      <div
         style={{
           position: 'absolute',
           top: 0,
           left: 0,
+          right: 0,
+          height: `${spotlightY}px`,
+          background: overlayColor,
+          pointerEvents: 'none',
         }}
-        aria-hidden="true"
-      >
-        <defs>
-          <mask id="spotlight-mask">
-            {/* White rectangle covers entire screen */}
-            <rect x="0" y="0" width="100%" height="100%" fill="white" />
-            {/* Black rectangle creates the spotlight cutout */}
-            <rect
-              x={spotlightX}
-              y={spotlightY}
-              width={spotlightWidth}
-              height={spotlightHeight}
-              rx={spotlightRadius}
-              ry={spotlightRadius}
-              fill="black"
-            />
-          </mask>
-        </defs>
-        {/* Apply mask to create dimmed overlay with spotlight cutout */}
-        <rect
-          x="0"
-          y="0"
-          width="100%"
-          height="100%"
-          fill={theme === 'dark' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.5)'}
-          mask="url(#spotlight-mask)"
-        />
-      </svg>
+      />
+      
+      {/* Left overlay */}
+      <div
+        style={{
+          position: 'absolute',
+          top: `${spotlightY}px`,
+          left: 0,
+          width: `${spotlightX}px`,
+          height: `${spotlightHeight}px`,
+          background: overlayColor,
+          pointerEvents: 'none',
+        }}
+      />
+      
+      {/* Right overlay */}
+      <div
+        style={{
+          position: 'absolute',
+          top: `${spotlightY}px`,
+          left: `${spotlightX + spotlightWidth}px`,
+          right: 0,
+          height: `${spotlightHeight}px`,
+          background: overlayColor,
+          pointerEvents: 'none',
+        }}
+      />
+      
+      {/* Bottom overlay */}
+      <div
+        style={{
+          position: 'absolute',
+          top: `${spotlightY + spotlightHeight}px`,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: overlayColor,
+          pointerEvents: 'none',
+        }}
+      />
     </div>
   );
 };

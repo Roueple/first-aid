@@ -101,7 +101,7 @@ const fetchDashboardStats = async (): Promise<DashboardStats> => {
     (f) => f.status === 'Open' || f.status === 'In Progress'
   ).length;
   const highRisk = currentFindings.filter(
-    (f) => f.severity === 'Critical' || f.severity === 'High'
+    (f) => f.priorityLevel === 'Critical' || f.priorityLevel === 'High'
   ).length;
 
   // Use the computed isOverdue field from FindingsService
@@ -119,14 +119,14 @@ const fetchDashboardStats = async (): Promise<DashboardStats> => {
   };
 
   currentFindings.forEach((f) => {
-    if (f.severity in severityCounts) {
-      severityCounts[f.severity as keyof typeof severityCounts]++;
+    if (f.priorityLevel in severityCounts) {
+      severityCounts[f.priorityLevel as keyof typeof severityCounts]++;
     }
   });
 
   const riskDistribution: RiskDistributionData[] = [
     { name: 'Critical', value: severityCounts.Critical, color: '#DC2626' },
-    { name: 'High', value: severityCounts.High, color: '#F59E0B' },
+    { name: 'High', value: severityCounts.High, color: '#1e40af' },
     { name: 'Medium', value: severityCounts.Medium, color: '#3B82F6' },
     { name: 'Low', value: severityCounts.Low, color: '#10B981' },
   ].filter((item) => item.value > 0);

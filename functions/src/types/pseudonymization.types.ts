@@ -7,7 +7,6 @@ export type MappingType = 'names' | 'ids' | 'amounts' | 'locations';
 export interface PseudonymMapping {
   id: string;
   sessionId: string; // Chat session ID - ensures isolation between different chat sessions
-  batchId: string; // Deprecated: kept for backward compatibility
   mappingType: MappingType;
   originalValue: string; // encrypted with AES-256-GCM
   pseudonymValue: string;
@@ -21,20 +20,17 @@ export interface PseudonymMapping {
 export interface PseudonymizeRequest {
   findings: any[];
   sessionId: string; // Required: Chat session ID for isolation
-  batchId?: string; // Deprecated: kept for backward compatibility
 }
 
 export interface PseudonymizeResponse {
   pseudonymizedFindings: any[];
   sessionId: string; // Session ID for this pseudonymization
-  batchId: string; // Deprecated: kept for backward compatibility (same as sessionId)
   mappingsCreated: number;
 }
 
 export interface DepseudonymizeRequest {
   data: any;
   sessionId: string; // Required: Chat session ID to retrieve correct mappings
-  batchId?: string; // Deprecated: kept for backward compatibility
 }
 
 export interface DepseudonymizeResponse {

@@ -14,20 +14,17 @@ import type { Finding } from '../types/finding.types';
 export interface PseudonymizeRequest {
   findings: Finding[];
   sessionId: string; // Required: Chat session ID for isolation
-  batchId?: string; // Deprecated: kept for backward compatibility
 }
 
 export interface PseudonymizeResponse {
   pseudonymizedFindings: Finding[];
   sessionId: string; // Session ID for this pseudonymization
-  batchId: string; // Deprecated: kept for backward compatibility
   mappingsCreated: number;
 }
 
 export interface DepseudonymizeRequest {
   data: any;
   sessionId: string; // Required: Chat session ID to retrieve correct mappings
-  batchId?: string; // Deprecated: kept for backward compatibility
 }
 
 export interface DepseudonymizeResponse {

@@ -6,7 +6,7 @@ import { RiskDistributionData } from '../../hooks/useDashboardStats';
 describe('RiskDistributionChart', () => {
   const mockData: RiskDistributionData[] = [
     { name: 'Critical', value: 5, color: '#DC2626' },
-    { name: 'High', value: 10, color: '#F59E0B' },
+    { name: 'High', value: 10, color: '#1e40af' },
     { name: 'Medium', value: 15, color: '#3B82F6' },
     { name: 'Low', value: 20, color: '#10B981' },
   ];

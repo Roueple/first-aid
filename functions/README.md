@@ -16,7 +16,7 @@ This directory contains Firebase Cloud Functions for the FIRST-AID system, inclu
 ```typescript
 {
   findings: Finding[],  // Array of findings to pseudonymize
-  batchId?: string      // Optional batch ID (generated if not provided)
+  sessionId: string     // Required: Chat session ID for isolation
 }
 ```
 
@@ -24,7 +24,7 @@ This directory contains Firebase Cloud Functions for the FIRST-AID system, inclu
 ```typescript
 {
   pseudonymizedFindings: Finding[],  // Findings with sensitive data replaced
-  batchId: string,                   // Batch ID for this operation
+  sessionId: string,                 // Session ID for this operation
   mappingsCreated: number            // Number of mappings created
 }
 ```
@@ -47,7 +47,7 @@ This directory contains Firebase Cloud Functions for the FIRST-AID system, inclu
 ```typescript
 {
   data: any,        // Data containing pseudonyms to reverse
-  batchId: string   // Batch ID to retrieve mappings
+  sessionId: string // Session ID to retrieve mappings
 }
 ```
 
@@ -59,7 +59,7 @@ This directory contains Firebase Cloud Functions for the FIRST-AID system, inclu
 ```
 
 **Process**:
-1. Retrieves mappings from secure Firestore collection using batchId
+1. Retrieves mappings from secure Firestore collection using sessionId
 2. Decrypts original values
 3. Replaces pseudonyms with real values
 4. Updates usage count for audit purposes
@@ -246,7 +246,7 @@ firebase emulators:exec --only functions,firestore "npm test"
 
 ### Mapping not found errors
 
-- Verify batchId is correct
+- Verify sessionId is correct
 - Check that mappings haven't expired (30 days)
 - Ensure pseudonymizeFindings was called first
 

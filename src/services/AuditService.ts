@@ -195,18 +195,18 @@ export class AuditService {
   /**
    * Log an import event
    * 
-   * @param batchId - The import batch ID
+   * @param importId - The import operation ID
    * @param findingsCount - Number of findings imported
    * @param successCount - Number of successful imports
    * @param failureCount - Number of failed imports
    */
   async logImport(
-    batchId: string,
+    importId: string,
     findingsCount: number,
     successCount: number,
     failureCount: number
   ): Promise<void> {
-    await this.logEvent('import', 'finding', batchId, {
+    await this.logEvent('import', 'finding', importId, {
       findingsCount,
       successCount,
       failureCount,

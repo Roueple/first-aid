@@ -64,7 +64,6 @@ console.log(result);
 // {
 //   pseudonymizedFindings: [...], // Findings with sensitive data replaced
 //   sessionId: 'chat_1234567890_user123',
-//   batchId: 'chat_1234567890_user123',  // Same as sessionId
 //   mappingsCreated: 15
 // }
 
@@ -449,7 +448,6 @@ Pseudonymizes an array of findings for a specific session.
 **Returns:** `Promise<PseudonymizeResponse>`
 - `pseudonymizedFindings: Finding[]` - Findings with sensitive data replaced
 - `sessionId: string` - Session ID for this operation
-- `batchId: string` - Same as sessionId (backward compatibility)
 - `mappingsCreated: number` - Number of mappings created
 
 ### `depseudonymizeResults(data, sessionId)`

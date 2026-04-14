@@ -23,11 +23,11 @@ export type ComplaintCategory =
 
 /**
  * Complaint - User reports about chat sessions
- * Linked to felix_sessions and contains full chat history
+ * Linked to bernard_sessions and contains full chat history
  */
 export interface Complaint {
   id?: string;
-  sessionId: string; // Foreign key to felix_sessions
+  sessionId: string; // Foreign key to bernard_sessions
   userId: string;
   userEmail: string;
   

@@ -93,7 +93,29 @@ const TutorialTooltipComponent: React.FC<TutorialTooltipProps> = ({
    * Uses requestAnimationFrame for efficient measurement after initial render
    */
   useEffect(() => {
-    if (!targetRect || !tooltipRef.current) {
+    if (!tooltipRef.current) {
+      return;
+    }
+
+    // Special case: if no targetRect (final step after theme change), center on screen
+    if (!targetRect) {
+      const measureAndCenter = () => {
+        if (!tooltipRef.current) return;
+
+        const tooltipRect = tooltipRef.current.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+
+        setPosition({
+          top: (viewportHeight - tooltipRect.height) / 2,
+          left: (viewportWidth - tooltipRect.width) / 2,
+          arrowDirection: 'top', // Doesn't matter, arrow won't be shown
+        });
+        setIsInitialRender(false);
+      };
+
+      // Always measure and center when targetRect is null
+      requestAnimationFrame(measureAndCenter);
       return;
     }
 
@@ -176,6 +198,7 @@ const TutorialTooltipComponent: React.FC<TutorialTooltipProps> = ({
 
   /**
    * Reset initial render flag when step changes
+   * Don't reset when targetRect changes to null (final step overlay hide)
    */
   useEffect(() => {
     setIsInitialRender(true);
@@ -198,13 +221,13 @@ const TutorialTooltipComponent: React.FC<TutorialTooltipProps> = ({
   }, []);
 
   if (!position) {
-    // Render with opacity 0 for initial measurement (avoids double render)
+    // Render with visibility hidden for initial measurement (prevents flicker)
     return (
       <div
         ref={tooltipRef}
         className={`tutorial-tooltip tutorial-tooltip-${theme}`}
         style={{ 
-          opacity: 0,
+          visibility: 'hidden',
           pointerEvents: 'none',
           position: 'fixed',
           top: 0,
@@ -258,7 +281,20 @@ const TutorialTooltipComponent: React.FC<TutorialTooltipProps> = ({
       aria-describedby="tutorial-tooltip-description"
     >
       {/* Arrow pointing to target element */}
-      <div className={`tutorial-tooltip-arrow tutorial-tooltip-arrow-${position.arrowDirection}`} />
+      {targetRect && (
+        <div 
+          className={`tutorial-tooltip-arrow tutorial-tooltip-arrow-${position.arrowDirection}`}
+          style={{
+            // Position arrow to point at target center, not tooltip center
+            ...(position.arrowDirection === 'top' || position.arrowDirection === 'bottom' ? {
+              left: `${targetRect.left + targetRect.width / 2 - position.left}px`,
+            } : {}),
+            ...(position.arrowDirection === 'left' || position.arrowDirection === 'right' ? {
+              top: `${targetRect.top + targetRect.height / 2 - position.top}px`,
+            } : {}),
+          }}
+        />
+      )}
 
       {/* Step header with number and title */}
       <div className="tutorial-tooltip-header">
@@ -319,7 +355,7 @@ const TutorialTooltipComponent: React.FC<TutorialTooltipProps> = ({
             Next
           </button>
         )}
-        {isFinalStep && (
+        {isFinalStep && showNext && (
           <button
             ref={!showBack && !showSkip ? firstButtonRef : undefined}
             className="tutorial-btn tutorial-btn-primary"

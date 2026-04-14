@@ -1,7 +1,7 @@
 import DatabaseService from './DatabaseService';
 import { Complaint, ComplaintStatus, createComplaint, ComplaintCategory } from '../types/complaint.types';
-import FelixChatService from './FelixChatService';
-import FelixSessionService from './FelixSessionService';
+import BernardChatService from './BernardChatService';
+import BernardSessionService from './BernardSessionService';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
 /**
@@ -31,7 +31,7 @@ export class ComplaintService extends DatabaseService<Complaint> {
   ): Promise<string> {
     try {
       // Get full chat history for the session
-      const chats = await FelixChatService.getSessionChats(sessionId);
+      const chats = await BernardChatService.getSessionChats(sessionId);
       const chatHistory = chats.map(chat => ({
         role: chat.role,
         message: chat.message,
@@ -39,13 +39,17 @@ export class ComplaintService extends DatabaseService<Complaint> {
       }));
 
       // Get session details
-      const session = await FelixSessionService.getById(sessionId);
+      const session = await BernardSessionService.getById(sessionId);
 
       // Gather metadata
+      const appVersion = window.electron?.getAppVersion 
+        ? await window.electron.getAppVersion()
+        : '1.0.0';
+
       const metadata = {
         deviceInfo: navigator.platform,
         userAgent: navigator.userAgent,
-        appVersion: '1.0.0', // TODO: Get from package.json
+        appVersion,
         sessionTitle: session?.title,
         sessionCreatedAt: session?.createdAt.toDate().toISOString(),
       };

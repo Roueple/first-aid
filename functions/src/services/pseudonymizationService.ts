@@ -158,7 +158,6 @@ export class PseudonymizationService {
         const mapping: PseudonymMapping = {
           id: mappingDoc.id,
           sessionId, // Session-based isolation
-          batchId: sessionId, // Keep for backward compatibility
           mappingType: type,
           originalValue: encrypt(value), // AES-256-GCM encryption
           pseudonymValue: pseudonym,
@@ -191,7 +190,7 @@ export class PseudonymizationService {
    */
   private async logMappingAccess(
     action: string,
-    batchId: string,
+    sessionId: string,
     mappingType: MappingType,
     userId: string,
     details: Record<string, any>
@@ -201,7 +200,7 @@ export class PseudonymizationService {
         userId,
         action: `mapping_${action}`,
         resourceType: 'mapping',
-        resourceId: batchId,
+        resourceId: sessionId,
         details: {
           mappingType,
           ...details
@@ -253,7 +252,7 @@ export class PseudonymizationService {
     findings: any[],
     userId: string,
     sessionId: string
-  ): Promise<{ pseudonymizedFindings: any[]; sessionId: string; batchId: string; mappingsCreated: number }> {
+  ): Promise<{ pseudonymizedFindings: any[]; sessionId: string; mappingsCreated: number }> {
     // Validate sessionId
     if (!sessionId) {
       throw new Error('sessionId is required for pseudonymization');
@@ -306,7 +305,6 @@ export class PseudonymizationService {
     return {
       pseudonymizedFindings,
       sessionId,
-      batchId: sessionId, // For backward compatibility
       mappingsCreated: totalMappings
     };
   }
@@ -409,13 +407,13 @@ export class PseudonymizationService {
     }
 
     const batch = this.db.batch();
-    const deletedMappings: Array<{ id: string; batchId: string; type: MappingType }> = [];
+    const deletedMappings: Array<{ id: string; sessionId: string; type: MappingType }> = [];
     
     expiredMappings.forEach(doc => {
       const mapping = doc.data() as PseudonymMapping;
       deletedMappings.push({
         id: doc.id,
-        batchId: mapping.batchId,
+        sessionId: mapping.sessionId,
         type: mapping.mappingType
       });
       batch.delete(doc.ref);
@@ -428,7 +426,7 @@ export class PseudonymizationService {
       deletedCount: deletedMappings.length,
       deletedMappings: deletedMappings.map(m => ({
         id: m.id,
-        batchId: m.batchId,
+        sessionId: m.sessionId,
         type: m.type
       }))
     });

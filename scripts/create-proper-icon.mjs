@@ -18,7 +18,7 @@ const rootDir = path.join(__dirname, '..');
 const ICON_SIZES = [16, 32, 48, 64, 128, 256];
 
 // Source PNG file (highest quality)
-const SOURCE_PNG = path.join(rootDir, 'assets', 'fdfds.png');
+const SOURCE_PNG = path.join(rootDir, 'logoBernard-v3.png');
 const OUTPUT_DIR = path.join(rootDir, 'build');
 const OUTPUT_ICO = path.join(OUTPUT_DIR, 'icon.ico');
 
@@ -53,17 +53,36 @@ async function createMultiSizeIco() {
     console.log('\n📦 Generating icon sizes:');
     const pngBuffers = [];
     
+    // First, trim the image to remove excess transparent space
+    const trimmedBuffer = await sharp(sourceBuffer)
+      .trim({
+        threshold: 10 // Remove pixels that are nearly transparent
+      })
+      .toBuffer();
+    
     for (const size of ICON_SIZES) {
-      const buffer = await sharp(sourceBuffer)
-        .resize(size, size, {
+      // Add minimal padding (2% on each side) for maximum icon size
+      const paddingPercent = 0.02;
+      const contentSize = Math.floor(size * (1 - paddingPercent * 2));
+      const padding = Math.floor(size * paddingPercent);
+      
+      const buffer = await sharp(trimmedBuffer)
+        .resize(contentSize, contentSize, {
           fit: 'contain',
+          background: { r: 0, g: 0, b: 0, alpha: 0 }
+        })
+        .extend({
+          top: padding,
+          bottom: padding,
+          left: padding,
+          right: padding,
           background: { r: 0, g: 0, b: 0, alpha: 0 }
         })
         .png()
         .toBuffer();
       
       pngBuffers.push({ size, buffer });
-      console.log(`  ✓ ${size}x${size}px`);
+      console.log(`  ✓ ${size}x${size}px (${contentSize}px content + ${padding}px padding)`);
     }
 
     // Create ICO file manually
@@ -84,17 +103,32 @@ async function createMultiSizeIco() {
     console.log(`📊 File size: ${(icoBuffer.length / 1024).toFixed(2)} KB`);
     console.log(`🎯 Contains ${ICON_SIZES.length} sizes: ${ICON_SIZES.join(', ')}px`);
     
-    // Also update the PNG
+    // Also update the PNG with trimming
     const outputPng = path.join(OUTPUT_DIR, 'icon.png');
-    await sharp(sourceBuffer)
-      .resize(512, 512, {
+    const trimmedForPng = await sharp(sourceBuffer)
+      .trim({ threshold: 10 })
+      .toBuffer();
+    
+    const paddingPercent = 0.02;
+    const contentSize = Math.floor(512 * (1 - paddingPercent * 2));
+    const padding = Math.floor(512 * paddingPercent);
+    
+    await sharp(trimmedForPng)
+      .resize(contentSize, contentSize, {
         fit: 'contain',
+        background: { r: 0, g: 0, b: 0, alpha: 0 }
+      })
+      .extend({
+        top: padding,
+        bottom: padding,
+        left: padding,
+        right: padding,
         background: { r: 0, g: 0, b: 0, alpha: 0 }
       })
       .png()
       .toFile(outputPng);
     
-    console.log(`✅ Created: ${outputPng} (512x512px)`);
+    console.log(`✅ Created: ${outputPng} (512x512px with 2% padding for maximum visibility)`);
     
     console.log('\n🎉 Icon creation complete!');
     console.log('\nNext steps:');

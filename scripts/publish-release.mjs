@@ -14,7 +14,7 @@ if (!GITHUB_TOKEN) {
   process.exit(1);
 }
 
-const releaseNotes = `Keyboard shortcuts fix - Enabled standard Windows shortcuts in Felix chat`;
+const releaseNotes = `Keyboard shortcuts fix - Enabled standard Windows shortcuts in Bernard chat`;
 
 async function createRelease() {
   return new Promise((resolve, reject) => {

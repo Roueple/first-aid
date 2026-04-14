@@ -1,78 +1,50 @@
 import { Timestamp } from 'firebase/firestore';
-import { ProjectType } from './finding.types';
 
 /**
  * Project record - Master table for projects
- * Connected to Findings via projectName and projectType
+ * NEW STRUCTURE: Simplified project master data
  */
 export interface Project {
   id: string; // Firestore document ID
-  projectId: string; // Auto-generated 7-digit ID from SH-ProjectName-Type
-  no: number; // Sequential number for display (not stored, calculated on display)
-  sh: string; // Subholding
-  projectName: string; // Unique project name (used as foreign key in Findings)
-  projectType: ProjectType; // Project type
-  initials: string; // 3-character initials from project name
-  total: number; // Total findings count (aggregated)
-  finding: number; // Count of findings
-  nonFinding: number; // Count of non-findings
-  subtype: string; // Subtype classification
-  description: string; // Project description
+  projectName: string; // Project name (e.g., "Aceh Water", "Ciputra World Jakarta 2")
+  sh: string; // Subholding (e.g., "SH2", "SH3A")
+  tbk: string; // TBK status ("tbk" or "non")
+  industry: string; // Industry code (e.g., "Oth", "Com", "Res")
+  category: string; // Category (e.g., "Others", "Commercial", "Residential")
+  location: string; // Location (e.g., "Jakarta", "Aceh, Nanggroe Aceh Darussalam")
+  tags: string[]; // Tags array (e.g., ["AW", "Aceh Water Supply"])
   
   // Metadata
   createdAt: Timestamp;
   updatedAt: Timestamp;
-  createdBy: string;
   
   // Status
   isActive: boolean;
-  
-  // Additional project info
-  startDate?: Timestamp;
-  endDate?: Timestamp;
-  location?: string;
-  budget?: number;
 }
 
 /**
  * Input for creating a new project
  */
 export interface CreateProjectInput {
-  sh: string;
   projectName: string;
-  projectType: ProjectType;
-  subtype?: string;
-  description: string;
-  location?: string;
-  budget?: number;
-  startDate?: Date | Timestamp;
-  endDate?: Date | Timestamp;
+  sh: string;
+  tbk: string;
+  industry: string;
+  category: string;
+  location: string;
+  tags: string[];
 }
 
 /**
  * Input for updating a project
  */
 export interface UpdateProjectInput {
-  sh?: string;
   projectName?: string;
-  projectType?: ProjectType;
-  subtype?: string;
-  description?: string;
-  isActive?: boolean;
+  sh?: string;
+  tbk?: string;
+  industry?: string;
+  category?: string;
   location?: string;
-  budget?: number;
-  startDate?: Date | Timestamp;
-  endDate?: Date | Timestamp;
-}
-
-/**
- * Project with aggregated finding statistics
- */
-export interface ProjectWithStats extends Project {
-  criticalCount: number;
-  highCount: number;
-  mediumCount: number;
-  lowCount: number;
-  openCount: number;
-  closedCount: number;
+  tags?: string[];
+  isActive?: boolean;
 }

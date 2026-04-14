@@ -9,14 +9,14 @@ interface AuditResultsTableProps {
 
 type ColumnFilters = {
   year: Set<number> | 'all';
-  sh: Set<string> | 'all';
+  subholding: Set<string> | 'all';
   projectName: Set<string> | 'all';
   department: Set<string> | 'all';
   riskArea: Set<string> | 'all';
   code: Set<string> | 'all';
-  bobot: Set<number> | 'all';
-  kadar: Set<number> | 'all';
-  nilai: Set<number> | 'all';
+  weight: Set<number> | 'all';
+  severity: Set<number> | 'all';
+  value: Set<number> | 'all';
 };
 
 export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSelect }) => {
@@ -31,14 +31,14 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
   const [openFilterColumn, setOpenFilterColumn] = useState<keyof ColumnFilters | null>(null);
   const [columnFilters, setColumnFilters] = useState<ColumnFilters>({
     year: 'all',
-    sh: 'all',
+    subholding: 'all',
     projectName: 'all',
     department: 'all',
     riskArea: 'all',
     code: 'all',
-    bobot: 'all',
-    kadar: 'all',
-    nilai: 'all',
+    weight: 'all',
+    severity: 'all',
+    value: 'all',
   });
   const [totalCount] = useState(8840); // Approximate total
 
@@ -93,7 +93,7 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
             r.riskArea.toLowerCase().includes(searchLower) ||
             r.description.toLowerCase().includes(searchLower) ||
             r.code.toLowerCase().includes(searchLower) ||
-            r.sh.toLowerCase().includes(searchLower)
+            r.subholding.toLowerCase().includes(searchLower)
         );
       }
 
@@ -169,7 +169,7 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
             r.riskArea.toLowerCase().includes(searchLower) ||
             r.description.toLowerCase().includes(searchLower) ||
             r.code.toLowerCase().includes(searchLower) ||
-            r.sh.toLowerCase().includes(searchLower)
+            r.subholding.toLowerCase().includes(searchLower)
         );
       }
 
@@ -314,15 +314,15 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
   // Get unique values from current results for filters
   const uniqueValues = React.useMemo(() => {
     return {
-      year: Array.from(new Set(results.map(r => r.year))).sort((a, b) => String(b).localeCompare(String(a))),
-      sh: Array.from(new Set(results.map(r => r.sh))).sort(),
+      year: Array.from(new Set(results.map(r => r.year))).sort((a, b) => Number(b) - Number(a)),
+      subholding: Array.from(new Set(results.map(r => r.subholding))).sort(),
       projectName: Array.from(new Set(results.map(r => r.projectName))).sort(),
       department: Array.from(new Set(results.map(r => r.department))).sort(),
       riskArea: Array.from(new Set(results.map(r => r.riskArea))).sort(),
       code: Array.from(new Set(results.map(r => r.code))).sort(),
-      bobot: Array.from(new Set(results.map(r => r.bobot))).sort((a, b) => a - b),
-      kadar: Array.from(new Set(results.map(r => r.kadar))).sort((a, b) => a - b),
-      nilai: Array.from(new Set(results.map(r => r.nilai))).sort((a, b) => a - b),
+      weight: Array.from(new Set(results.map(r => r.weight))).sort((a, b) => a - b),
+      severity: Array.from(new Set(results.map(r => r.severity))).sort((a, b) => a - b),
+      value: Array.from(new Set(results.map(r => r.value))).sort((a, b) => a - b),
     };
   }, [results]);
 
@@ -427,14 +427,14 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
   const clearAllFilters = () => {
     setColumnFilters({
       year: 'all',
-      sh: 'all',
+      subholding: 'all',
       projectName: 'all',
       department: 'all',
       riskArea: 'all',
       code: 'all',
-      bobot: 'all',
-      kadar: 'all',
-      nilai: 'all',
+      weight: 'all',
+      severity: 'all',
+      value: 'all',
     });
     setFilterText('');
   };
@@ -526,9 +526,9 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
                 </div>
               </th>
               <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
-                <div className="flex items-center" onClick={() => handleSort('sh')}>
-                  SH {sortField === 'sh' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  <ColumnFilterDropdown column="sh" values={uniqueValues.sh} label="SH" />
+                <div className="flex items-center" onClick={() => handleSort('subholding')}>
+                  SH {sortField === 'subholding' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  <ColumnFilterDropdown column="subholding" values={uniqueValues.subholding} label="SH" />
                 </div>
               </th>
               <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
@@ -559,21 +559,21 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
                 </div>
               </th>
               <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
-                <div className="flex items-center" onClick={() => handleSort('bobot')}>
-                  Bobot {sortField === 'bobot' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  <ColumnFilterDropdown column="bobot" values={uniqueValues.bobot} label="Bobot" />
+                <div className="flex items-center" onClick={() => handleSort('weight')}>
+                  Bobot {sortField === 'weight' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  <ColumnFilterDropdown column="weight" values={uniqueValues.weight} label="Bobot" />
                 </div>
               </th>
               <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
-                <div className="flex items-center" onClick={() => handleSort('kadar')}>
-                  Kadar {sortField === 'kadar' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  <ColumnFilterDropdown column="kadar" values={uniqueValues.kadar} label="Kadar" />
+                <div className="flex items-center" onClick={() => handleSort('severity')}>
+                  Kadar {sortField === 'severity' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  <ColumnFilterDropdown column="severity" values={uniqueValues.severity} label="Kadar" />
                 </div>
               </th>
               <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
-                <div className="flex items-center" onClick={() => handleSort('nilai')}>
-                  Nilai {sortField === 'nilai' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  <ColumnFilterDropdown column="nilai" values={uniqueValues.nilai} label="Nilai" />
+                <div className="flex items-center" onClick={() => handleSort('value')}>
+                  Nilai {sortField === 'value' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  <ColumnFilterDropdown column="value" values={uniqueValues.value} label="Nilai" />
                 </div>
               </th>
             </tr>
@@ -592,7 +592,7 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
                   {result.year}
                 </td>
                 <td className="px-2 sm:px-4 py-2 sm:py-3 text-gray-900 whitespace-nowrap">
-                  {result.sh}
+                  {result.subholding}
                 </td>
                 <td className="px-2 sm:px-4 py-2 sm:py-3 text-gray-900 font-medium min-w-[150px] max-w-[250px] truncate">
                   {result.projectName}
@@ -612,14 +612,14 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
                   </span>
                 </td>
                 <td className="px-2 sm:px-4 py-2 sm:py-3 text-gray-900 text-center whitespace-nowrap">
-                  {result.bobot}
+                  {result.weight}
                 </td>
                 <td className="px-2 sm:px-4 py-2 sm:py-3 text-gray-900 text-center whitespace-nowrap">
-                  {result.kadar}
+                  {result.severity}
                 </td>
                 <td className="px-2 sm:px-4 py-2 sm:py-3 text-center whitespace-nowrap">
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                    {result.nilai}
+                    {result.value}
                   </span>
                 </td>
               </tr>

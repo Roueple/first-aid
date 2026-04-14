@@ -2,27 +2,26 @@ import DatabaseService from './DatabaseService';
 import { Timestamp } from 'firebase/firestore';
 
 /**
- * Audit Result interface matching Master-finding.xlsx structure
+ * Audit Result interface matching actual Firestore schema
  * 
- * NOTE: year is stored as STRING in Firestore (e.g., "2024", not 2024)
- * This is due to the original Excel import format.
+ * NOTE: year is stored as NUMBER in Firestore (e.g., 2024, not "2024")
+ * Field names match the import script: subholding, weight, severity, value
  */
 export interface AuditResult {
   id?: string;
-  auditResultId: string;
-  year: string; // Stored as string in Firestore (e.g., "2024")
-  sh: string;
+  uniqueId: string; // SHA-256 hash for deduplication
+  year: number; // Stored as number in Firestore (e.g., 2024)
+  subholding: string; // SH1, SH2, SH3A, SH3B, SH4
   projectName: string;
-  projectId: string | null;
   department: string;
   riskArea: string;
-  description: string; // Note: singular, matches Firestore field name
-  code: string;
-  bobot: number;
-  kadar: number;
-  nilai: number;
+  description: string;
+  code: string; // F, NF, O, R
+  weight: number; // Bobot
+  severity: number; // Kadar
+  value: number; // Nilai
+  isRepeat: number; // Temuan Ulangan (0 or 1)
   createdAt?: Timestamp;
-  createdBy?: string;
   updatedAt?: Timestamp;
 }
 
@@ -31,7 +30,7 @@ export interface AuditResult {
  */
 export class AuditResultService extends DatabaseService<AuditResult> {
   constructor() {
-    super('audit-results');
+    super('audit_results');
   }
 
   /**
@@ -46,12 +45,12 @@ export class AuditResultService extends DatabaseService<AuditResult> {
 
   /**
    * Get audit results by year
-   * @param year - Year as string (e.g., "2024") or number (will be converted to string)
+   * @param year - Year as number (e.g., 2024) or string (will be converted to number)
    */
   async getAuditResultsByYear(year: string | number): Promise<AuditResult[]> {
-    const yearStr = String(year);
+    const yearNum = typeof year === 'number' ? year : parseInt(String(year), 10);
     return await this.getAll({
-      filters: [{ field: 'year', operator: '==', value: yearStr }],
+      filters: [{ field: 'year', operator: '==', value: yearNum }],
       sorts: [{ field: 'projectName', direction: 'asc' }],
     });
   }
@@ -94,8 +93,8 @@ export class AuditResultService extends DatabaseService<AuditResult> {
       results.push(...deptResults);
     }
 
-    // Sort by year descending (string comparison works for YYYY format)
-    return results.sort((a, b) => b.year.localeCompare(a.year));
+    // Sort by year descending (number comparison)
+    return results.sort((a, b) => b.year - a.year);
   }
 
   /**
@@ -113,11 +112,11 @@ export class AuditResultService extends DatabaseService<AuditResult> {
   }
 
   /**
-   * Get audit results by SH
+   * Get audit results by subholding (SH)
    */
-  async getAuditResultsBySH(sh: string): Promise<AuditResult[]> {
+  async getAuditResultsBySubholding(subholding: string): Promise<AuditResult[]> {
     return await this.getAll({
-      filters: [{ field: 'sh', operator: '==', value: sh }],
+      filters: [{ field: 'subholding', operator: '==', value: subholding }],
       sorts: [{ field: 'year', direction: 'desc' }],
     });
   }
@@ -128,7 +127,7 @@ export class AuditResultService extends DatabaseService<AuditResult> {
   async getAuditResultsByCode(code: string): Promise<AuditResult[]> {
     return await this.getAll({
       filters: [{ field: 'code', operator: '==', value: code }],
-      sorts: [{ field: 'nilai', direction: 'desc' }],
+      sorts: [{ field: 'value', direction: 'desc' }],
     });
   }
 }
