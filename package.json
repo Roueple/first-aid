@@ -1,6 +1,6 @@
 {
   "name": "first-aid-system",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "FIRST-AID - Intelligent Audit Findings Management System",
   "main": "dist/main/main.js",
   "scripts": {
