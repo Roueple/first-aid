@@ -10,13 +10,13 @@ interface AuditResultsTableProps {
 type ColumnFilters = {
   year: Set<number> | 'all';
   subholding: Set<string> | 'all';
-  projectName: Set<string> | 'all';
+  proyek: Set<string> | 'all';
   department: Set<string> | 'all';
   riskArea: Set<string> | 'all';
-  code: Set<string> | 'all';
-  weight: Set<number> | 'all';
-  severity: Set<number> | 'all';
-  value: Set<number> | 'all';
+  kode: Set<string> | 'all';
+  bobot: Set<number> | 'all';
+  kadar: Set<number> | 'all';
+  nilai: Set<number> | 'all';
 };
 
 export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSelect }) => {
@@ -32,15 +32,15 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
   const [columnFilters, setColumnFilters] = useState<ColumnFilters>({
     year: 'all',
     subholding: 'all',
-    projectName: 'all',
+    proyek: 'all',
     department: 'all',
     riskArea: 'all',
-    code: 'all',
-    weight: 'all',
-    severity: 'all',
-    value: 'all',
+    kode: 'all',
+    bobot: 'all',
+    kadar: 'all',
+    nilai: 'all',
   });
-  const [totalCount] = useState(8840); // Approximate total
+  const [totalCount] = useState(10362); // Total from Excel
 
   // Load results when page, sort, or filters change
   useEffect(() => {
@@ -50,15 +50,15 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
   const loadResults = async () => {
     try {
       setLoading(true);
-      
+
       // Build query filters from column filters
       const filters: any[] = [];
-      
+
       Object.entries(columnFilters).forEach(([column, selectedValues]) => {
         if (selectedValues !== 'all' && (selectedValues as Set<any>).size > 0) {
           const filterSet = selectedValues as Set<any>;
           const values = Array.from(filterSet);
-          
+
           if (values.length === 1) {
             filters.push({
               field: column,
@@ -88,19 +88,21 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
         const searchLower = filterText.toLowerCase();
         filteredData = data.filter(
           (r) =>
-            r.projectName.toLowerCase().includes(searchLower) ||
-            r.department.toLowerCase().includes(searchLower) ||
-            r.riskArea.toLowerCase().includes(searchLower) ||
-            r.description.toLowerCase().includes(searchLower) ||
-            r.code.toLowerCase().includes(searchLower) ||
-            r.subholding.toLowerCase().includes(searchLower)
+            r.proyek?.toLowerCase().includes(searchLower) ||
+            r.department?.toLowerCase().includes(searchLower) ||
+            r.riskArea?.toLowerCase().includes(searchLower) ||
+            r.deskripsi?.toLowerCase().includes(searchLower) ||
+            r.kode?.toLowerCase().includes(searchLower) ||
+            r.subholding?.toLowerCase().includes(searchLower)
         );
       }
 
       setResults(filteredData);
       setError(null);
-      
-      console.log(`📊 Loaded page ${currentPage}: ${filteredData.length} records (Firebase READ: ${itemsPerPage})`);
+
+      console.log(
+        `📊 Loaded page ${currentPage}: ${filteredData.length} records (Firebase READ: ${itemsPerPage})`
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load audit results');
     } finally {
@@ -128,12 +130,12 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
 
       // Build query filters from column filters (same as loadResults)
       const filters: any[] = [];
-      
+
       Object.entries(columnFilters).forEach(([column, selectedValues]) => {
         if (selectedValues !== 'all' && (selectedValues as Set<any>).size > 0) {
           const filterSet = selectedValues as Set<any>;
           const values = Array.from(filterSet);
-          
+
           if (values.length === 1) {
             filters.push({
               field: column,
@@ -164,12 +166,12 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
         const searchLower = filterText.toLowerCase();
         filteredData = allData.filter(
           (r) =>
-            r.projectName.toLowerCase().includes(searchLower) ||
-            r.department.toLowerCase().includes(searchLower) ||
-            r.riskArea.toLowerCase().includes(searchLower) ||
-            r.description.toLowerCase().includes(searchLower) ||
-            r.code.toLowerCase().includes(searchLower) ||
-            r.subholding.toLowerCase().includes(searchLower)
+            r.proyek?.toLowerCase().includes(searchLower) ||
+            r.department?.toLowerCase().includes(searchLower) ||
+            r.riskArea?.toLowerCase().includes(searchLower) ||
+            r.deskripsi?.toLowerCase().includes(searchLower) ||
+            r.kode?.toLowerCase().includes(searchLower) ||
+            r.subholding?.toLowerCase().includes(searchLower)
         );
       }
 
@@ -179,16 +181,18 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
       // Reset button state
       if (exportButton) {
         exportButton.disabled = false;
-        exportButton.innerHTML = '📊 <span class="hidden sm:inline">Export to Excel</span><span class="sm:hidden">Export</span>';
+        exportButton.innerHTML =
+          '📊 <span class="hidden sm:inline">Export to Excel</span><span class="sm:hidden">Export</span>';
       }
     } catch (err) {
       alert('Failed to export: ' + (err instanceof Error ? err.message : 'Unknown error'));
-      
+
       // Reset button state on error
       const exportButton = document.querySelector('[data-export-button]') as HTMLButtonElement;
       if (exportButton) {
         exportButton.disabled = false;
-        exportButton.innerHTML = '📊 <span class="hidden sm:inline">Export to Excel</span><span class="sm:hidden">Export</span>';
+        exportButton.innerHTML =
+          '📊 <span class="hidden sm:inline">Export to Excel</span><span class="sm:hidden">Export</span>';
       }
     }
   };
@@ -227,17 +231,18 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
           title="Filter"
         >
           <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />
+            <path
+              fillRule="evenodd"
+              d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z"
+              clipRule="evenodd"
+            />
           </svg>
         </button>
 
         {isOpen && (
           <>
+            <div className="fixed inset-0 z-10" onClick={() => setOpenFilterColumn(null)} />
             <div
-              className="fixed inset-0 z-10"
-              onClick={() => setOpenFilterColumn(null)}
-            />
-            <div 
               className="fixed w-64 bg-white border border-gray-300 rounded-lg shadow-lg z-20 max-h-96 overflow-hidden flex flex-col"
               style={{
                 top: `${dropdownPosition.top}px`,
@@ -282,8 +287,9 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
               <div className="overflow-y-auto max-h-80">
                 {values.map((value) => {
                   // Excel-like behavior: 'all' means everything is selected
-                  const isChecked = activeFilters === 'all' || (activeFilters as Set<any>).has(value);
-                  
+                  const isChecked =
+                    activeFilters === 'all' || (activeFilters as Set<any>).has(value);
+
                   return (
                     <label
                       key={String(value)}
@@ -314,15 +320,17 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
   // Get unique values from current results for filters
   const uniqueValues = React.useMemo(() => {
     return {
-      year: Array.from(new Set(results.map(r => r.year))).sort((a, b) => Number(b) - Number(a)),
-      subholding: Array.from(new Set(results.map(r => r.subholding))).sort(),
-      projectName: Array.from(new Set(results.map(r => r.projectName))).sort(),
-      department: Array.from(new Set(results.map(r => r.department))).sort(),
-      riskArea: Array.from(new Set(results.map(r => r.riskArea))).sort(),
-      code: Array.from(new Set(results.map(r => r.code))).sort(),
-      weight: Array.from(new Set(results.map(r => r.weight))).sort((a, b) => a - b),
-      severity: Array.from(new Set(results.map(r => r.severity))).sort((a, b) => a - b),
-      value: Array.from(new Set(results.map(r => r.value))).sort((a, b) => a - b),
+      year: Array.from(new Set(results.map((r) => r.year))).sort(
+        (a, b) => Number(b) - Number(a)
+      ),
+      subholding: Array.from(new Set(results.map((r) => r.subholding))).sort(),
+      proyek: Array.from(new Set(results.map((r) => r.proyek))).sort(),
+      department: Array.from(new Set(results.map((r) => r.department))).sort(),
+      riskArea: Array.from(new Set(results.map((r) => r.riskArea))).sort(),
+      kode: Array.from(new Set(results.map((r) => r.kode))).sort(),
+      bobot: Array.from(new Set(results.map((r) => r.bobot))).sort((a, b) => a - b),
+      kadar: Array.from(new Set(results.map((r) => r.kadar))).sort((a, b) => a - b),
+      nilai: Array.from(new Set(results.map((r) => r.nilai))).sort((a, b) => a - b),
     };
   }, [results]);
 
@@ -341,7 +349,7 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
   const getPageNumbers = () => {
     const pages: (number | string)[] = [];
     const maxVisible = 7;
-    
+
     if (totalPages <= maxVisible) {
       for (let i = 1; i <= totalPages; i++) {
         pages.push(i);
@@ -363,15 +371,15 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
         pages.push(totalPages);
       }
     }
-    
+
     return pages;
   };
 
   const toggleColumnFilter = (column: keyof ColumnFilters, value: any) => {
-    setColumnFilters(prev => {
+    setColumnFilters((prev) => {
       const current = prev[column];
       let newSet: Set<any>;
-      
+
       // If currently 'all', start with all values and remove the clicked one
       if (current === 'all') {
         const allValuesForColumn = uniqueValues[column] as any[];
@@ -385,7 +393,7 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
         } else {
           newSet.add(value);
         }
-        
+
         // If all values are now selected, switch back to 'all'
         const allValuesForColumn = uniqueValues[column] as any[];
         if (newSet.size === allValuesForColumn.length) {
@@ -395,7 +403,7 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
           } as ColumnFilters;
         }
       }
-      
+
       return {
         ...prev,
         [column]: newSet,
@@ -404,7 +412,7 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
   };
 
   const deselectAllInColumn = (column: keyof ColumnFilters) => {
-    setColumnFilters(prev => {
+    setColumnFilters((prev) => {
       const emptySet = new Set() as any;
       return {
         ...prev,
@@ -414,7 +422,7 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
   };
 
   const selectAllInColumn = (column: keyof ColumnFilters) => {
-    setColumnFilters(prev => {
+    setColumnFilters((prev) => {
       return {
         ...prev,
         [column]: 'all',
@@ -422,19 +430,20 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
     });
   };
 
-  const hasActiveFilters = Object.values(columnFilters).some(filter => filter !== 'all') || filterText !== '';
+  const hasActiveFilters =
+    Object.values(columnFilters).some((filter) => filter !== 'all') || filterText !== '';
 
   const clearAllFilters = () => {
     setColumnFilters({
       year: 'all',
       subholding: 'all',
-      projectName: 'all',
+      proyek: 'all',
       department: 'all',
       riskArea: 'all',
-      code: 'all',
-      weight: 'all',
-      severity: 'all',
-      value: 'all',
+      kode: 'all',
+      bobot: 'all',
+      kadar: 'all',
+      nilai: 'all',
     });
     setFilterText('');
   };
@@ -472,7 +481,8 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
             data-export-button
             className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
           >
-            📊 <span className="hidden sm:inline">Export to Excel</span><span className="sm:hidden">Export</span>
+            📊 <span className="hidden sm:inline">Export to Excel</span>
+            <span className="sm:hidden">Export</span>
           </button>
           <button
             onClick={loadResults}
@@ -492,14 +502,19 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
           onChange={(e) => setFilterText(e.target.value)}
           className="flex-1 min-w-0 px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
         />
-        
+
         {hasActiveFilters && (
           <button
             onClick={clearAllFilters}
             className="px-3 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg hover:bg-red-100 text-sm flex items-center gap-1"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
             Clear All Filters
           </button>
@@ -528,52 +543,68 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
               <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
                 <div className="flex items-center" onClick={() => handleSort('subholding')}>
                   SH {sortField === 'subholding' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  <ColumnFilterDropdown column="subholding" values={uniqueValues.subholding} label="SH" />
+                  <ColumnFilterDropdown
+                    column="subholding"
+                    values={uniqueValues.subholding}
+                    label="SH"
+                  />
                 </div>
               </th>
               <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
-                <div className="flex items-center" onClick={() => handleSort('projectName')}>
-                  Project {sortField === 'projectName' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  <ColumnFilterDropdown column="projectName" values={uniqueValues.projectName} label="Project" />
+                <div className="flex items-center" onClick={() => handleSort('proyek')}>
+                  Project {sortField === 'proyek' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  <ColumnFilterDropdown
+                    column="proyek"
+                    values={uniqueValues.proyek}
+                    label="Project"
+                  />
                 </div>
               </th>
               <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
                 <div className="flex items-center" onClick={() => handleSort('department')}>
                   Department {sortField === 'department' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  <ColumnFilterDropdown column="department" values={uniqueValues.department} label="Department" />
+                  <ColumnFilterDropdown
+                    column="department"
+                    values={uniqueValues.department}
+                    label="Department"
+                  />
                 </div>
               </th>
               <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 w-32">
                 <div className="flex items-center" onClick={() => handleSort('riskArea')}>
                   Risk Area {sortField === 'riskArea' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  <ColumnFilterDropdown column="riskArea" values={uniqueValues.riskArea} label="Risk Area" />
+                  <ColumnFilterDropdown
+                    column="riskArea"
+                    values={uniqueValues.riskArea}
+                    label="Risk Area"
+                  />
                 </div>
               </th>
               <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
-                Description
+                Deskripsi
               </th>
               <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
-                <div className="flex items-center" onClick={() => handleSort('code')}>
-                  Code {sortField === 'code' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  <ColumnFilterDropdown column="code" values={uniqueValues.code} label="Code" />
+                <div className="flex items-center" onClick={() => handleSort('kode')}>
+                  Kode {sortField === 'kode' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  <ColumnFilterDropdown column="kode" values={uniqueValues.kode} label="Kode" />
                 </div>
               </th>
               <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
-                <div className="flex items-center" onClick={() => handleSort('weight')}>
-                  Bobot {sortField === 'weight' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  <ColumnFilterDropdown column="weight" values={uniqueValues.weight} label="Bobot" />
+                <div className="flex items-center" onClick={() => handleSort('bobot')}>
+                  Bobot {sortField === 'bobot' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  <ColumnFilterDropdown column="bobot" values={uniqueValues.bobot} label="Bobot" />
                 </div>
               </th>
               <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
-                <div className="flex items-center" onClick={() => handleSort('severity')}>
-                  Kadar {sortField === 'severity' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  <ColumnFilterDropdown column="severity" values={uniqueValues.severity} label="Kadar" />
+                <div className="flex items-center" onClick={() => handleSort('kadar')}>
+                  Kadar {sortField === 'kadar' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  <ColumnFilterDropdown column="kadar" values={uniqueValues.kadar} label="Kadar" />
                 </div>
               </th>
               <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
-                <div className="flex items-center" onClick={() => handleSort('value')}>
-                  Nilai {sortField === 'value' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  <ColumnFilterDropdown column="value" values={uniqueValues.value} label="Nilai" />
+                <div className="flex items-center" onClick={() => handleSort('nilai')}>
+                  Nilai {sortField === 'nilai' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  <ColumnFilterDropdown column="nilai" values={uniqueValues.nilai} label="Nilai" />
                 </div>
               </th>
             </tr>
@@ -595,31 +626,37 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
                   {result.subholding}
                 </td>
                 <td className="px-2 sm:px-4 py-2 sm:py-3 text-gray-900 font-medium min-w-[150px] max-w-[250px] truncate">
-                  {result.projectName}
+                  {result.proyek}
                 </td>
                 <td className="px-2 sm:px-4 py-2 sm:py-3 text-gray-900 whitespace-nowrap">
                   {result.department}
                 </td>
-                <td className="px-2 sm:px-4 py-2 sm:py-3 text-gray-900 max-w-[150px] truncate" title={result.riskArea}>
+                <td
+                  className="px-2 sm:px-4 py-2 sm:py-3 text-gray-900 max-w-[150px] truncate"
+                  title={result.riskArea}
+                >
                   {result.riskArea}
                 </td>
-                <td className="px-2 sm:px-4 py-2 sm:py-3 text-gray-600 max-w-[200px] sm:max-w-xs truncate" title={result.description}>
-                  {result.description}
+                <td
+                  className="px-2 sm:px-4 py-2 sm:py-3 text-gray-600 max-w-[200px] sm:max-w-xs truncate"
+                  title={result.deskripsi}
+                >
+                  {result.deskripsi}
                 </td>
                 <td className="px-2 sm:px-4 py-2 sm:py-3 text-center whitespace-nowrap">
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                    {result.code}
+                    {result.kode}
                   </span>
                 </td>
                 <td className="px-2 sm:px-4 py-2 sm:py-3 text-gray-900 text-center whitespace-nowrap">
-                  {result.weight}
+                  {result.bobot}
                 </td>
                 <td className="px-2 sm:px-4 py-2 sm:py-3 text-gray-900 text-center whitespace-nowrap">
-                  {result.severity}
+                  {result.kadar}
                 </td>
                 <td className="px-2 sm:px-4 py-2 sm:py-3 text-center whitespace-nowrap">
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                    {result.value}
+                    {result.nilai}
                   </span>
                 </td>
               </tr>
@@ -661,19 +698,31 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
               </p>
             </div>
             <div>
-              <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+              <nav
+                className="isolate inline-flex -space-x-px rounded-md shadow-sm"
+                aria-label="Pagination"
+              >
                 <button
                   onClick={() => goToPage(currentPage - 1)}
                   disabled={currentPage === 1}
                   className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span className="sr-only">Previous</span>
-                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
+                  <svg
+                    className="h-5 w-5"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                 </button>
-                
-                {getPageNumbers().map((page, idx) => (
+
+                {getPageNumbers().map((page, idx) =>
                   page === '...' ? (
                     <span
                       key={`ellipsis-${idx}`}
@@ -694,16 +743,25 @@ export const AuditResultsTable: React.FC<AuditResultsTableProps> = ({ onResultSe
                       {page}
                     </button>
                   )
-                ))}
-                
+                )}
+
                 <button
                   onClick={() => goToPage(currentPage + 1)}
                   disabled={currentPage === totalPages}
                   className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span className="sr-only">Next</span>
-                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+                  <svg
+                    className="h-5 w-5"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                 </button>
               </nav>

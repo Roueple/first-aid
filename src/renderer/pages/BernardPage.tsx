@@ -58,7 +58,7 @@ interface Message {
 }
 
 export default function BernardPage() {
-  const { currentUser } = useAuth();
+  const { currentUser, authReady } = useAuth();
   const canDownloadExcel = authService.canDownloadExcel(currentUser);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -91,13 +91,14 @@ export default function BernardPage() {
   // Note: Auto-auth removed - users must authenticate via passwordless login
 
   useEffect(() => {
-    if (currentUser) {
+    // Wait for both currentUser AND authReady to ensure Firestore auth is synchronized
+    if (currentUser && authReady) {
       loadUserSessions();
       loadPersonalizedGreeting();
       checkFirstTimeSetup();
       checkTutorialStatus();
     }
-  }, [currentUser]);
+  }, [currentUser, authReady]);
 
   const checkFirstTimeSetup = () => {
     if (!currentUser) return;
@@ -510,9 +511,9 @@ export default function BernardPage() {
 
       const results = message.queryResult.results;
       if (results.length > 0) {
-        // Only include specific columns
-        const allowedColumns = ['sh', 'projectName', 'year', 'department', 'riskArea', 'description'];
-        const headers = allowedColumns.filter(col => 
+        // Only include specific columns (using actual field names from audit_results)
+        const allowedColumns = ['subholding', 'proyek', 'year', 'department', 'riskArea', 'deskripsi'];
+        const headers = allowedColumns.filter(col =>
           results.some(result => result[col] !== undefined)
         );
         
@@ -830,7 +831,7 @@ export default function BernardPage() {
           {messages.length === 0 ? (
             /* Welcome Screen */
             <div className="bernard-welcome" data-tutorial="welcome-screen">
-              <img src="/logoBernardFull-v1.png" alt="Bernard" className="bernard-welcome-logo" />
+              <img src="/logoBernardFull-v2.png" alt="Bernard" className="bernard-welcome-logo" />
               {greeting !== null && (
                 <h1 className={`bernard-greeting ${getGreetingClass()}`}>
                   {renderGreeting(greeting)}

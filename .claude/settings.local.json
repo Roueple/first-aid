@@ -4,7 +4,10 @@
       "Bash(npx tsc:*)",
       "Bash(cat:*)",
       "Bash(npm run lint:*)",
-      "Bash(npm run build:renderer:*)"
+      "Bash(npm run build:renderer:*)",
+      "Bash(npm ls:*)",
+      "Bash(node:*)",
+      "Bash(copy:*)"
     ],
     "deny": [],
     "ask": []

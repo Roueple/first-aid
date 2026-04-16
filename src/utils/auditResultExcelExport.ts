@@ -1,12 +1,12 @@
 /**
  * Audit Result Excel Export Utility
- * 
+ *
  * Exports audit results data to Excel (.xlsx) format using xlsx library.
- * Includes all audit result fields with proper formatting.
+ * Exports 1:1 mirror of Master_Audit_Data.xlsx structure.
  */
 
 import * as XLSX from 'xlsx';
-import { AuditResult } from '../services/AuditResultService';
+import { AuditResult, FIELD_TO_EXCEL_COLUMN } from '../types/auditResult.types';
 import { Timestamp } from 'firebase/firestore';
 
 /**
@@ -27,30 +27,33 @@ function formatDate(timestamp: Timestamp | undefined): string {
 
 /**
  * Convert audit results to Excel-friendly format
+ * Mirrors Master_Audit_Data.xlsx column structure exactly
  */
 function auditResultsToExcelData(results: AuditResult[]): any[] {
   return results.map((result) => ({
-    'Audit Result ID': result.auditResultId,
-    'Year': result.year,
-    'SH': result.sh,
-    'Project Name': result.projectName,
-    'Project ID': result.projectId || '',
-    'Department': result.department,
+    // 1:1 mirror of Master_Audit_Data.xlsx columns
+    'Unique ID': result.auditResultId,
+    Filename: result.filename,
+    Proyek: result.proyek,
+    Category: result.category,
+    Subholding: result.subholding,
+    Year: result.year,
+    Department: result.department,
+    'Department(ori)': result.departmentOri,
     'Risk Area': result.riskArea,
-    'Description': result.description,
-    'Code': result.code,
-    'Bobot': result.bobot,
-    'Kadar': result.kadar,
-    'Nilai': result.nilai,
-    'Created At': formatDate(result.createdAt),
-    'Created By': result.createdBy || '',
-    'Updated At': formatDate(result.updatedAt),
+    Deskripsi: result.deskripsi,
+    Kode: result.kode,
+    Bobot: result.bobot,
+    Kadar: result.kadar,
+    Nilai: result.nilai,
+    Kategori: result.kategori || '',
+    'Temuan Ulangan Count': result.temuanUlanganCount,
   }));
 }
 
 /**
  * Export audit results to Excel file
- * 
+ *
  * @param results - Array of audit results to export
  * @param filename - Output filename (default: audit-results-export.xlsx)
  * @param sheetName - Sheet name (default: Audit Results)
@@ -69,23 +72,24 @@ export function exportAuditResultsToExcel(
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
 
-    // Set column widths for better readability
+    // Set column widths for better readability (matches Master_Audit_Data.xlsx)
     const columnWidths = [
-      { wch: 20 }, // Audit Result ID
-      { wch: 10 }, // Year
-      { wch: 15 }, // SH
-      { wch: 40 }, // Project Name
-      { wch: 15 }, // Project ID
+      { wch: 20 }, // Unique ID
+      { wch: 40 }, // Filename
+      { wch: 35 }, // Proyek
+      { wch: 15 }, // Category
+      { wch: 12 }, // Subholding
+      { wch: 8 }, // Year
       { wch: 25 }, // Department
-      { wch: 25 }, // Risk Area
-      { wch: 60 }, // Description
-      { wch: 10 }, // Code
-      { wch: 10 }, // Bobot
-      { wch: 10 }, // Kadar
-      { wch: 10 }, // Nilai
-      { wch: 15 }, // Created At
-      { wch: 20 }, // Created By
-      { wch: 15 }, // Updated At
+      { wch: 40 }, // Department(ori)
+      { wch: 60 }, // Risk Area
+      { wch: 80 }, // Deskripsi
+      { wch: 8 }, // Kode
+      { wch: 8 }, // Bobot
+      { wch: 8 }, // Kadar
+      { wch: 8 }, // Nilai
+      { wch: 15 }, // Kategori
+      { wch: 20 }, // Temuan Ulangan Count
     ];
     worksheet['!cols'] = columnWidths;
 
@@ -101,7 +105,7 @@ export function exportAuditResultsToExcel(
 
 /**
  * Export audit results with custom columns
- * 
+ *
  * @param results - Array of audit results to export
  * @param columns - Array of column definitions { key: string, header: string, width?: number }
  * @param filename - Output filename
@@ -119,14 +123,14 @@ export function exportAuditResultsToExcelCustom(
       const row: any = {};
       columns.forEach((col) => {
         const value = result[col.key];
-        
+
         // Handle special types
         if (value instanceof Timestamp) {
           row[col.header] = formatDate(value);
         } else if (Array.isArray(value)) {
           row[col.header] = value.join(', ');
         } else {
-          row[col.header] = value || '';
+          row[col.header] = value ?? '';
         }
       });
       return row;

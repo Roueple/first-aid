@@ -1,9 +1,12 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { auth } from '../config/firebase';
 import authService, { User } from '../services/AuthService';
+import { connectionMonitor } from '../utils/connectionMonitor';
 
 interface AuthContextType {
   currentUser: User | null;
   loading: boolean;
+  authReady: boolean; // True when Firestore auth token is synchronized
   signIn: (email: string, password: string, rememberMe?: boolean) => Promise<User>;
   sendSignInLink: (email: string) => Promise<void>;
   completeSignInWithEmailLink: (emailLink?: string) => Promise<User>;
@@ -31,15 +34,48 @@ export function AuthProvider({ children }: AuthProviderProps) {
   console.log('🔐 AuthProvider initializing...');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
     console.log('🔐 Setting up auth state listener...');
     try {
       // Subscribe to auth state changes
-      const unsubscribe = authService.onAuthStateChange((user) => {
+      const unsubscribe = authService.onAuthStateChange(async (user) => {
         console.log('🔐 Auth state changed:', user ? 'User logged in' : 'No user');
+
+        // IMPORTANT: Reset authReady when user is detected to prevent race conditions
+        // This ensures BernardPage waits for token sync before querying Firestore
+        if (user) {
+          setAuthReady(false);
+        }
+
         setCurrentUser(user);
         setLoading(false);
+
+        // Ensure Firestore auth token is synchronized before marking as ready
+        if (user && auth.currentUser) {
+          try {
+            // Force token refresh to ensure Firestore has the auth token
+            await auth.currentUser.getIdToken(true);
+            console.log('✅ Auth token synchronized with Firestore');
+
+            // Notify connection monitor that auth is ready
+            // This will trigger a connection check with proper auth
+            connectionMonitor.setAuthReady(true);
+
+            // Force connection check now that auth is ready
+            // (initial check may have failed due to no auth)
+            await connectionMonitor.checkConnection();
+            console.log('✅ Connection status verified:', connectionMonitor.getStatus());
+
+            setAuthReady(true);
+          } catch (tokenError) {
+            console.error('❌ Failed to sync auth token:', tokenError);
+            setAuthReady(true); // Still set ready to avoid blocking UI
+          }
+        } else {
+          setAuthReady(true); // No user, mark as ready (for login page)
+        }
       });
 
       console.log('✅ Auth state listener set up');
@@ -47,6 +83,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } catch (error) {
       console.error('❌ Failed to set up auth listener:', error);
       setLoading(false);
+      setAuthReady(true);
     }
   }, []);
 
@@ -82,6 +119,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const value: AuthContextType = {
     currentUser,
     loading,
+    authReady,
     signIn,
     sendSignInLink,
     completeSignInWithEmailLink,

@@ -1,32 +1,34 @@
 import DatabaseService from './DatabaseService';
 import { Timestamp } from 'firebase/firestore';
+import { AuditResult as AuditResultType } from '../types/auditResult.types';
 
 /**
- * Audit Result interface matching actual Firestore schema
- * 
- * NOTE: year is stored as NUMBER in Firestore (e.g., 2024, not "2024")
- * Field names match the import script: subholding, weight, severity, value
+ * Re-export AuditResult type for backward compatibility
+ * The interface now mirrors Master_Audit_Data.xlsx 1:1
  */
-export interface AuditResult {
-  id?: string;
-  uniqueId: string; // SHA-256 hash for deduplication
-  year: number; // Stored as number in Firestore (e.g., 2024)
-  subholding: string; // SH1, SH2, SH3A, SH3B, SH4
-  projectName: string;
-  department: string;
-  riskArea: string;
-  description: string;
-  code: string; // F, NF, O, R
-  weight: number; // Bobot
-  severity: number; // Kadar
-  value: number; // Nilai
-  isRepeat: number; // Temuan Ulangan (0 or 1)
-  createdAt?: Timestamp;
-  updatedAt?: Timestamp;
-}
+export type AuditResult = AuditResultType;
 
 /**
  * Service for managing audit results
+ * Collection: audit_results
+ *
+ * Fields mirror Master_Audit_Data.xlsx exactly:
+ * - auditResultId: Unique ID (e.g., "1-C21-22-FDD-1-01")
+ * - filename: Source filename
+ * - proyek: Project name
+ * - category: Project category
+ * - subholding: SH code (SH1, SH2, SH3A, SH3B, SH4)
+ * - year: Audit year (number)
+ * - department: Department name
+ * - departmentOri: Original department name
+ * - riskArea: Risk area description
+ * - deskripsi: Finding description
+ * - kode: Finding code (F, NF, O, R)
+ * - bobot: Weight (0-10)
+ * - kadar: Severity (0-5)
+ * - nilai: Value (bobot × kadar)
+ * - kategori: Category classification
+ * - temuanUlanganCount: Repeat finding count
  */
 export class AuditResultService extends DatabaseService<AuditResult> {
   constructor() {
@@ -34,11 +36,11 @@ export class AuditResultService extends DatabaseService<AuditResult> {
   }
 
   /**
-   * Get audit results by project
+   * Get audit results by project name
    */
-  async getAuditResultsByProject(projectName: string): Promise<AuditResult[]> {
+  async getAuditResultsByProject(proyek: string): Promise<AuditResult[]> {
     return await this.getAll({
-      filters: [{ field: 'projectName', operator: '==', value: projectName }],
+      filters: [{ field: 'proyek', operator: '==', value: proyek }],
       sorts: [{ field: 'year', direction: 'desc' }],
     });
   }
@@ -51,7 +53,7 @@ export class AuditResultService extends DatabaseService<AuditResult> {
     const yearNum = typeof year === 'number' ? year : parseInt(String(year), 10);
     return await this.getAll({
       filters: [{ field: 'year', operator: '==', value: yearNum }],
-      sorts: [{ field: 'projectName', direction: 'asc' }],
+      sorts: [{ field: 'proyek', direction: 'asc' }],
     });
   }
 
@@ -72,10 +74,10 @@ export class AuditResultService extends DatabaseService<AuditResult> {
   async searchByDepartmentKeyword(keyword: string): Promise<AuditResult[]> {
     // Import dynamically to avoid circular dependency
     const { default: departmentService } = await import('./DepartmentService');
-    
+
     // Find matching departments
     const departments = await departmentService.findByKeyword(keyword);
-    
+
     if (departments.length === 0) {
       return [];
     }
@@ -122,13 +124,72 @@ export class AuditResultService extends DatabaseService<AuditResult> {
   }
 
   /**
-   * Get audit results by code (finding type)
+   * Get audit results by code (finding type: F, NF, O, R)
    */
-  async getAuditResultsByCode(code: string): Promise<AuditResult[]> {
+  async getAuditResultsByCode(kode: string): Promise<AuditResult[]> {
     return await this.getAll({
-      filters: [{ field: 'code', operator: '==', value: code }],
-      sorts: [{ field: 'value', direction: 'desc' }],
+      filters: [{ field: 'kode', operator: '==', value: kode }],
+      sorts: [{ field: 'nilai', direction: 'desc' }],
     });
+  }
+
+  /**
+   * Get findings only (kode = 'F')
+   */
+  async getFindings(): Promise<AuditResult[]> {
+    return await this.getAuditResultsByCode('F');
+  }
+
+  /**
+   * Get high-value findings (nilai >= threshold)
+   */
+  async getHighValueFindings(threshold: number = 10): Promise<AuditResult[]> {
+    return await this.getAll({
+      filters: [
+        { field: 'kode', operator: '==', value: 'F' },
+        { field: 'nilai', operator: '>=', value: threshold },
+      ],
+      sorts: [{ field: 'nilai', direction: 'desc' }],
+    });
+  }
+
+  /**
+   * Get repeat findings (temuanUlanganCount > 0)
+   */
+  async getRepeatFindings(): Promise<AuditResult[]> {
+    return await this.getAll({
+      filters: [
+        { field: 'kode', operator: '==', value: 'F' },
+        { field: 'temuanUlanganCount', operator: '>', value: 0 },
+      ],
+      sorts: [{ field: 'temuanUlanganCount', direction: 'desc' }],
+    });
+  }
+
+  /**
+   * Get audit results by category
+   */
+  async getAuditResultsByCategory(category: string): Promise<AuditResult[]> {
+    return await this.getAll({
+      filters: [{ field: 'category', operator: '==', value: category }],
+      sorts: [{ field: 'year', direction: 'desc' }],
+    });
+  }
+
+  /**
+   * Search audit results by text in deskripsi or riskArea
+   */
+  async searchByText(searchText: string): Promise<AuditResult[]> {
+    // Firestore doesn't support full-text search, so we fetch and filter client-side
+    const results = await this.getAll();
+    const searchLower = searchText.toLowerCase();
+
+    return results.filter(
+      (r) =>
+        r.deskripsi?.toLowerCase().includes(searchLower) ||
+        r.riskArea?.toLowerCase().includes(searchLower) ||
+        r.proyek?.toLowerCase().includes(searchLower)
+    );
   }
 }
 

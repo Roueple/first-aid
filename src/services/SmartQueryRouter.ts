@@ -516,13 +516,18 @@ export class SmartQueryRouter {
    */
   private registerProjectMappings(auditResults: AuditResult[]): void {
     const mappings: Array<[string, string]> = [];
-    
+    const seenProjects = new Set<string>();
+
     for (const result of auditResults) {
-      if (result.projectName && result.projectId) {
-        mappings.push([result.projectName, result.projectId]);
+      // Use proyek (project name) and generate a consistent ID based on the name
+      if (result.proyek && !seenProjects.has(result.proyek)) {
+        // Create a simple hash-based ID for the project
+        const projectId = `PRJ-${result.proyek.substring(0, 10).replace(/\s+/g, '-').toUpperCase()}`;
+        mappings.push([result.proyek, projectId]);
+        seenProjects.add(result.proyek);
       }
     }
-    
+
     dataMaskingService.registerProjectMappings(mappings);
     transparentLogger.data('Project mappings registered', mappings.length);
   }
@@ -557,11 +562,11 @@ export class SmartQueryRouter {
     let filteredResults = results;
     if (filters.searchText) {
       const searchLower = filters.searchText.toLowerCase();
-      filteredResults = results.filter(r => 
-        r.projectName.toLowerCase().includes(searchLower) ||
-        r.department.toLowerCase().includes(searchLower) ||
-        r.riskArea.toLowerCase().includes(searchLower) ||
-        r.description.toLowerCase().includes(searchLower)
+      filteredResults = results.filter(r =>
+        r.proyek?.toLowerCase().includes(searchLower) ||
+        r.department?.toLowerCase().includes(searchLower) ||
+        r.riskArea?.toLowerCase().includes(searchLower) ||
+        r.deskripsi?.toLowerCase().includes(searchLower)
       );
     }
 

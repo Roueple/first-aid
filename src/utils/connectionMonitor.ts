@@ -1,5 +1,5 @@
 import { onSnapshot, doc } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { db, auth } from '../config/firebase';
 
 export type ConnectionStatus = 'connected' | 'disconnected' | 'connecting';
 
@@ -10,14 +10,26 @@ export interface ConnectionMonitor {
 }
 
 class FirebaseConnectionMonitor {
-  private status: ConnectionStatus = 'connected'; // Start optimistically
+  private status: ConnectionStatus = 'connecting'; // Start in connecting state until auth is ready
   private lastChecked: Date | null = null;
   private listeners = new Set<(status: ConnectionStatus) => void>();
   private unsubscribe: (() => void) | null = null;
   private checkInterval: NodeJS.Timeout | null = null;
+  private authReady: boolean = false;
 
   constructor() {
     this.startMonitoring();
+  }
+
+  /**
+   * Mark auth as ready - should be called after authentication is complete
+   */
+  setAuthReady(ready: boolean) {
+    this.authReady = ready;
+    if (ready) {
+      // Force a connection check now that auth is ready
+      this.performConnectionCheck();
+    }
   }
 
   /**
@@ -43,33 +55,46 @@ class FirebaseConnectionMonitor {
    * Perform a connection check by attempting to read from Firestore
    */
   private async performConnectionCheck() {
+    // Skip auth-required checks if user isn't logged in yet
+    // This prevents false "disconnected" status before login
+    if (!auth.currentUser) {
+      console.log('🔌 Connection check skipped - waiting for auth');
+      // Keep current status (connecting or previous state)
+      return;
+    }
+
     try {
       // Try to read a document to verify connection
       // We'll use a lightweight operation
       const testDocRef = doc(db, '_connection_test_', 'status');
-      
+
       // Set a timeout for the check
-      const timeoutPromise = new Promise((_, reject) => {
+      const timeoutPromise = new Promise<boolean>((_, reject) => {
         setTimeout(() => reject(new Error('Connection check timeout')), 5000);
       });
 
-      const checkPromise = new Promise((resolve) => {
+      const checkPromise = new Promise<boolean>((resolve) => {
         const unsubscribe = onSnapshot(
           testDocRef,
           () => {
             unsubscribe();
             resolve(true);
           },
-          () => {
+          (error) => {
             unsubscribe();
-            resolve(false);
+            // Permission denied means Firestore is reachable but auth might have issues
+            // This shouldn't mark as disconnected for permission errors
+            const isPermissionError = error?.code === 'permission-denied';
+            resolve(isPermissionError ? true : false);
           }
         );
       });
 
-      await Promise.race([checkPromise, timeoutPromise]);
-      this.updateStatus('connected');
+      const result = await Promise.race([checkPromise, timeoutPromise]);
+      this.updateStatus(result ? 'connected' : 'disconnected');
     } catch (error) {
+      // Only mark as disconnected for actual network/timeout errors
+      console.error('🔌 Connection check failed:', error);
       this.updateStatus('disconnected');
     }
   }

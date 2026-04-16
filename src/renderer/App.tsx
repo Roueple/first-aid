@@ -11,6 +11,7 @@ import ProtectedRoute from '../components/ProtectedRoute';
 import { initializeGemini } from '../services/GeminiService';
 import './styles/bernard.css';
 import './styles/bernard-theme-additions.css';
+import './styles/bernard-results-table.css';
 
 // Create a client with optimized caching options
 // Implements Requirements 11.1, 11.3 - Performance and caching

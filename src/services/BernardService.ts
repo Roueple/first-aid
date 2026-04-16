@@ -74,25 +74,30 @@ export class BernardService {
   }
 
   // Table structure for AI context (NO DATA, structure only)
+  // 1:1 mirror of Master_Audit_Data.xlsx
   private readonly TABLE_SCHEMA = `
 DATABASE TABLES:
 
-TABLE: audit_results (main audit findings table)
+TABLE: audit_results (main audit findings table - mirrors Master_Audit_Data.xlsx exactly)
 FIELDS:
-- projectName (string): Project name (links to projects.projectName)
+- auditResultId (string): Unique ID (e.g., "1-C21-22-FDD-1-01")
+- filename (string): Source filename
+- proyek (string): Project name (links to projects.projectName via proyek field)
+- category (string): Project category
 - subholding (string): Subholding code (e.g., "SH3A", "SH2", "SH1")
 - year (number): Audit year (2022-2025)
 - department (string): Department name - MUST use exact "departmentName" values from DEPARTMENT_TAGS list below
+- departmentOri (string): Original department name from source
 - riskArea (string): Risk area description
-- description (string): Finding description text (Deskripsi)
-- code (string): Finding code - F (Finding), NF (Non-Finding), O (Observation), R (Recommendation)
-- weight (number): Bobot (weight value 1-10)
-- severity (number): Kadar (severity level 1-5)
-- value (number): Nilai (calculated score value)
-- isRepeat (number): Temuan Ulangan (0 or 1, indicates repeat finding)
-- uniqueId (string): SHA-256 hash for duplicate detection
+- deskripsi (string): Finding description text
+- kode (string): Finding code - F (Finding), NF (Non-Finding), O (Observation), R (Recommendation)
+- bobot (number): Weight value (0-10)
+- kadar (number): Severity level (0-5)
+- nilai (number): Calculated score value (bobot × kadar)
+- kategori (string): Category classification (nullable)
+- temuanUlanganCount (number): Repeat findings count (0 = no repeats, 1+ = has repeats). IMPORTANT: Use operator ">" with value 0 to find rows with repeat findings (temuanUlanganCount > 0)
 
-TABLE: projects (project master data)
+TABLE: projects (project master data with yearly statistics)
 FIELDS:
 - projectName (string): Full project name (e.g., "Aceh Water", "Ciputra World Jakarta 2")
 - sh (string): Subholding code (e.g., "SH2", "SH3A")
@@ -101,6 +106,21 @@ FIELDS:
 - category (string): Category name (e.g., "Others", "Commercial", "Residential", "Healthcare", "Education")
 - location (string): Location (e.g., "Jakarta", "Aceh, Nanggroe Aceh Darussalam")
 - tags (array): Tags array (e.g., ["AW", "Aceh Water Supply"], ["CWJ2", "Ciputra World"])
+- auditedYears (string): Years when project was audited (e.g., "2022,2023,2024")
+
+YEARLY GRADE FIELDS (projects table - string values: "A", "B", "C", "D", "E", or empty):
+- grade2025, grade2024, grade2023, grade2022 (recent years)
+- grade2021, grade2020, grade2019, grade2018, grade2017, grade2016, grade2015, grade2014, grade2013, grade2012, grade2011, grade2010 (historical)
+
+YEARLY STATISTICS FIELDS (projects table - number values):
+- total2025, total2024, total2023, total2022: Total audit results per year
+- f2025, f2024, f2023, f2022: Findings (F code) count per year
+- nf2025, nf2024, nf2023, nf2022: Non-Findings (NF code) count per year
+
+AGGREGATE FIELDS (projects table - number values):
+- grandTotal (number): Total audit results across all years
+- totalFindings (number): Total findings (F) across all years
+- totalNF (number): Total non-findings (NF) across all years
 
 TABLE: department_tags (department reference data)
 FIELDS:
@@ -116,14 +136,35 @@ INDUSTRY & CATEGORY MAPPING:
 - Hea → Healthcare (Hospital, Clinic)
 - Edu → Education (School, University)
 
+GRADE VALUES:
+- "A" (Excellent), "B" (Good), "C" (Satisfactory), "D" (Needs Improvement), "E" (Poor)
+- Empty string "" means not audited that year
+
 IMPORTANT QUERY RULES:
-- For keyword searches (APAR, PPJB, IMB, etc.), use "description" field with "contains" operator
-- Example: {"field": "description", "operator": "contains", "value": "APAR"}
-- For project filtering, use "projectName" field (exact match)
+- For keyword searches (APAR, PPJB, IMB, etc.), use "deskripsi" field with "contains" operator
+- Example: {"field": "deskripsi", "operator": "contains", "value": "APAR"}
+- For project filtering, use "proyek" field (exact match)
 - For year filtering, use "year" field (number type)
 - For department filtering: Match user input against DEPARTMENT_TAGS list (check tags array for keywords like "IT", "HR", "Finance"), then use the exact "departmentName" value in the filter
 - Example: User says "IT" → find departments where tags contain "IT" → use exact departmentName values
-- For finding type, use "code" field: F (Finding), NF (Non-Finding), O (Observation), R (Recommendation)
+- For finding type, use "kode" field: F (Finding), NF (Non-Finding), O (Observation), R (Recommendation)
+- For grade queries: Use grade{year} field (e.g., grade2024 for 2024 grade)
+- For yearly findings count: Use f{year} field (e.g., f2024 for 2024 findings count)
+- For total findings: Use totalFindings field on projects table
+
+PROJECT QUERY EXAMPLES:
+- Projects with grade A in 2024: {"field": "grade2024", "operator": "==", "value": "A"}
+- Projects with more than 10 findings in 2024: {"field": "f2024", "operator": ">", "value": 10}
+- Projects with grade D or E in any year: needs OR logic or multiple queries
+- Projects with most findings: sort by totalFindings descending
+- Projects in SH1 with grade B: combine sh and grade filters
+
+AUDIT_RESULTS QUERY EXAMPLES:
+- Repeat findings (temuan ulangan): {"field": "temuanUlanganCount", "operator": ">", "value": 0}
+- Findings with kode F: {"field": "kode", "operator": "==", "value": "F"}
+- Findings in year 2024: {"field": "year", "operator": "==", "value": 2024}
+- Findings for specific project: {"field": "proyek", "operator": "==", "value": "Project Name"}
+- High value findings: {"field": "nilai", "operator": ">=", "value": 10}
 
 SUBHOLDING (SH) CODES:
 - SH1, SH2, SH3A, SH3B, SH4 (always uppercase)
@@ -131,7 +172,7 @@ SUBHOLDING (SH) CODES:
 - Use "sh" field in projects table
 - Example: {"field": "subholding", "operator": "==", "value": "SH1"}
 
-COMMON KEYWORDS (search in description field):
+COMMON KEYWORDS (search in deskripsi field):
 - Fire safety: APAR, Hydrant, Heat detector
 - Facilities: Kolam renang, Lift, Escalator, CCTV, Security
 - Finance: Cash Opname, Time Deposit, Escrow KPR, Aging schedule
@@ -164,22 +205,38 @@ COMMON KEYWORDS (search in description field):
     const startTime = Date.now();
 
     try {
-      // Re-extract filters from original query
+      // Re-extract filters from original query (excluding project/location since we already have confirmed projects)
       const prompt = `You are a database query assistant for an audit findings system.
 
 ${this.TABLE_SCHEMA}
 
 USER QUERY: "${originalQuery}"
 
-Analyze the user's query and extract database filters. Return a JSON object:
+IMPORTANT: Extract ALL filters EXCEPT location and project name filters (those will be handled separately).
+Focus on extracting:
+- year filter if mentioned (e.g., "2025" → {"field": "year", "operator": "==", "value": 2025})
+- kode filter if mentioned (e.g., "temuan" → {"field": "kode", "operator": "==", "value": "F"})
+- department filter if mentioned
+- subholding filter if mentioned
+
+EXAMPLES:
+Query: "semua temuan bandar lampung 2025"
+{"userIntent": "Semua temuan tahun 2025", "targetTable": "audit_results", "filters": [{"field": "year", "operator": "==", "value": 2025}, {"field": "kode", "operator": "==", "value": "F"}], "isValidQuery": true}
+
+Query: "tampilkan semua audit result jakarta 2024"
+{"userIntent": "Semua hasil audit tahun 2024", "targetTable": "audit_results", "filters": [{"field": "year", "operator": "==", "value": 2024}], "isValidQuery": true}
+
+Query: "temuan IT surabaya"
+{"userIntent": "Temuan IT", "targetTable": "audit_results", "filters": [{"field": "department", "operator": "in", "value": ["Departemen IT"]}, {"field": "kode", "operator": "==", "value": "F"}], "isValidQuery": true}
+
+Return a JSON object:
 {
   "userIntent": "what user wants in Indonesian",
   "targetTable": "audit_results|projects|departments",
   "filters": [
-    {"field": "fieldName", "operator": "==|!=|>|>=|<|<=|array-contains", "value": "value"}
+    {"field": "fieldName", "operator": "==|!=|>|>=|<|<=|in|contains", "value": "value"}
   ],
-  "isValidQuery": true/false,
-  "invalidReason": "reason if not valid query"
+  "isValidQuery": true
 }
 
 Return ONLY the JSON object.`;
@@ -197,19 +254,36 @@ Return ONLY the JSON object.`;
       const targetTable = parsed.targetTable || 'audit_results';
       let filters: QueryFilter[] = parsed.filters || [];
 
+      console.log('🔍 executeConfirmedQuery - LLM extracted filters:', JSON.stringify(filters, null, 2));
+      console.log('🔍 executeConfirmedQuery - Selected projects:', Array.isArray(selectedProjectName) ? `${selectedProjectName.length} projects` : selectedProjectName);
+
       // Replace project name filter with confirmed name(s)
-      filters = filters.map(f => {
-        if (f.field === 'projectName') {
-          if (Array.isArray(selectedProjectName)) {
-            // Multiple projects selected - use "in" operator
-            return { field: 'projectName', operator: 'in', value: selectedProjectName };
-          } else {
-            // Single project - use "==" operator
-            return { ...f, value: selectedProjectName };
+      const hasProyekFilter = filters.some(f => f.field === 'proyek');
+
+      if (hasProyekFilter) {
+        // Replace existing proyek filter
+        filters = filters.map(f => {
+          if (f.field === 'proyek') {
+            if (Array.isArray(selectedProjectName)) {
+              return { field: 'proyek', operator: 'in' as const, value: selectedProjectName };
+            } else {
+              return { ...f, value: selectedProjectName };
+            }
           }
+          return f;
+        });
+      } else {
+        // No proyek filter exists - add one with the confirmed project names
+        // This happens when query was based on location (e.g., "bandar lampung") instead of project name
+        if (Array.isArray(selectedProjectName)) {
+          filters.push({ field: 'proyek', operator: 'in', value: selectedProjectName });
+        } else {
+          filters.push({ field: 'proyek', operator: '==', value: selectedProjectName });
         }
-        return f;
-      });
+        console.log('🔧 Added missing proyek filter for confirmed projects:', selectedProjectName);
+      }
+
+      console.log('🔍 executeConfirmedQuery - Final filters to execute:', JSON.stringify(filters, null, 2));
 
       // Execute query with original user query for context (no custom sorting for confirmed queries)
       const results = await this.executeQuery(filters, targetTable, originalQuery);
@@ -704,10 +778,10 @@ AGGREGATION RULES (PIVOT TABLE):
           * System will automatically join with projects table to get type/subtype data
 - Common aggregation queries:
   * "count findings by department" → {"groupBy": "department", "aggregationType": "count"}
-  * "sum value by project" → {"groupBy": "projectName", "aggregationType": "sum", "aggregateField": "value"}
-  * "average score by year" → {"groupBy": "year", "aggregationType": "avg", "aggregateField": "value"}
+  * "sum value by project" → {"groupBy": "projectName", "aggregationType": "sum", "aggregateField": "nilai"}
+  * "average score by year" → {"groupBy": "year", "aggregationType": "avg", "aggregateField": "nilai"}
   * "highest findings count by department 2024" → {"groupBy": "department", "aggregationType": "count", "filters": [{"field": "year", "operator": "==", "value": "2024"}], "sortOrder": "desc"}
-  * "PPJB findings by SH and year" → {"groupBy": ["sh", "year"], "aggregationType": "count", "filters": [{"field": "description", "operator": "contains", "value": "PPJB"}, {"field": "code", "operator": "==", "value": "F"}]}
+  * "PPJB findings by SH and year" → {"groupBy": ["sh", "year"], "aggregationType": "count", "filters": [{"field": "deskripsi", "operator": "contains", "value": "PPJB"}, {"field": "kode", "operator": "==", "value": "F"}]}
   * "findings by project and department" → {"groupBy": ["projectName", "department"], "aggregationType": "count"}
     - Keywords indicating aggregation: "group by", "count by", "summarize", "breakdown", "pivot", "per department", "by project", "berdasarkan", "per", "jumlah temuan per", "agregasi"
 - Keywords indicating multi-dimensional: "by X and Y", "by X and by Y", "per X dan Y", "berdasarkan X dan Y"
@@ -749,9 +823,9 @@ OPERATOR RULES:
 - "contains-any" for OR text search in description field (matches ANY of the keywords)
 
 KEYWORD SEARCH RULES (CRITICAL):
-- Single keyword: use "contains" operator → {"field": "description", "operator": "contains", "value": "APAR"}
-- Multiple keywords with OR: use "contains-any" operator → {"field": "description", "operator": "contains-any", "value": ["APAR", "Hydrant"]}
-- Multiple keywords with AND: use multiple "contains" filters → [{"field": "description", "operator": "contains", "value": "APAR"}, {"field": "description", "operator": "contains", "value": "2024"}]
+- Single keyword: use "contains" operator → {"field": "deskripsi", "operator": "contains", "value": "APAR"}
+- Multiple keywords with OR: use "contains-any" operator → {"field": "deskripsi", "operator": "contains-any", "value": ["APAR", "Hydrant"]}
+- Multiple keywords with AND: use multiple "contains" filters → [{"field": "deskripsi", "operator": "contains", "value": "APAR"}, {"field": "deskripsi", "operator": "contains", "value": "2024"}]
 
 LIMIT RULES:
 - "top 10", "first 10", "10 terbesar", "10 tertinggi" → limit: 10
@@ -788,87 +862,132 @@ CONTEXT-AWARE RULES:
 
 EXAMPLES:
 Query: "show all IT findings 2024" or "semua temuan IT 2024"
-{"userIntent": "Tampilkan semua temuan IT tahun 2024", "targetTable": "audit_results", "filters": [{"field": "department", "operator": "==", "value": "IT"}, {"field": "year", "operator": "==", "value": "2024"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+{"userIntent": "Tampilkan semua temuan IT tahun 2024", "targetTable": "audit_results", "filters": [{"field": "department", "operator": "==", "value": "IT"}, {"field": "year", "operator": "==", "value": "2024"}, {"field": "kode", "operator": "==", "value": "F"}], "isValidQuery": true}
 
 Query: "temuan IT atau Finance 2024" or "findings from IT or Finance 2024"
-{"userIntent": "Temuan dari IT atau Finance tahun 2024", "targetTable": "audit_results", "filters": [{"field": "department", "operator": "in", "value": ["IT", "Finance"]}, {"field": "year", "operator": "==", "value": "2024"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+{"userIntent": "Temuan dari IT atau Finance tahun 2024", "targetTable": "audit_results", "filters": [{"field": "department", "operator": "in", "value": ["IT", "Finance"]}, {"field": "year", "operator": "==", "value": "2024"}, {"field": "kode", "operator": "==", "value": "F"}], "isValidQuery": true}
 
 Query: "temuan dari Tallasa atau Raffles" or "findings from Tallasa or Raffles"
-{"userIntent": "Temuan dari CitraLand Tallasa atau Hotel Raffles", "targetTable": "audit_results", "filters": [{"field": "projectName", "operator": "in", "value": ["CitraLand Tallasa City Makassar", "Hotel Raffles Jakarta"]}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+{"userIntent": "Temuan dari CitraLand Tallasa atau Hotel Raffles", "targetTable": "audit_results", "filters": [{"field": "proyek", "operator": "in", "value": ["CitraLand Tallasa City Makassar", "Hotel Raffles Jakarta"]}, {"field": "kode", "operator": "==", "value": "F"}], "isValidQuery": true}
 
 Query: "temuan SH1 atau SH2" or "findings from SH1 or SH2"
-{"userIntent": "Temuan dari SH1 atau SH2", "targetTable": "audit_results", "filters": [{"field": "subholding", "operator": "in", "value": ["SH1", "SH2"]}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+{"userIntent": "Temuan dari SH1 atau SH2", "targetTable": "audit_results", "filters": [{"field": "subholding", "operator": "in", "value": ["SH1", "SH2"]}, {"field": "kode", "operator": "==", "value": "F"}], "isValidQuery": true}
 
 Query: "temuan APAR atau Hydrant" or "findings about APAR or Hydrant"
-{"userIntent": "Temuan terkait APAR atau Hydrant", "targetTable": "audit_results", "filters": [{"field": "description", "operator": "contains-any", "value": ["APAR", "Hydrant"]}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+{"userIntent": "Temuan terkait APAR atau Hydrant", "targetTable": "audit_results", "filters": [{"field": "deskripsi", "operator": "contains-any", "value": ["APAR", "Hydrant"]}, {"field": "kode", "operator": "==", "value": "F"}], "isValidQuery": true}
 
 Query: "temuan Tallasa Makassar" or "semua temuan Tallasa Makassar"
-{"userIntent": "Semua temuan CitraLand Tallasa City Makassar", "targetTable": "audit_results", "filters": [{"field": "projectName", "operator": "==", "value": "CitraLand Tallasa City Makassar"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+{"userIntent": "Semua temuan CitraLand Tallasa City Makassar", "targetTable": "audit_results", "filters": [{"field": "proyek", "operator": "==", "value": "CitraLand Tallasa City Makassar"}, {"field": "kode", "operator": "==", "value": "F"}], "isValidQuery": true}
 
 Query: "temuan dari 3 proyek: Tallasa, Raffles, dan Ciputra Mall" or "findings from Tallasa, Raffles, and Ciputra Mall"
-{"userIntent": "Temuan dari 3 proyek", "targetTable": "audit_results", "filters": [{"field": "projectName", "operator": "in", "value": ["CitraLand Tallasa City Makassar", "Hotel Raffles Jakarta", "Mall Ciputra Cibubur"]}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+{"userIntent": "Temuan dari 3 proyek", "targetTable": "audit_results", "filters": [{"field": "proyek", "operator": "in", "value": ["CitraLand Tallasa City Makassar", "Hotel Raffles Jakarta", "Mall Ciputra Cibubur"]}, {"field": "kode", "operator": "==", "value": "F"}], "isValidQuery": true}
 
 Query: "dep = IT, year 2024, code = F"
-{"userIntent": "Temuan IT tahun 2024 dengan kode F", "targetTable": "audit_results", "filters": [{"field": "department", "operator": "==", "value": "IT"}, {"field": "year", "operator": "==", "value": "2024"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+{"userIntent": "Temuan IT tahun 2024 dengan kode F", "targetTable": "audit_results", "filters": [{"field": "department", "operator": "==", "value": "IT"}, {"field": "year", "operator": "==", "value": "2024"}, {"field": "kode", "operator": "==", "value": "F"}], "isValidQuery": true}
 
 Query: "findings with value >= 10"
-{"userIntent": "Temuan dengan value di atas atau sama dengan 10", "targetTable": "audit_results", "filters": [{"field": "value", "operator": ">=", "value": 10}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+{"userIntent": "Temuan dengan value di atas atau sama dengan 10", "targetTable": "audit_results", "filters": [{"field": "nilai", "operator": ">=", "value": 10}, {"field": "kode", "operator": "==", "value": "F"}], "isValidQuery": true}
 
 Query: "temuan APAR"
-{"userIntent": "Semua temuan terkait APAR", "targetTable": "audit_results", "filters": [{"field": "description", "operator": "contains", "value": "APAR"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+{"userIntent": "Semua temuan terkait APAR", "targetTable": "audit_results", "filters": [{"field": "deskripsi", "operator": "contains", "value": "APAR"}, {"field": "kode", "operator": "==", "value": "F"}], "isValidQuery": true}
 
 Query: "temuan kolam renang 2024"
-{"userIntent": "Temuan kolam renang tahun 2024", "targetTable": "audit_results", "filters": [{"field": "description", "operator": "contains", "value": "kolam renang"}, {"field": "year", "operator": "==", "value": "2024"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+{"userIntent": "Temuan kolam renang tahun 2024", "targetTable": "audit_results", "filters": [{"field": "deskripsi", "operator": "contains", "value": "kolam renang"}, {"field": "year", "operator": "==", "value": "2024"}, {"field": "kode", "operator": "==", "value": "F"}], "isValidQuery": true}
 
 Query: "temuan kolam renang atau lift" or "findings about swimming pool or elevator"
-{"userIntent": "Temuan terkait kolam renang atau lift", "targetTable": "audit_results", "filters": [{"field": "description", "operator": "contains-any", "value": ["kolam renang", "lift"]}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+{"userIntent": "Temuan terkait kolam renang atau lift", "targetTable": "audit_results", "filters": [{"field": "deskripsi", "operator": "contains-any", "value": ["kolam renang", "lift"]}, {"field": "kode", "operator": "==", "value": "F"}], "isValidQuery": true}
 
 Query: "show all PPJB findings" or "temuan yang mengandung PPJB"
-{"userIntent": "Semua temuan yang mengandung kata PPJB di deskripsi", "targetTable": "audit_results", "filters": [{"field": "description", "operator": "contains", "value": "PPJB"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+{"userIntent": "Semua temuan yang mengandung kata PPJB di deskripsi", "targetTable": "audit_results", "filters": [{"field": "deskripsi", "operator": "contains", "value": "PPJB"}, {"field": "kode", "operator": "==", "value": "F"}], "isValidQuery": true}
 
 Query: "findings with IMB in description" or "temuan dengan IMB"
-{"userIntent": "Temuan dengan kata IMB di deskripsi", "targetTable": "audit_results", "filters": [{"field": "description", "operator": "contains", "value": "IMB"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+{"userIntent": "Temuan dengan kata IMB di deskripsi", "targetTable": "audit_results", "filters": [{"field": "deskripsi", "operator": "contains", "value": "IMB"}, {"field": "kode", "operator": "==", "value": "F"}], "isValidQuery": true}
 
 Query: "all IT audit results 2024" or "semua hasil audit IT 2024" or "all codes IT 2024"
 {"userIntent": "Semua hasil audit IT tahun 2024 (termasuk F, NF, O, R)", "targetTable": "audit_results", "filters": [{"field": "department", "operator": "==", "value": "IT"}, {"field": "year", "operator": "==", "value": "2024"}], "isValidQuery": true}
 
 Query: "semua hasil audit Tallasa Makassar" or "all audit results Tallasa"
-{"userIntent": "Semua hasil audit CitraLand Tallasa City Makassar (termasuk F, NF, O, R)", "targetTable": "audit_results", "filters": [{"field": "projectName", "operator": "==", "value": "CitraLand Tallasa City Makassar"}], "isValidQuery": true}
+{"userIntent": "Semua hasil audit CitraLand Tallasa City Makassar (termasuk F, NF, O, R)", "targetTable": "audit_results", "filters": [{"field": "proyek", "operator": "==", "value": "CitraLand Tallasa City Makassar"}], "isValidQuery": true}
 
 Query: "list all projects" or "daftar proyek"
 {"userIntent": "Daftar semua proyek", "targetTable": "projects", "filters": [], "isValidQuery": true}
 
 Query: "projects with most findings" or "proyek dengan temuan terbanyak"
-{"userIntent": "Proyek dengan temuan terbanyak", "targetTable": "projects", "filters": [{"field": "finding", "operator": ">", "value": 0}], "isValidQuery": true}
+{"userIntent": "Proyek dengan temuan terbanyak", "targetTable": "projects", "filters": [], "sortBy": "totalFindings", "sortOrder": "desc", "isValidQuery": true}
 
-Query: "project HRJ" or "proyek HRJ"
-{"userIntent": "Detail proyek dengan inisial HRJ", "targetTable": "projects", "filters": [{"field": "initials", "operator": "==", "value": "HRJ"}], "isValidQuery": true}
+Query: "top 10 projects with most findings" or "10 proyek dengan temuan terbanyak"
+{"userIntent": "10 proyek dengan temuan terbanyak", "targetTable": "projects", "filters": [], "sortBy": "totalFindings", "sortOrder": "desc", "limit": 10, "isValidQuery": true}
+
+Query: "projects with grade A in 2024" or "proyek dengan grade A tahun 2024"
+{"userIntent": "Proyek dengan grade A tahun 2024", "targetTable": "projects", "filters": [{"field": "grade2024", "operator": "==", "value": "A"}], "isValidQuery": true}
+
+Query: "projects with grade D or E in 2024" or "proyek dengan grade D atau E 2024"
+{"userIntent": "Proyek dengan grade D atau E tahun 2024", "targetTable": "projects", "filters": [{"field": "grade2024", "operator": "in", "value": ["D", "E"]}], "isValidQuery": true}
+
+Query: "projects in SH1 with grade B 2024" or "proyek SH1 dengan grade B 2024"
+{"userIntent": "Proyek SH1 dengan grade B tahun 2024", "targetTable": "projects", "filters": [{"field": "sh", "operator": "==", "value": "SH1"}, {"field": "grade2024", "operator": "==", "value": "B"}], "isValidQuery": true}
+
+Query: "projects with more than 10 findings in 2024" or "proyek dengan lebih dari 10 temuan di 2024"
+{"userIntent": "Proyek dengan lebih dari 10 temuan di 2024", "targetTable": "projects", "filters": [{"field": "f2024", "operator": ">", "value": 10}], "isValidQuery": true}
+
+Query: "projects with zero findings in 2024" or "proyek tanpa temuan di 2024"
+{"userIntent": "Proyek tanpa temuan di 2024", "targetTable": "projects", "filters": [{"field": "f2024", "operator": "==", "value": 0}], "isValidQuery": true}
 
 Query: "projects with zero findings" or "proyek tanpa temuan"
-{"userIntent": "Proyek tanpa temuan (hanya non-finding)", "targetTable": "projects", "filters": [{"field": "finding", "operator": "==", "value": 0}], "isValidQuery": true}
+{"userIntent": "Proyek tanpa temuan sama sekali", "targetTable": "projects", "filters": [{"field": "totalFindings", "operator": "==", "value": 0}], "isValidQuery": true}
+
+Query: "commercial projects in Jakarta" or "proyek komersial di Jakarta"
+{"userIntent": "Proyek komersial di Jakarta", "targetTable": "projects", "filters": [{"field": "category", "operator": "==", "value": "Commercial"}, {"field": "location", "operator": "contains", "value": "Jakarta"}], "isValidQuery": true}
+
+Query: "residential projects in SH2" or "proyek residensial di SH2"
+{"userIntent": "Proyek residensial di SH2", "targetTable": "projects", "filters": [{"field": "category", "operator": "==", "value": "Residential"}, {"field": "sh", "operator": "==", "value": "SH2"}], "isValidQuery": true}
+
+Query: "tbk projects" or "proyek tbk"
+{"userIntent": "Proyek dengan status TBK", "targetTable": "projects", "filters": [{"field": "tbk", "operator": "==", "value": "tbk"}], "isValidQuery": true}
+
+Query: "how many findings in project Tallasa" or "berapa temuan di proyek Tallasa"
+{"userIntent": "Jumlah temuan di proyek CitraLand Tallasa", "targetTable": "projects", "filters": [{"field": "projectName", "operator": "contains", "value": "Tallasa"}], "isValidQuery": true}
+
+Query: "grade history of project Raffles" or "riwayat grade proyek Raffles"
+{"userIntent": "Riwayat grade proyek Hotel Raffles Jakarta", "targetTable": "projects", "filters": [{"field": "projectName", "operator": "contains", "value": "Raffles"}], "isValidQuery": true}
+
+Query: "projects count by grade 2024" or "jumlah proyek per grade 2024"
+{"userIntent": "Jumlah proyek per grade 2024", "targetTable": "projects", "filters": [], "groupBy": "grade2024", "aggregationType": "count", "isValidQuery": true}
+
+Query: "projects count by subholding" or "jumlah proyek per SH"
+{"userIntent": "Jumlah proyek per subholding", "targetTable": "projects", "filters": [], "groupBy": "sh", "aggregationType": "count", "isValidQuery": true}
+
+Query: "projects count by category" or "jumlah proyek per kategori"
+{"userIntent": "Jumlah proyek per kategori", "targetTable": "projects", "filters": [], "groupBy": "category", "aggregationType": "count", "isValidQuery": true}
+
+Query: "total findings by subholding" or "total temuan per SH"
+{"userIntent": "Total temuan per subholding", "targetTable": "projects", "filters": [], "groupBy": "sh", "aggregationType": "sum", "aggregateField": "totalFindings", "isValidQuery": true}
+
+Query: "average findings per project in SH1" or "rata-rata temuan per proyek di SH1"
+{"userIntent": "Rata-rata temuan per proyek di SH1", "targetTable": "projects", "filters": [{"field": "sh", "operator": "==", "value": "SH1"}], "groupBy": "sh", "aggregationType": "avg", "aggregateField": "totalFindings", "isValidQuery": true}
 
 Query: "list departments" or "daftar departemen"
-{"userIntent": "Daftar semua departemen", "targetTable": "departments", "filters": [], "isValidQuery": true}
+{"userIntent": "Daftar semua departemen", "targetTable": "department_tags", "filters": [], "isValidQuery": true}
 
 Query: "IT departments" or "departemen IT"
-{"userIntent": "Departemen kategori IT", "targetTable": "departments", "filters": [{"field": "category", "operator": "==", "value": "IT"}], "isValidQuery": true}
+{"userIntent": "Departemen kategori IT", "targetTable": "department_tags", "filters": [{"field": "category", "operator": "==", "value": "IT"}], "isValidQuery": true}
 
 CONTEXT-AWARE EXAMPLES (with conversation history):
 Previous: "semua temuan HC 2024" (filters: department="HC", year="2024", code="F")
 Current: "khusus mall ciputra cibubur" or "show only mall ciputra cibubur"
-{"userIntent": "Temuan HC tahun 2024 khusus Mall Ciputra Cibubur", "targetTable": "audit_results", "filters": [{"field": "department", "operator": "==", "value": "HC"}, {"field": "year", "operator": "==", "value": "2024"}, {"field": "code", "operator": "==", "value": "F"}, {"field": "projectName", "operator": "==", "value": "Mall Ciputra Cibubur"}], "isValidQuery": true}
+{"userIntent": "Temuan HC tahun 2024 khusus Mall Ciputra Cibubur", "targetTable": "audit_results", "filters": [{"field": "department", "operator": "==", "value": "HC"}, {"field": "year", "operator": "==", "value": "2024"}, {"field": "kode", "operator": "==", "value": "F"}, {"field": "proyek", "operator": "==", "value": "Mall Ciputra Cibubur"}], "isValidQuery": true}
 
 Previous: "semua temuan HR 2024" (filters: department="HR", year="2024", code="F")
 Current: "khusus SH1" or "only SH1" or "SH1 saja"
-{"userIntent": "Temuan HR tahun 2024 khusus SH1", "targetTable": "audit_results", "filters": [{"field": "department", "operator": "==", "value": "HR"}, {"field": "year", "operator": "==", "value": "2024"}, {"field": "code", "operator": "==", "value": "F"}, {"field": "subholding", "operator": "==", "value": "SH1"}], "isValidQuery": true}
+{"userIntent": "Temuan HR tahun 2024 khusus SH1", "targetTable": "audit_results", "filters": [{"field": "department", "operator": "==", "value": "HR"}, {"field": "year", "operator": "==", "value": "2024"}, {"field": "kode", "operator": "==", "value": "F"}, {"field": "subholding", "operator": "==", "value": "SH1"}], "isValidQuery": true}
 
 Previous: "semua temuan HR 2024" (filters: department="HR", year="2024", code="F")
 Current: "SH2 coba" or "coba SH2" or "filter SH2"
-{"userIntent": "Temuan HR tahun 2024 khusus SH2", "targetTable": "audit_results", "filters": [{"field": "department", "operator": "==", "value": "HR"}, {"field": "year", "operator": "==", "value": "2024"}, {"field": "code", "operator": "==", "value": "F"}, {"field": "subholding", "operator": "==", "value": "SH2"}], "isValidQuery": true}
+{"userIntent": "Temuan HR tahun 2024 khusus SH2", "targetTable": "audit_results", "filters": [{"field": "department", "operator": "==", "value": "HR"}, {"field": "year", "operator": "==", "value": "2024"}, {"field": "kode", "operator": "==", "value": "F"}, {"field": "subholding", "operator": "==", "value": "SH2"}], "isValidQuery": true}
 
 Previous: "semua temuan Tallasa Makassar" (filters: projectName="CitraLand Tallasa City Makassar")
 Current: "hanya temuan" or "findings only"
-{"userIntent": "Hanya temuan (code F) untuk CitraLand Tallasa City Makassar", "targetTable": "audit_results", "filters": [{"field": "projectName", "operator": "==", "value": "CitraLand Tallasa City Makassar"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+{"userIntent": "Hanya temuan (kode F) untuk CitraLand Tallasa City Makassar", "targetTable": "audit_results", "filters": [{"field": "proyek", "operator": "==", "value": "CitraLand Tallasa City Makassar"}, {"field": "kode", "operator": "==", "value": "F"}], "isValidQuery": true}
 
 Previous: "IT findings 2024" (filters: department="IT", year="2024", code="F")
 Current: "show all results" or "semua hasil"
@@ -876,56 +995,56 @@ Current: "show all results" or "semua hasil"
 
 Previous: "proyek Raffles" (filters: projectName="Hotel Raffles Jakarta")
 Current: "temuan 2024"
-{"userIntent": "Temuan Hotel Raffles Jakarta tahun 2024", "targetTable": "audit_results", "filters": [{"field": "projectName", "operator": "==", "value": "Hotel Raffles Jakarta"}, {"field": "year", "operator": "==", "value": "2024"}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+{"userIntent": "Temuan Hotel Raffles Jakarta tahun 2024", "targetTable": "audit_results", "filters": [{"field": "proyek", "operator": "==", "value": "Hotel Raffles Jakarta"}, {"field": "year", "operator": "==", "value": "2024"}, {"field": "kode", "operator": "==", "value": "F"}], "isValidQuery": true}
 
 AGGREGATION EXAMPLES:
 Query: "count findings by department 2024" or "jumlah temuan per department 2024"
-{"userIntent": "Jumlah temuan per department tahun 2024", "targetTable": "audit_results", "filters": [{"field": "year", "operator": "==", "value": "2024"}, {"field": "code", "operator": "==", "value": "F"}], "groupBy": "department", "aggregationType": "count", "sortOrder": "desc", "isValidQuery": true}
+{"userIntent": "Jumlah temuan per department tahun 2024", "targetTable": "audit_results", "filters": [{"field": "year", "operator": "==", "value": "2024"}, {"field": "kode", "operator": "==", "value": "F"}], "groupBy": "department", "aggregationType": "count", "sortOrder": "desc", "isValidQuery": true}
 
 Query: "show me highest findings count by department 2024" or "department dengan temuan terbanyak 2024"
-{"userIntent": "Department dengan jumlah temuan terbanyak tahun 2024", "targetTable": "audit_results", "filters": [{"field": "year", "operator": "==", "value": "2024"}, {"field": "code", "operator": "==", "value": "F"}], "groupBy": "department", "aggregationType": "count", "sortOrder": "desc", "isValidQuery": true}
+{"userIntent": "Department dengan jumlah temuan terbanyak tahun 2024", "targetTable": "audit_results", "filters": [{"field": "year", "operator": "==", "value": "2024"}, {"field": "kode", "operator": "==", "value": "F"}], "groupBy": "department", "aggregationType": "count", "sortOrder": "desc", "isValidQuery": true}
 
 Query: "group findings by project" or "kelompokkan temuan berdasarkan proyek"
-{"userIntent": "Kelompokkan temuan berdasarkan proyek", "targetTable": "audit_results", "filters": [{"field": "code", "operator": "==", "value": "F"}], "groupBy": "projectName", "aggregationType": "count", "sortOrder": "desc", "isValidQuery": true}
+{"userIntent": "Kelompokkan temuan berdasarkan proyek", "targetTable": "audit_results", "filters": [{"field": "kode", "operator": "==", "value": "F"}], "groupBy": "proyek", "aggregationType": "count", "sortOrder": "desc", "isValidQuery": true}
 
 Query: "sum value by department" or "total value per department"
-{"userIntent": "Total value per department", "targetTable": "audit_results", "filters": [], "groupBy": "department", "aggregationType": "sum", "aggregateField": "value", "sortOrder": "desc", "isValidQuery": true}
+{"userIntent": "Total value per department", "targetTable": "audit_results", "filters": [], "groupBy": "department", "aggregationType": "sum", "aggregateField": "nilai", "sortOrder": "desc", "isValidQuery": true}
 
 Query: "average score by year" or "rata-rata value per tahun"
-{"userIntent": "Rata-rata value per tahun", "targetTable": "audit_results", "filters": [], "groupBy": "year", "aggregationType": "avg", "aggregateField": "value", "sortOrder": "desc", "isValidQuery": true}
+{"userIntent": "Rata-rata value per tahun", "targetTable": "audit_results", "filters": [], "groupBy": "year", "aggregationType": "avg", "aggregateField": "nilai", "sortOrder": "desc", "isValidQuery": true}
 
 Query: "breakdown findings by SH" or "breakdown temuan per SH"
-{"userIntent": "Breakdown temuan per SH", "targetTable": "audit_results", "filters": [{"field": "code", "operator": "==", "value": "F"}], "groupBy": "subholding", "aggregationType": "count", "sortOrder": "desc", "isValidQuery": true}
+{"userIntent": "Breakdown temuan per SH", "targetTable": "audit_results", "filters": [{"field": "kode", "operator": "==", "value": "F"}], "groupBy": "subholding", "aggregationType": "count", "sortOrder": "desc", "isValidQuery": true}
 
 Query: "agregasi temuan APAR berdasarkan SH dan tahun" or "APAR findings by SH and year"
-{"userIntent": "Agregasi temuan APAR berdasarkan SH dan tahun", "targetTable": "audit_results", "filters": [{"field": "description", "operator": "contains", "value": "APAR"}, {"field": "code", "operator": "==", "value": "F"}], "groupBy": ["subholding", "year"], "aggregationType": "count", "sortOrder": "desc", "isValidQuery": true}
+{"userIntent": "Agregasi temuan APAR berdasarkan SH dan tahun", "targetTable": "audit_results", "filters": [{"field": "deskripsi", "operator": "contains", "value": "APAR"}, {"field": "kode", "operator": "==", "value": "F"}], "groupBy": ["subholding", "year"], "aggregationType": "count", "sortOrder": "desc", "isValidQuery": true}
 
 Query: "from all projects, all PPJB findings sorted for the most show me" or "dari semua proyek, temuan PPJB terbanyak per proyek"
-{"userIntent": "Temuan PPJB terbanyak per proyek", "targetTable": "audit_results", "filters": [{"field": "description", "operator": "contains", "value": "PPJB"}, {"field": "code", "operator": "==", "value": "F"}], "groupBy": "projectName", "aggregationType": "count", "sortOrder": "desc", "isValidQuery": true}
+{"userIntent": "Temuan PPJB terbanyak per proyek", "targetTable": "audit_results", "filters": [{"field": "deskripsi", "operator": "contains", "value": "PPJB"}, {"field": "kode", "operator": "==", "value": "F"}], "groupBy": "proyek", "aggregationType": "count", "sortOrder": "desc", "isValidQuery": true}
 
 Query: "show me projects with most IMB findings" or "proyek dengan temuan IMB terbanyak"
-{"userIntent": "Proyek dengan temuan IMB terbanyak", "targetTable": "audit_results", "filters": [{"field": "description", "operator": "contains", "value": "IMB"}, {"field": "code", "operator": "==", "value": "F"}], "groupBy": "projectName", "aggregationType": "count", "sortOrder": "desc", "isValidQuery": true}
+{"userIntent": "Proyek dengan temuan IMB terbanyak", "targetTable": "audit_results", "filters": [{"field": "deskripsi", "operator": "contains", "value": "IMB"}, {"field": "kode", "operator": "==", "value": "F"}], "groupBy": "proyek", "aggregationType": "count", "sortOrder": "desc", "isValidQuery": true}
 
 LIMIT EXAMPLES:
 Query: "top 10 findings with highest value" or "10 temuan dengan nilai tertinggi"
-{"userIntent": "10 temuan dengan nilai tertinggi", "targetTable": "audit_results", "filters": [{"field": "code", "operator": "==", "value": "F"}], "sortBy": "value", "sortOrder": "desc", "limit": 10, "isValidQuery": true}
+{"userIntent": "10 temuan dengan nilai tertinggi", "targetTable": "audit_results", "filters": [{"field": "kode", "operator": "==", "value": "F"}], "sortBy": "nilai", "sortOrder": "desc", "limit": 10, "isValidQuery": true}
 
 Query: "show first 5 IT findings 2024" or "tampilkan 5 temuan IT terbaru 2024"
-{"userIntent": "5 temuan IT tahun 2024", "targetTable": "audit_results", "filters": [{"field": "department", "operator": "in", "value": ["Departemen IT"]}, {"field": "year", "operator": "==", "value": 2024}, {"field": "code", "operator": "==", "value": "F"}], "limit": 5, "isValidQuery": true}
+{"userIntent": "5 temuan IT tahun 2024", "targetTable": "audit_results", "filters": [{"field": "department", "operator": "in", "value": ["Departemen IT"]}, {"field": "year", "operator": "==", "value": 2024}, {"field": "kode", "operator": "==", "value": "F"}], "limit": 5, "isValidQuery": true}
 
 NOT-IN EXAMPLES:
 Query: "semua temuan kecuali IT dan Finance" or "all findings except IT and Finance"
-{"userIntent": "Semua temuan kecuali IT dan Finance", "targetTable": "audit_results", "filters": [{"field": "department", "operator": "not-in", "value": ["Departemen IT", "Departemen Finance"]}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+{"userIntent": "Semua temuan kecuali IT dan Finance", "targetTable": "audit_results", "filters": [{"field": "department", "operator": "not-in", "value": ["Departemen IT", "Departemen Finance"]}, {"field": "kode", "operator": "==", "value": "F"}], "isValidQuery": true}
 
 Query: "temuan 2024 bukan dari SH1" or "2024 findings not from SH1"
-{"userIntent": "Temuan 2024 bukan dari SH1", "targetTable": "audit_results", "filters": [{"field": "year", "operator": "==", "value": 2024}, {"field": "subholding", "operator": "not-in", "value": ["SH1"]}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+{"userIntent": "Temuan 2024 bukan dari SH1", "targetTable": "audit_results", "filters": [{"field": "year", "operator": "==", "value": 2024}, {"field": "subholding", "operator": "not-in", "value": ["SH1"]}, {"field": "kode", "operator": "==", "value": "F"}], "isValidQuery": true}
 
 CONTAINS-ANY (OR KEYWORD) EXAMPLES:
 Query: "temuan terkait APAR, Hydrant, atau Heat Detector" or "findings about fire safety equipment"
-{"userIntent": "Temuan terkait peralatan keselamatan kebakaran", "targetTable": "audit_results", "filters": [{"field": "description", "operator": "contains-any", "value": ["APAR", "Hydrant", "Heat Detector"]}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+{"userIntent": "Temuan terkait peralatan keselamatan kebakaran", "targetTable": "audit_results", "filters": [{"field": "deskripsi", "operator": "contains-any", "value": ["APAR", "Hydrant", "Heat Detector"]}, {"field": "kode", "operator": "==", "value": "F"}], "isValidQuery": true}
 
 Query: "temuan PPJB atau SPPJB atau AJB" or "findings about property purchase agreements"
-{"userIntent": "Temuan terkait perjanjian properti", "targetTable": "audit_results", "filters": [{"field": "description", "operator": "contains-any", "value": ["PPJB", "SPPJB", "AJB"]}, {"field": "code", "operator": "==", "value": "F"}], "isValidQuery": true}
+{"userIntent": "Temuan terkait perjanjian properti", "targetTable": "audit_results", "filters": [{"field": "deskripsi", "operator": "contains-any", "value": ["PPJB", "SPPJB", "AJB"]}, {"field": "kode", "operator": "==", "value": "F"}], "isValidQuery": true}
 
 DEPARTMENT_TAGS EXAMPLES:
 Query: "daftar departemen" or "list all departments"
@@ -975,7 +1094,7 @@ Return ONLY the JSON object.`;
       const aggregateField = parsed.aggregateField;
 
       // VALIDATION: Check project name(s) before executing
-      const projectNameFilter = filters.find(f => f.field === 'projectName');
+      const projectNameFilter = filters.find(f => f.field === 'proyek');
       if (projectNameFilter) {
         // Handle single project name (== operator)
         if (typeof projectNameFilter.value === 'string') {
@@ -1336,8 +1455,8 @@ Return ONLY the JSON object.`;
       // Define fields to select based on table
       let selectFields: string[] | undefined;
       if (table === 'audit_results') {
-        // Only fetch fields needed for Bernard display
-        selectFields = ['year', 'projectName', 'subholding', 'department', 'riskArea', 'description', 'projectCategory'];
+        // Only fetch fields needed for Bernard display (using new 1:1 Excel field names)
+        selectFields = ['auditResultId', 'year', 'proyek', 'subholding', 'department', 'riskArea', 'deskripsi', 'kode', 'bobot', 'kadar', 'nilai', 'category'];
       }
 
       // Fetch with equality filters only (avoids composite index issues)
@@ -1541,30 +1660,53 @@ Return ONLY the JSON object.`;
 
       if (table === 'audit_results') {
         sheetName = 'Audit Results';
+        // 1:1 mirror of Master_Audit_Data.xlsx columns
         excelData = results.map(r => ({
-          'Year': r.year || '',
+          'Unique ID': r.auditResultId || '',
+          'Filename': r.filename || '',
+          'Proyek': r.proyek || '',
+          'Category': r.category || '',
           'Subholding': r.subholding || '',
-          'Project Name': r.projectName || '',
+          'Year': r.year || '',
           'Department': r.department || '',
+          'Department(ori)': r.departmentOri || '',
           'Risk Area': r.riskArea || '',
-          'Description': r.description || '',
-          'Code': r.code || '',
-          'Weight': r.weight || 0,
-          'Severity': r.severity || 0,
-          'Value': r.value || 0,
-          'Is Repeat': r.isRepeat || 0,
+          'Deskripsi': r.deskripsi || '',
+          'Kode': r.kode || '',
+          'Bobot': r.bobot || 0,
+          'Kadar': r.kadar || 0,
+          'Nilai': r.nilai || 0,
+          'Kategori': r.kategori || '',
+          'Temuan Ulangan Count': r.temuanUlanganCount || 0,
         }));
       } else if (table === 'projects') {
         sheetName = 'Projects';
         excelData = results.map(r => ({
           'Project Name': r.projectName || '',
-          'Subholding': r.subholding || '',
-          'Year': r.year || '',
+          'SH': r.sh || '',
           'TBK': r.tbk || '',
           'Industry': r.industry || '',
           'Category': r.category || '',
           'Location': r.location || '',
           'Tags': Array.isArray(r.tags) ? r.tags.join(', ') : '',
+          // Recent years grades
+          'Grade 2025': r.grade2025 || '',
+          'Grade 2024': r.grade2024 || '',
+          'Grade 2023': r.grade2023 || '',
+          'Grade 2022': r.grade2022 || '',
+          // Yearly statistics
+          'F 2025': r.f2025 || 0,
+          'F 2024': r.f2024 || 0,
+          'F 2023': r.f2023 || 0,
+          'F 2022': r.f2022 || 0,
+          'Total 2025': r.total2025 || 0,
+          'Total 2024': r.total2024 || 0,
+          'Total 2023': r.total2023 || 0,
+          'Total 2022': r.total2022 || 0,
+          // Aggregate statistics
+          'Total Findings': r.totalFindings || 0,
+          'Total NF': r.totalNF || 0,
+          'Grand Total': r.grandTotal || 0,
         }));
       }
 
@@ -1582,8 +1724,28 @@ Return ONLY the JSON object.`;
         ];
       } else if (table === 'projects') {
         worksheet['!cols'] = [
-          { wch: 40 }, { wch: 10 }, { wch: 10 }, { wch: 15 },
-          { wch: 20 }, { wch: 30 }, { wch: 30 }
+          { wch: 40 }, // Project Name
+          { wch: 8 },  // SH
+          { wch: 8 },  // TBK
+          { wch: 10 }, // Industry
+          { wch: 15 }, // Category
+          { wch: 30 }, // Location
+          { wch: 25 }, // Tags
+          { wch: 10 }, // Grade 2025
+          { wch: 10 }, // Grade 2024
+          { wch: 10 }, // Grade 2023
+          { wch: 10 }, // Grade 2022
+          { wch: 8 },  // F 2025
+          { wch: 8 },  // F 2024
+          { wch: 8 },  // F 2023
+          { wch: 8 },  // F 2022
+          { wch: 10 }, // Total 2025
+          { wch: 10 }, // Total 2024
+          { wch: 10 }, // Total 2023
+          { wch: 10 }, // Total 2022
+          { wch: 12 }, // Total Findings
+          { wch: 10 }, // Total NF
+          { wch: 12 }, // Grand Total
         ];
       }
 
@@ -1615,6 +1777,7 @@ Return ONLY the JSON object.`;
 
     const icons: Record<string, string> = {
       department: '📂',
+      departmentGeneral: '📂',
       year: '📅',
       projectName: '🏢',
       subholding: '🏛️',
@@ -1625,19 +1788,45 @@ Return ONLY the JSON object.`;
       severity: '🔥',
       riskArea: '🎯',
       sh: '🔖',
+      tbk: '📑',
       tags: '🏷️',
       finding: '⚠️',
       nonFinding: '✅',
       total: '📈',
       category: '📁',
+      industry: '🏭',
+      location: '📍',
       name: '📛',
       projectType: '🏗️',
       subtype: '🏛️',
-      description: '📝'
+      description: '📝',
+      // Grade fields
+      grade2025: '🎓',
+      grade2024: '🎓',
+      grade2023: '🎓',
+      grade2022: '🎓',
+      grade2021: '🎓',
+      grade2020: '🎓',
+      // Findings count fields
+      f2025: '📊',
+      f2024: '📊',
+      f2023: '📊',
+      f2022: '📊',
+      totalFindings: '📊',
+      totalNF: '✅',
+      grandTotal: '📈',
+      // Totals per year
+      total2025: '📈',
+      total2024: '📈',
+      total2023: '📈',
+      total2022: '📈',
+      // Repeat findings
+      isRepeat: '🔁',
     };
 
     const fieldNames: Record<string, string> = {
       department: 'department',
+      departmentGeneral: 'department (general)',
       year: 'tahun',
       projectName: 'proyek',
       projectId: 'ID proyek',
@@ -1648,21 +1837,46 @@ Return ONLY the JSON object.`;
       severity: 'severity',
       riskArea: 'area risiko',
       sh: 'SH',
+      tbk: 'TBK',
       tags: 'tag',
       finding: 'temuan',
       nonFinding: 'non-temuan',
       total: 'total',
       category: 'kategori',
+      industry: 'industri',
+      location: 'lokasi',
       name: 'nama',
       projectType: 'tipe proyek',
       subtype: 'subtipe',
-      description: 'deskripsi'
+      description: 'deskripsi',
+      // Grade fields
+      grade2025: 'grade 2025',
+      grade2024: 'grade 2024',
+      grade2023: 'grade 2023',
+      grade2022: 'grade 2022',
+      grade2021: 'grade 2021',
+      grade2020: 'grade 2020',
+      // Findings count fields
+      f2025: 'findings 2025',
+      f2024: 'findings 2024',
+      f2023: 'findings 2023',
+      f2022: 'findings 2022',
+      totalFindings: 'total temuan',
+      totalNF: 'total non-temuan',
+      grandTotal: 'grand total',
+      // Totals per year
+      total2025: 'total 2025',
+      total2024: 'total 2024',
+      total2023: 'total 2023',
+      total2022: 'total 2022',
+      // Repeat findings
+      isRepeat: 'temuan ulangan',
     };
 
     return filters.map(f => {
       const icon = icons[f.field] || '•';
       const fieldName = fieldNames[f.field] || f.field;
-      
+
       // Format value display for arrays
       let displayValue: string;
       if (Array.isArray(f.value)) {
@@ -1674,15 +1888,20 @@ Return ONLY the JSON object.`;
       } else {
         displayValue = String(f.value);
       }
-      
-      // More conversational operator display
-      const operatorText = f.operator === 'in' ? '' : 
-                          f.operator === 'array-contains-any' ? 'mengandung' :
-                          f.operator === 'contains' ? 'mengandung' :
-                          f.operator === '==' ? '' :
-                          f.operator;
-      
-      return `${icon} ${fieldName}: ${displayValue}`;
+
+      // Format operator display
+      const operatorDisplay = f.operator === 'in' ? '' :
+                              f.operator === 'array-contains-any' ? 'mengandung ' :
+                              f.operator === 'contains' ? 'mengandung ' :
+                              f.operator === '==' ? '' :
+                              f.operator === '!=' ? '≠ ' :
+                              f.operator === '>' ? '> ' :
+                              f.operator === '>=' ? '≥ ' :
+                              f.operator === '<' ? '< ' :
+                              f.operator === '<=' ? '≤ ' :
+                              f.operator + ' ';
+
+      return `${icon} ${fieldName}: ${operatorDisplay}${displayValue}`;
     }).join('\n');
   }
 
@@ -2085,7 +2304,7 @@ Bernard AI Assistant v1.0 | FIRST-AID Audit System
 
     // Check if we need to enrich with project data (for projectType/subtype aggregation)
     const needsProjectData = groupByFields.some(field => field === 'projectType' || field === 'subtype');
-    let projectMap = new Map<string, any>();
+    const projectMap = new Map<string, any>();
     
     if (needsProjectData) {
       console.log(`🏢 Aggregation requires project data (projectType/subtype) - fetching projects`);
