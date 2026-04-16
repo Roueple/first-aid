@@ -1,6 +1,6 @@
 {
   "name": "first-aid-system",
-  "version": "1.0.1",
+  "version": "1.0.0",
   "description": "FIRST-AID - Intelligent Audit Findings Management System",
   "main": "dist/main/main.js",
   "scripts": {
@@ -40,6 +40,7 @@
     "update:department-counts": "node scripts/update-department-findings-count.mjs",
     "test:hybrid-rag": "node test-hybrid-rag.mjs",
     "icons:convert": "node scripts/convert-logo-to-icons.mjs",
+    "icons:create": "node scripts/create-icons-from-logo.mjs",
     "icons:verify": "scripts/verify-icons.bat"
   },
   "keywords": [

@@ -18,7 +18,7 @@ const rootDir = path.join(__dirname, '..');
 const ICON_SIZES = [16, 32, 48, 64, 128, 256];
 
 // Source PNG file (highest quality)
-const SOURCE_PNG = path.join(rootDir, 'logoBernard-v3.png');
+const SOURCE_PNG = path.join(rootDir, 'logoBernard-v4.png');
 const OUTPUT_DIR = path.join(rootDir, 'build');
 const OUTPUT_ICO = path.join(OUTPUT_DIR, 'icon.ico');
 

@@ -1,12 +1,14 @@
 #!/usr/bin/env node
-import { readFileSync } from 'fs';
-import { createReadStream } from 'fs';
+import { readFileSync, createReadStream } from 'fs';
 import https from 'https';
 
 const GITHUB_TOKEN = process.env.GH_TOKEN;
 const OWNER = 'Roueple';
 const REPO = 'first-aid';
-const VERSION = '1.0.1';
+
+// Read version from package.json
+const packageJson = JSON.parse(readFileSync('package.json', 'utf8'));
+const VERSION = packageJson.version;
 const TAG = `v${VERSION}`;
 
 if (!GITHUB_TOKEN) {
@@ -14,7 +16,7 @@ if (!GITHUB_TOKEN) {
   process.exit(1);
 }
 
-const releaseNotes = `Keyboard shortcuts fix - Enabled standard Windows shortcuts in Bernard chat`;
+const releaseNotes = `Version ${VERSION} - Auto-update test release`;
 
 async function createRelease() {
   return new Promise((resolve, reject) => {
