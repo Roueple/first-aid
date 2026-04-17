@@ -831,7 +831,7 @@ export default function BernardPage() {
           {messages.length === 0 ? (
             /* Welcome Screen */
             <div className="bernard-welcome" data-tutorial="welcome-screen">
-              <img src="/logoBernardFull-v2.png" alt="Bernard" className="bernard-welcome-logo" />
+              <img src="/beranrdfull-v2.png" alt="Bernard" className="bernard-welcome-logo" />
               {greeting !== null && (
                 <h1 className={`bernard-greeting ${getGreetingClass()}`}>
                   {renderGreeting(greeting)}

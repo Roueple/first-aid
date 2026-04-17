@@ -48,7 +48,6 @@
     "publisherName": "FIRST-AID Team",
     "verifyUpdateCodeSignature": false,
     "sign": null,
-    "signingHashAlgorithms": [],
     "signAndEditExecutable": false,
     "publish": ["github"]
   },
