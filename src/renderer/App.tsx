@@ -1,10 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '../contexts/AuthContext';
 import { ThemeProvider } from '../contexts/ThemeContext';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { UpdateNotification } from '../components/UpdateNotification';
+import { ReleaseNotesDialog } from '../components/ReleaseNotesDialog';
 import BernardPage from './pages/BernardPage';
 import PasswordlessLoginPage from './pages/PasswordlessLoginPage';
 import ProtectedRoute from '../components/ProtectedRoute';
@@ -44,6 +45,26 @@ const queryClient = new QueryClient({
 
 function App() {
   console.log('🚀 App component mounting...');
+  
+  const CURRENT_VERSION = '1.0.4';
+  const [showReleaseNotes, setShowReleaseNotes] = useState(false);
+
+  // Check if user has seen release notes for this version
+  useEffect(() => {
+    const lastSeenVersion = localStorage.getItem('lastSeenReleaseVersion');
+    if (lastSeenVersion !== CURRENT_VERSION) {
+      // Show release notes after a short delay
+      const timer = setTimeout(() => {
+        setShowReleaseNotes(true);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  const handleCloseReleaseNotes = () => {
+    setShowReleaseNotes(false);
+    localStorage.setItem('lastSeenReleaseVersion', CURRENT_VERSION);
+  };
 
   // Lazy initialize Gemini (only when needed, not on startup)
   useEffect(() => {
@@ -131,6 +152,10 @@ function App() {
                   <Route path="*" element={<Navigate to="/bernard" replace />} />
                 </Routes>
                 <UpdateNotification />
+                <ReleaseNotesDialog 
+                  isOpen={showReleaseNotes} 
+                  onClose={handleCloseReleaseNotes} 
+                />
               </div>
             </Router>
           </AuthProvider>
