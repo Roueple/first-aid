@@ -1,6 +1,6 @@
 {
   "name": "first-aid-system",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "FIRST-AID - Intelligent Audit Findings Management System",
   "main": "dist/main/main.js",
   "scripts": {
@@ -39,10 +39,8 @@
     "seed:department-tags": "node scripts/seed-department-tags.mjs",
     "update:department-counts": "node scripts/update-department-findings-count.mjs",
     "test:hybrid-rag": "node test-hybrid-rag.mjs",
-    "icons:convert": "node scripts/convert-logo-to-icons.mjs",
-    "icons:create": "node scripts/create-icons-from-logo.mjs",
-    "icons:verify": "scripts/verify-icons.bat",
-    "audit:prod": "node scripts/check-production-vulnerabilities.mjs"
+    "audit:prod": "node scripts/check-production-vulnerabilities.mjs",
+    "icon:convert": "node scripts/convert-logo-to-icon.mjs"
   },
   "keywords": [
     "audit",
@@ -82,6 +80,7 @@
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-react-refresh": "^0.4.16",
     "fast-check": "^4.4.0",
+    "firebase-admin": "^13.8.0",
     "glob": "^11.0.0",
     "globals": "^15.14.0",
     "jsdom": "^27.2.0",

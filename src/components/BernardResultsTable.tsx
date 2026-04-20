@@ -48,15 +48,18 @@ export const BernardResultsTable: React.FC<BernardResultsTableProps> = ({
   maxRows = 20
 }) => {
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
+  const [expandAll, setExpandAll] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [filters, setFilters] = useState<{
+    year: string;
     subholding: string;
     proyek: string;
     department: string;
     riskArea: string;
     deskripsi: string;
   }>({
+    year: '',
     subholding: '',
     proyek: '',
     department: '',
@@ -68,7 +71,9 @@ export const BernardResultsTable: React.FC<BernardResultsTableProps> = ({
   useEffect(() => {
     setCurrentPage(1);
     setExpandedRow(null);
+    setExpandAll(false);
     setFilters({
+      year: '',
       subholding: '',
       proyek: '',
       department: '',
@@ -94,6 +99,9 @@ export const BernardResultsTable: React.FC<BernardResultsTableProps> = ({
 
   // Apply filters
   const filteredResults = results.filter(result => {
+    if (filters.year && !result.year?.toString().includes(filters.year)) {
+      return false;
+    }
     if (filters.subholding && !result.subholding?.toLowerCase().includes(filters.subholding.toLowerCase())) {
       return false;
     }
@@ -118,13 +126,25 @@ export const BernardResultsTable: React.FC<BernardResultsTableProps> = ({
   const displayResults = filteredResults.slice(startIndex, endIndex);
 
   const toggleRow = (index: number) => {
-    setExpandedRow(expandedRow === index ? null : index);
+    if (expandAll) {
+      // If expand all is active, clicking a row should collapse just that row
+      setExpandedRow(expandedRow === index ? null : index);
+      setExpandAll(false);
+    } else {
+      setExpandedRow(expandedRow === index ? null : index);
+    }
+  };
+
+  const toggleExpandAll = () => {
+    setExpandAll(!expandAll);
+    setExpandedRow(null); // Clear individual selection
   };
 
   const handlePrevPage = () => {
     if (currentPage > 1) {
       setCurrentPage(currentPage - 1);
       setExpandedRow(null);
+      setExpandAll(false);
     }
   };
 
@@ -132,6 +152,7 @@ export const BernardResultsTable: React.FC<BernardResultsTableProps> = ({
     if (currentPage < totalPages) {
       setCurrentPage(currentPage + 1);
       setExpandedRow(null);
+      setExpandAll(false);
     }
   };
 
@@ -139,10 +160,12 @@ export const BernardResultsTable: React.FC<BernardResultsTableProps> = ({
     setFilters(prev => ({ ...prev, [field]: value }));
     setCurrentPage(1);
     setExpandedRow(null);
+    setExpandAll(false);
   };
 
   const clearFilters = () => {
     setFilters({
+      year: '',
       subholding: '',
       proyek: '',
       department: '',
@@ -151,6 +174,7 @@ export const BernardResultsTable: React.FC<BernardResultsTableProps> = ({
     });
     setCurrentPage(1);
     setExpandedRow(null);
+    setExpandAll(false);
   };
 
   const hasActiveFilters = Object.values(filters).some(f => f !== '');
@@ -174,6 +198,14 @@ export const BernardResultsTable: React.FC<BernardResultsTableProps> = ({
         )}
       </div>
       <div className="brt-header-right">
+        <button
+          onClick={toggleExpandAll}
+          className="brt-expand-all-btn"
+          title={expandAll ? "Collapse all rows" : "Expand all rows"}
+        >
+          {expandAll ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          <span>{expandAll ? 'Collapse All' : 'Expand All'}</span>
+        </button>
         <button
           onClick={() => setIsFullScreen(!isFullScreen)}
           className="brt-fullscreen-btn"
@@ -227,6 +259,13 @@ export const BernardResultsTable: React.FC<BernardResultsTableProps> = ({
         <div className="brt-filters">
           <input
             type="text"
+            placeholder="Year..."
+            value={filters.year}
+            onChange={(e) => handleFilterChange('year', e.target.value)}
+            className="brt-filter-input brt-filter-xs"
+          />
+          <input
+            type="text"
             placeholder="Filter SH..."
             value={filters.subholding}
             onChange={(e) => handleFilterChange('subholding', e.target.value)}
@@ -268,6 +307,7 @@ export const BernardResultsTable: React.FC<BernardResultsTableProps> = ({
             <thead>
               <tr>
                 <th className="brt-th brt-th-no">#</th>
+                <th className="brt-th brt-th-year">Year</th>
                 <th className="brt-th brt-th-sh">SH</th>
                 <th className="brt-th brt-th-proyek">Proyek</th>
                 <th className="brt-th brt-th-dept">Department</th>
@@ -280,16 +320,19 @@ export const BernardResultsTable: React.FC<BernardResultsTableProps> = ({
                 <React.Fragment key={result.id || index}>
                   <tr
                     onClick={() => toggleRow(index)}
-                    className={`brt-row ${expandedRow === index ? 'brt-row-expanded' : ''}`}
+                    className={`brt-row ${expandAll || expandedRow === index ? 'brt-row-expanded' : ''}`}
                     data-tutorial={index === 0 ? "table-row-first" : undefined}
                   >
                     <td className="brt-td brt-td-no">
                       <div className="brt-no-cell">
                         <span className="brt-expand-icon">
-                          {expandedRow === index ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                          {expandAll || expandedRow === index ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                         </span>
                         <span>{startIndex + index + 1}</span>
                       </div>
+                    </td>
+                    <td className="brt-td brt-td-year">
+                      <span className="brt-badge brt-badge-year">{result.year || '-'}</span>
                     </td>
                     <td className="brt-td brt-td-sh">
                       <span className="brt-badge brt-badge-sh">{result.subholding || '-'}</span>
@@ -318,9 +361,9 @@ export const BernardResultsTable: React.FC<BernardResultsTableProps> = ({
                       </div>
                     </td>
                   </tr>
-                  {expandedRow === index && (
+                  {(expandAll || expandedRow === index) && (
                     <tr className="brt-detail-row">
-                      <td colSpan={6}>
+                      <td colSpan={7}>
                         <div className="brt-detail-content">
                           <div className="brt-detail-grid">
                             <div className="brt-detail-item">
@@ -406,12 +449,12 @@ export const BernardResultsTable: React.FC<BernardResultsTableProps> = ({
                 <React.Fragment key={result.id || index}>
                   <tr
                     onClick={() => toggleRow(index)}
-                    className={`brt-row ${expandedRow === index ? 'brt-row-expanded' : ''}`}
+                    className={`brt-row ${expandAll || expandedRow === index ? 'brt-row-expanded' : ''}`}
                   >
                     <td className="brt-td brt-td-no">
                       <div className="brt-no-cell">
                         <span className="brt-expand-icon">
-                          {expandedRow === index ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                          {expandAll || expandedRow === index ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                         </span>
                         <span>{startIndex + index + 1}</span>
                       </div>
@@ -437,7 +480,7 @@ export const BernardResultsTable: React.FC<BernardResultsTableProps> = ({
                       <span className="brt-badge brt-badge-info">{result.total || 0}</span>
                     </td>
                   </tr>
-                  {expandedRow === index && (
+                  {(expandAll || expandedRow === index) && (
                     <tr className="brt-detail-row">
                       <td colSpan={7}>
                         <div className="brt-detail-content">
@@ -525,12 +568,12 @@ export const BernardResultsTable: React.FC<BernardResultsTableProps> = ({
                 <React.Fragment key={result.id || index}>
                   <tr
                     onClick={() => toggleRow(index)}
-                    className={`brt-row ${expandedRow === index ? 'brt-row-expanded' : ''}`}
+                    className={`brt-row ${expandAll || expandedRow === index ? 'brt-row-expanded' : ''}`}
                   >
                     <td className="brt-td brt-td-no">
                       <div className="brt-no-cell">
                         <span className="brt-expand-icon">
-                          {expandedRow === index ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                          {expandAll || expandedRow === index ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                         </span>
                         <span>{startIndex + index + 1}</span>
                       </div>
@@ -550,7 +593,7 @@ export const BernardResultsTable: React.FC<BernardResultsTableProps> = ({
                       </div>
                     </td>
                   </tr>
-                  {expandedRow === index && (
+                  {(expandAll || expandedRow === index) && (
                     <tr className="brt-detail-row">
                       <td colSpan={4}>
                         <div className="brt-detail-content">
@@ -627,12 +670,12 @@ export const BernardResultsTable: React.FC<BernardResultsTableProps> = ({
               <React.Fragment key={result.id || index}>
                 <tr
                   onClick={() => toggleRow(index)}
-                  className={`brt-row ${expandedRow === index ? 'brt-row-expanded' : ''}`}
+                  className={`brt-row ${expandAll || expandedRow === index ? 'brt-row-expanded' : ''}`}
                 >
                   <td className="brt-td brt-td-no">
                     <div className="brt-no-cell">
                       <span className="brt-expand-icon">
-                        {expandedRow === index ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                        {expandAll || expandedRow === index ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                       </span>
                       <span>{startIndex + index + 1}</span>
                     </div>
@@ -643,7 +686,7 @@ export const BernardResultsTable: React.FC<BernardResultsTableProps> = ({
                     </pre>
                   </td>
                 </tr>
-                {expandedRow === index && (
+                {(expandAll || expandedRow === index) && (
                   <tr className="brt-detail-row">
                     <td colSpan={2}>
                       <div className="brt-detail-content">

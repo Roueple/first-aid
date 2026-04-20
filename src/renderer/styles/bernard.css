@@ -1,23 +1,23 @@
 /* Bernard - Deep Blue Theme: Black, Blue, White */
 
-/* Dark Theme (Default) */
+/* Dark Theme (Default) - Night Black */
 [data-theme="dark"] .bernard-page,
 .bernard-page {
-  --background: #0a0a0a;
+  --background: #16181f;
   --foreground: #ffffff;
-  --calico-primary: #0a0a0a;
-  --calico-secondary: #1a1a1a;
-  --calico-tertiary: #2a2a2a;
+  --calico-primary: #16181f;
+  --calico-secondary: #1e2028;
+  --calico-tertiary: #282a35;
   --calico-orange: #1e40af;
   --calico-orange-dark: #1e3a8a;
   --calico-orange-light: #3b82f6;
   --calico-text: #ffffff;
-  --calico-text-muted: #999999;
-  --calico-text-dim: #666666;
-  --calico-border: #2a2a2a;
-  --calico-hover: #3a3a3a;
-  --calico-shadow: rgba(0, 0, 0, 0.5);
-  --calico-shadow-strong: rgba(0, 0, 0, 0.8);
+  --calico-text-muted: #a0a0a8;
+  --calico-text-dim: #6e6e78;
+  --calico-border: #2a2c38;
+  --calico-hover: #323440;
+  --calico-shadow: rgba(0, 0, 0, 0.4);
+  --calico-shadow-strong: rgba(0, 0, 0, 0.7);
 }
 
 /* Light Theme */
@@ -664,7 +664,6 @@
   padding: 0.5rem 0;
   color: var(--calico-text-muted);
   font-size: 0.875rem;
-  animation: fadeInSlide 0.3s ease;
   position: relative;
 }
 
@@ -760,7 +759,7 @@
   right: 0;
   left: 260px;
   padding: 1rem 2rem 1.5rem;
-  background: linear-gradient(transparent, #0a0a0a 30%);
+  background: linear-gradient(transparent, #16181f 30%);
   transition: left 0.2s ease;
 }
 
@@ -785,7 +784,7 @@
 
 .bernard-content::-webkit-scrollbar-thumb,
 .bernard-sidebar-content::-webkit-scrollbar-thumb {
-  background: #2a2a2a;
+  background: #2a2c38;
   border-radius: 3px;
 }
 
@@ -803,8 +802,8 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.625rem 0.75rem;
-  border: 1px solid #2a2a2a;
-  background: #1a1a1a;
+  border: 1px solid #2a2c38;
+  background: #1e2028;
   color: #ffffff;
   font-size: 0.875rem;
   border-radius: 8px;
@@ -813,7 +812,7 @@
 }
 
 .bernard-data-btn:hover {
-  background: #2a2a2a;
+  background: #282a35;
   border-color: #1e40af;
 }
 
@@ -831,15 +830,15 @@
 }
 
 .bernard-modal {
-  background: #1a1a1a;
-  border: 1px solid #2a2a2a;
+  background: #1e2028;
+  border: 1px solid #2a2c38;
   border-radius: 12px;
   width: 95vw;
   max-width: 1400px;
   height: 90vh;
   overflow: auto;
   position: relative;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(30, 64, 175, 0.2);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(30, 64, 175, 0.2);
 }
 
 .bernard-modal-close {
@@ -848,9 +847,9 @@
   right: 1rem;
   width: 36px;
   height: 36px;
-  border: 1px solid #2a2a2a;
-  background: #1a1a1a;
-  color: #999999;
+  border: 1px solid #2a2c38;
+  background: #1e2028;
+  color: #a0a0a8;
   cursor: pointer;
   border-radius: 8px;
   display: flex;
@@ -861,7 +860,7 @@
 }
 
 .bernard-modal-close:hover {
-  background: #2a2a2a;
+  background: #282a35;
   color: #1e40af;
   border-color: #1e40af;
 }
@@ -882,8 +881,8 @@
   justify-content: space-between;
   align-items: center;
   padding: 0.75rem 1rem;
-  background: #1a1a1a;
-  border: 1px solid #2a2a2a;
+  background: #1e2028;
+  border: 1px solid #2a2c38;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -892,7 +891,7 @@
 }
 
 .bernard-suggestion-btn:hover:not(:disabled) {
-  background: #2a2a2a;
+  background: #282a35;
   border-color: #1e40af;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(30, 64, 175, 0.3);
@@ -959,11 +958,11 @@
 }
 
 .bernard-aggregation-table {
-  background: #1a1a1a;
-  border: 1px solid #2a2a2a;
+  background: #1e2028;
+  border: 1px solid #2a2c38;
   border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .bernard-aggregation-table table {
@@ -972,7 +971,7 @@
 }
 
 .bernard-aggregation-table thead {
-  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+  background: linear-gradient(135deg, #282a35 0%, #1e2028 100%);
   border-bottom: 2px solid #1e40af;
 }
 
@@ -987,14 +986,14 @@
 }
 
 .bernard-aggregation-table tbody tr {
-  border-bottom: 1px solid #2a2a2a;
+  border-bottom: 1px solid #2a2c38;
   transition: all 0.2s;
   cursor: pointer;
-  background: #1a1a1a;
+  background: #1e2028;
 }
 
 .bernard-aggregation-table tbody tr:hover {
-  background-color: #2a2a2a;
+  background-color: #282a35;
   transform: translateX(4px);
   border-left: 3px solid #1e40af;
 }
@@ -1004,7 +1003,7 @@
 }
 
 .bernard-aggregation-row-clickable:hover {
-  background-color: #2a2a2a !important;
+  background-color: #282a35 !important;
   transform: translateX(4px);
   border-left: 3px solid #1e40af;
 }
@@ -1050,7 +1049,7 @@
   align-items: center;
   padding: 1.5rem 2rem;
   border-bottom: 2px solid #1e40af;
-  background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+  background: linear-gradient(135deg, #1e2028 0%, #16181f 100%);
   color: white;
   position: sticky;
   top: 0;
@@ -1088,7 +1087,7 @@
 }
 
 .bernard-modal-actions .bernard-action-btn {
-  background: #2a2a2a;
+  background: #282a35;
   border: 1px solid #1e40af;
   color: #1e40af;
   font-weight: 600;
@@ -1115,18 +1114,18 @@
   flex: 1;
   overflow-y: auto;
   padding: 1.5rem;
-  background: #0a0a0a;
+  background: #16181f;
 }
 
 
 /* Chart Styles */
 .bernard-chart-container {
   margin-bottom: 1.5rem;
-  background: #1a1a1a;
+  background: #1e2028;
   border-radius: 8px;
-  border: 1px solid #2a2a2a;
+  border: 1px solid #2a2c38;
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 .bernard-chart-header {
@@ -1152,7 +1151,7 @@
 
 .bernard-chart-wrapper {
   padding: 1.5rem;
-  background: #0a0a0a;
+  background: #16181f;
 }
 
 /* Force white background for chart regardless of theme */
@@ -1165,11 +1164,11 @@
 }
 
 .bernard-chart-tooltip {
-  background: #1a1a1a;
+  background: #1e2028;
   border: 1px solid #1e40af;
   border-radius: 6px;
   padding: 0.75rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
 }
 
 .bernard-tooltip-label {
@@ -1214,8 +1213,8 @@
 /* Chart Detail Panel */
 .bernard-chart-detail-panel {
   padding: 1.25rem;
-  background: #1a1a1a;
-  border-top: 1px solid #2a2a2a;
+  background: #1e2028;
+  border-top: 1px solid #2a2c38;
   animation: slideDown 0.3s ease-out;
 }
 
@@ -1240,13 +1239,13 @@
   align-items: center;
   margin-bottom: 1rem;
   padding-bottom: 0.75rem;
-  border-bottom: 2px solid #2a2a2a;
+  border-bottom: 2px solid #2a2c38;
 }
 
 .bernard-chart-detail-header button {
   border: none;
   background: transparent;
-  color: #999999;
+  color: #a0a0a8;
   cursor: pointer;
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
@@ -1254,7 +1253,7 @@
 }
 
 .bernard-chart-detail-header button:hover {
-  background: #2a2a2a;
+  background: #282a35;
   color: #1e40af;
 }
 
@@ -1266,8 +1265,8 @@
 }
 
 .bernard-chart-detail-item {
-  background: #0a0a0a;
-  border: 1px solid #2a2a2a;
+  background: #16181f;
+  border: 1px solid #2a2c38;
   border-radius: 6px;
   padding: 0.75rem;
   display: flex;
@@ -1283,7 +1282,7 @@
   border-color: #1e40af;
   box-shadow: 0 0 0 1px rgba(30, 64, 175, 0.3);
   transform: translateY(-2px);
-  background: #1a1a1a;
+  background: #1e2028;
 }
 
 .bernard-chart-detail-label {
@@ -1300,14 +1299,14 @@
 }
 
 .bernard-chart-detail-summary {
-  background: #0a0a0a;
+  background: #16181f;
   border: 1px solid #1e40af;
   border-radius: 6px;
   padding: 1rem;
 }
 
 .bernard-chart-detail-summary .text-muted-foreground {
-  color: #999999;
+  color: #a0a0a8;
 }
 
 .bernard-chart-detail-summary .font-semibold {

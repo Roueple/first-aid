@@ -147,7 +147,7 @@ export const ReportChatDialog: React.FC<ReportChatDialogProps> = ({
               <button
                 type="submit"
                 disabled={isSubmitting || !description.trim()}
-                className="px-6 py-2 bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 disabled:bg-gray-400 text-white rounded-lg transition-all flex items-center gap-2 shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50"
+                className="px-6 py-2 bg-gradient-to-br from-[#1e40af] to-[#1e3a8a] hover:from-[#3b82f6] hover:to-[#1e40af] disabled:bg-gray-400 text-white rounded-lg transition-all flex items-center gap-2 shadow-lg shadow-blue-800/30 hover:shadow-blue-800/50"
               >
                 {isSubmitting ? (
                   <>

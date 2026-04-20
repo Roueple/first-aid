@@ -24,6 +24,8 @@ serviceAccountKey.json
 # OS
 .DS_Store
 Thumbs.db
+nul
+~$*.xlsx
 
 # Logs
 logs/

@@ -732,11 +732,11 @@ CRITICAL RULES FOR ACCURATE QUERIES:
    - All others: STRING
 
 4. COMMON MISTAKES TO AVOID:
-   - ❌ {"field": "department", "value": "Departemen IT"} → ✅ {"field": "department", "operator": "in", "value": ["IT", "ICT", "Teknologi Informasi"]}
-   - ❌ Using departmentName → ✅ Using ALL originalNames from department_tags
-   - ❌ {"field": "year", "value": "2024"} → ✅ {"field": "year", "value": 2024}
-   - ❌ {"field": "sh", ...} in audit_results → ✅ {"field": "subholding", ...}
-   - ❌ {"field": "bobot", ...} → ✅ {"field": "weight", ...}
+   - Wrong: {"field": "department", "value": "Departemen IT"} → Correct: {"field": "department", "operator": "in", "value": ["IT", "ICT", "Teknologi Informasi"]}
+   - Wrong: Using departmentName → Correct: Using ALL originalNames from department_tags
+   - Wrong: {"field": "year", "value": "2024"} → Correct: {"field": "year", "value": 2024}
+   - Wrong: {"field": "sh", ...} in audit_results → Correct: {"field": "subholding", ...}
+   - Wrong: {"field": "bobot", ...} → Correct: {"field": "weight", ...}
 
 IMPORTANT CONTEXT RULES:
 - If the conversation history shows a previous query with filters (department, year, project, code), and the current query is a refinement or follow-up, YOU MUST MAINTAIN ALL PREVIOUS FILTERS unless explicitly told to remove them
@@ -1074,7 +1074,7 @@ Return ONLY the JSON object.`;
       if (!parsed.isValidQuery) {
         return {
           success: false,
-          message: `❌ ${parsed.invalidReason || 'Query tidak valid. Silakan tanyakan tentang audit findings.'}`,
+          message: `${parsed.invalidReason || 'Query tidak valid. Silakan tanyakan tentang audit findings.'}`,
           resultsCount: 0,
           needsConfirmation: false,
           filters: [],
@@ -1109,7 +1109,7 @@ Return ONLY the JSON object.`;
             if (validation.suggestions.length === 0) {
               return {
                 success: false,
-                message: `❌ Proyek "${projectNameFilter.value}" tidak ditemukan dan tidak ada proyek serupa.\n\nSilakan periksa nama proyek dan coba lagi.`,
+                message: `Proyek "${projectNameFilter.value}" tidak ditemukan dan tidak ada proyek serupa.\n\nSilakan periksa nama proyek dan coba lagi.`,
                 resultsCount: 0,
                 needsConfirmation: false,
                 filters,
@@ -1118,7 +1118,7 @@ Return ONLY the JSON object.`;
             
             return {
               success: false,
-              message: `⚠️ Proyek "${projectNameFilter.value}" tidak ditemukan.\n\nApakah maksud Anda salah satu dari proyek ini?`,
+              message: `Proyek "${projectNameFilter.value}" tidak ditemukan.\n\nApakah maksud Anda salah satu dari proyek ini?`,
               resultsCount: 0,
               needsConfirmation: true,
               filters,
@@ -1129,7 +1129,8 @@ Return ONLY the JSON object.`;
         }
         // Handle multiple project names (in operator)
         else if (Array.isArray(projectNameFilter.value) && projectNameFilter.operator === 'in') {
-          const validation = await this.validateProjectNames(projectNameFilter.value);
+          const projectNames = projectNameFilter.value.map(v => String(v));
+          const validation = await this.validateProjectNames(projectNames);
           
           if (validation.invalidProjects.length > 0) {
             // Some projects not found - show suggestions for each
@@ -1137,7 +1138,7 @@ Return ONLY the JSON object.`;
             const validCount = validation.validProjects.length;
             
             // Build message with all invalid projects and their suggestions
-            let message = `⚠️ ${invalidCount} proyek tidak ditemukan`;
+            let message = `${invalidCount} proyek tidak ditemukan`;
             if (validCount > 0) {
               message += ` (${validCount} proyek valid akan digunakan)`;
             }
@@ -1146,7 +1147,7 @@ Return ONLY the JSON object.`;
             // Combine all suggestions from invalid projects
             const allSuggestions: ProjectSuggestion[] = [];
             validation.invalidProjects.forEach(invalid => {
-              message += `📌 "${invalid.query}" tidak ditemukan\n`;
+              message += `"${invalid.query}" tidak ditemukan\n`;
               if (invalid.suggestions.length > 0) {
                 message += `   Apakah maksud Anda:\n`;
                 invalid.suggestions.slice(0, 3).forEach(s => {
@@ -1161,7 +1162,7 @@ Return ONLY the JSON object.`;
             
             // If we have valid projects, we can still execute with those
             if (validCount > 0) {
-              message += `\n✅ Melanjutkan dengan ${validCount} proyek yang valid`;
+              message += `\nMelanjutkan dengan ${validCount} proyek yang valid`;
               // Update filter to only use valid projects
               projectNameFilter.value = validation.validProjects;
             } else {
@@ -1317,7 +1318,7 @@ Return ONLY the JSON object.`;
       console.error('Query processing error:', error);
       return {
         success: false,
-        message: `❌ Gagal memproses query: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        message: `Gagal memproses query: ${error instanceof Error ? error.message : 'Unknown error'}`,
         resultsCount: 0,
         needsConfirmation: false,
       };
@@ -1420,6 +1421,8 @@ Return ONLY the JSON object.`;
       
       // Convert filters to DatabaseService format
       // Validate 'in' operator values (Firestore limit: 30 values max)
+      // IMPORTANT: Firestore allows unlimited AND filters with composite indexes
+      // We'll apply all equality filters to Firestore and handle any index errors gracefully
       const dbFilters = expandedFilters.map(f => {
         if (f.operator === 'in' && Array.isArray(f.value)) {
           if (f.value.length > 30) {
@@ -1452,46 +1455,103 @@ Return ONLY the JSON object.`;
       const orderBy = table === 'projects' ? 'projectName' : 'year';
       const orderDir = table === 'audit_results' ? 'desc' : 'asc';
 
-      // Define fields to select based on table
-      let selectFields: string[] | undefined;
-      if (table === 'audit_results') {
-        // Only fetch fields needed for Bernard display (using new 1:1 Excel field names)
-        selectFields = ['auditResultId', 'year', 'proyek', 'subholding', 'department', 'riskArea', 'deskripsi', 'kode', 'bobot', 'kadar', 'nilai', 'category'];
-      }
-
       // Fetch with equality filters only (avoids composite index issues)
       // Use higher limit to accommodate large result sets (e.g., all code F findings = 4000+)
       const hasInMemoryFilters = rangeFilters.length > 0 || containsFilters.length > 0 || containsAnyFilters.length > 0 || notInFilters.length > 0;
       let results;
+      let firestoreFilters = dbFilters;
+      let inMemoryEqualityFilters: QueryFilter[] = [];
       
       try {
+        // Try with all filters first
+        console.log(`🔍 Attempting Firestore query with ${firestoreFilters.length} equality filters`);
         results = await db.getAll({
-          filters: dbFilters,
+          filters: firestoreFilters,
           sorts: [{ field: orderBy, direction: orderDir }],
           limit: hasInMemoryFilters ? 10000 : 5000, // Increased limits for large datasets
-          select: selectFields
         });
+        console.log(`✅ Firestore query successful with ${firestoreFilters.length} filters, got ${results.length} results`);
       } catch (error: any) {
-        // If index is still building, retry without orderBy and sort in-memory
-        if (error.message?.includes('index is currently building') || error.message?.includes('requires an index')) {
-          console.warn('⚠️ Index still building, fetching without orderBy and sorting in-memory');
-          results = await db.getAll({
-            filters: dbFilters,
-            limit: hasInMemoryFilters ? 10000 : 5000
-          });
-          // Sort in-memory
-          results.sort((a, b) => {
-            const aVal = a[orderBy];
-            const bVal = b[orderBy];
-            if (orderDir === 'desc') {
-              return bVal > aVal ? 1 : bVal < aVal ? -1 : 0;
-            } else {
-              return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
-            }
-          });
+        const errorMsg = error.message || '';
+        
+        // If index is required or still building, fall back to in-memory filtering
+        if (errorMsg.includes('index') || errorMsg.includes('requires an index') || errorMsg.includes('index is currently building')) {
+          console.warn(`⚠️ Composite index needed for ${firestoreFilters.length} filters. Falling back to in-memory filtering.`);
+          console.warn(`📝 Error: ${errorMsg}`);
+          
+          // Strategy: Apply first 2 filters to Firestore, rest in-memory
+          // This avoids the composite index requirement while still filtering efficiently
+          firestoreFilters = dbFilters.slice(0, 2);
+          inMemoryEqualityFilters = expandedFilters.slice(2);
+          
+          console.log(`🔍 Retrying with ${firestoreFilters.length} Firestore filters + ${inMemoryEqualityFilters.length} in-memory equality filters`);
+          
+          try {
+            results = await db.getAll({
+              filters: firestoreFilters,
+              sorts: [{ field: orderBy, direction: orderDir }],
+              limit: 10000, // Higher limit since we'll filter in-memory
+            });
+            console.log(`✅ Firestore query successful with reduced filters, got ${results.length} results before in-memory filtering`);
+          } catch (retryError: any) {
+            // If still failing, fetch all and filter entirely in-memory
+            console.warn(`⚠️ Still failing with 2 filters. Fetching all records and filtering in-memory.`);
+            results = await db.getAll({
+              sorts: [{ field: orderBy, direction: orderDir }],
+              limit: 10000,
+            });
+            inMemoryEqualityFilters = expandedFilters; // Apply all filters in-memory
+            console.log(`✅ Fetched ${results.length} records for in-memory filtering`);
+          }
         } else {
           throw error;
         }
+      }
+      
+      // Apply in-memory equality filters if we had to fall back
+      if (inMemoryEqualityFilters.length > 0) {
+        console.log(`🔍 Applying ${inMemoryEqualityFilters.length} equality filter(s) in-memory on ${results.length} results`);
+        
+        results = results.filter(item => {
+          return inMemoryEqualityFilters.every(f => {
+            const itemValue = item[f.field];
+            const filterValue = f.value;
+            
+            // Handle null/undefined values
+            if (itemValue === null || itemValue === undefined) return false;
+            
+            switch (f.operator) {
+              case '==':
+                // Case-insensitive string comparison
+                if (typeof itemValue === 'string' && typeof filterValue === 'string') {
+                  return itemValue.toLowerCase() === filterValue.toLowerCase();
+                }
+                return itemValue === filterValue;
+              
+              case 'in':
+                if (!Array.isArray(filterValue)) return false;
+                // Case-insensitive for strings
+                if (typeof itemValue === 'string') {
+                  return filterValue.some(v => 
+                    typeof v === 'string' && v.toLowerCase() === itemValue.toLowerCase()
+                  );
+                }
+                return (filterValue as any[]).includes(itemValue);
+              
+              case 'array-contains':
+                return Array.isArray(itemValue) && (itemValue as any[]).includes(filterValue);
+              
+              case 'array-contains-any':
+                if (!Array.isArray(itemValue) || !Array.isArray(filterValue)) return false;
+                return filterValue.some((v: any) => (itemValue as any[]).includes(v));
+              
+              default:
+                return true;
+            }
+          });
+        });
+        
+        console.log(`🔍 After in-memory equality filtering: ${results.length} results`);
       }
       
       
@@ -1772,56 +1832,56 @@ Return ONLY the JSON object.`;
    */
   private describeFilters(filters: QueryFilter[]): string {
     if (filters.length === 0) {
-      return '📊 Semua findings (no filters)';
+      return 'Semua findings (no filters)';
     }
 
     const icons: Record<string, string> = {
-      department: '📂',
-      departmentGeneral: '📂',
-      year: '📅',
-      projectName: '🏢',
-      subholding: '🏛️',
-      initials: '🔤',
-      code: '🏷️',
-      value: '📊',
-      weight: '⚖️',
-      severity: '🔥',
-      riskArea: '🎯',
-      sh: '🔖',
-      tbk: '📑',
-      tags: '🏷️',
-      finding: '⚠️',
-      nonFinding: '✅',
-      total: '📈',
-      category: '📁',
-      industry: '🏭',
-      location: '📍',
-      name: '📛',
-      projectType: '🏗️',
-      subtype: '🏛️',
-      description: '📝',
+      department: '',
+      departmentGeneral: '',
+      year: '',
+      projectName: '',
+      subholding: '',
+      initials: '',
+      code: '',
+      value: '',
+      weight: '',
+      severity: '',
+      riskArea: '',
+      sh: '',
+      tbk: '',
+      tags: '',
+      finding: '',
+      nonFinding: '',
+      total: '',
+      category: '',
+      industry: '',
+      location: '',
+      name: '',
+      projectType: '',
+      subtype: '',
+      description: '',
       // Grade fields
-      grade2025: '🎓',
-      grade2024: '🎓',
-      grade2023: '🎓',
-      grade2022: '🎓',
-      grade2021: '🎓',
-      grade2020: '🎓',
+      grade2025: '',
+      grade2024: '',
+      grade2023: '',
+      grade2022: '',
+      grade2021: '',
+      grade2020: '',
       // Findings count fields
-      f2025: '📊',
-      f2024: '📊',
-      f2023: '📊',
-      f2022: '📊',
-      totalFindings: '📊',
-      totalNF: '✅',
-      grandTotal: '📈',
+      f2025: '',
+      f2024: '',
+      f2023: '',
+      f2022: '',
+      totalFindings: '',
+      totalNF: '',
+      grandTotal: '',
       // Totals per year
-      total2025: '📈',
-      total2024: '📈',
-      total2023: '📈',
-      total2022: '📈',
+      total2025: '',
+      total2024: '',
+      total2023: '',
+      total2022: '',
       // Repeat findings
-      isRepeat: '🔁',
+      isRepeat: '',
     };
 
     const fieldNames: Record<string, string> = {
@@ -1990,53 +2050,53 @@ Return ONLY the JSON object.`;
   private generateDemoResponse(): string {
     return `╔═══════════════════════════════════════════════════════════════════╗
 ║                                                                   ║
-║              🎯 BERNARD AI ASSISTANT - INTERACTIVE DEMO             ║
+║              BERNARD AI ASSISTANT - INTERACTIVE DEMO             ║
 ║                                                                   ║
 ╚═══════════════════════════════════════════════════════════════════╝
 
-Welcome to Bernard! Let me show you what I can do. 🚀
+Welcome to Bernard! Let me show you what I can do.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📊 FEATURE 1: NATURAL LANGUAGE QUERIES
+FEATURE 1: NATURAL LANGUAGE QUERIES
 
 I understand questions in plain English or Indonesian!
 
 Try these examples:
 ┌─────────────────────────────────────────────────────────────────┐
-│ 🔹 "show all IT findings 2024"                                  │
-│ 🔹 "temuan HC tahun 2024"                                       │
-│ 🔹 "findings from hospitals"                                    │
-│ 🔹 "temuan dengan value >= 10"                                  │
+│ • "show all IT findings 2024"                                   │
+│ • "temuan HC tahun 2024"                                        │
+│ • "findings from hospitals"                                     │
+│ • "temuan dengan value >= 10"                                   │
 └─────────────────────────────────────────────────────────────────┘
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🎯 FEATURE 2: SMART FILTER EXTRACTION
+FEATURE 2: SMART FILTER EXTRACTION
 
 I automatically extract filters from your questions:
 
 Example: "show IT findings 2024 with value >= 10"
 ┌─────────────────────────────────────────────────────────────────┐
-│ ✅ Extracted Filters:                                           │
-│    📂 department = IT                                           │
-│    📅 year = 2024                                               │
-│    📊 value >= 10                                               │
-│    🏷️ code = F (findings only)                                 │
+│ Extracted Filters:                                              │
+│    department = IT                                              │
+│    year = 2024                                                  │
+│    value >= 10                                                  │
+│    code = F (findings only)                                     │
 └─────────────────────────────────────────────────────────────────┘
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🔀 FEATURE 3: OR LOGIC SUPPORT
+FEATURE 3: OR LOGIC SUPPORT
 
 Query multiple values at once!
 
 Example: "temuan IT atau Finance 2024"
 ┌─────────────────────────────────────────────────────────────────┐
-│ ✅ Filters:                                                     │
-│    📂 department IN [IT, Finance]                               │
-│    📅 year = 2024                                               │
-│    🏷️ code = F                                                  │
+│ Filters:                                                        │
+│    department IN [IT, Finance]                                  │
+│    year = 2024                                                  │
+│    code = F                                                     │
 └─────────────────────────────────────────────────────────────────┘
 
 More examples:
@@ -2046,35 +2106,35 @@ More examples:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🧠 FEATURE 4: CONTEXT-AWARE CONVERSATIONS
+FEATURE 4: CONTEXT-AWARE CONVERSATIONS
 
 I remember your previous filters!
 
 Conversation Example:
 ┌─────────────────────────────────────────────────────────────────┐
-│ 👤 You: "semua temuan HC 2024"                                  │
-│ 🤖 Bernard: [Shows HC findings from 2024]                        │
+│ You: "semua temuan HC 2024"                                     │
+│ Bernard: [Shows HC findings from 2024]                          │
 │                                                                 │
-│ 👤 You: "khusus mall ciputra cibubur"                          │
-│ 🤖 Bernard: [Keeps HC + 2024 filters, adds Mall filter]          │
+│ You: "khusus mall ciputra cibubur"                              │
+│ Bernard: [Keeps HC + 2024 filters, adds Mall filter]            │
 │                                                                 │
-│ 👤 You: "hanya yang value >= 15"                               │
-│ 🤖 Bernard: [Keeps all previous filters, adds value >= 15]       │
+│ You: "hanya yang value >= 15"                                   │
+│ Bernard: [Keeps all previous filters, adds value >= 15]         │
 └─────────────────────────────────────────────────────────────────┘
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🏢 FEATURE 5: PROJECT TYPE & SUBTYPE FILTERING
+FEATURE 5: PROJECT TYPE & SUBTYPE FILTERING
 
 Query by business type or specific categories!
 
 Project Types:
 ┌─────────────────────────────────────────────────────────────────┐
-│ 🏥 Healthcare    → Hospital, Clinic                             │
-│ 🏨 Commercial    → Hotel, Mall, Office                          │
-│ 🏠 Residential   → Landed House, Apartment                      │
-│ 🎓 Education     → School, University                           │
-│ 🏗️ Others        → Broker, Insurance, Theatre, Golf            │
+│ Healthcare    → Hospital, Clinic                                │
+│ Commercial    → Hotel, Mall, Office                             │
+│ Residential   → Landed House, Apartment                         │
+│ Education     → School, University                              │
+│ Others        → Broker, Insurance, Theatre, Golf                │
 └─────────────────────────────────────────────────────────────────┘
 
 Try:
@@ -2084,22 +2144,22 @@ Try:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🎯 FEATURE 6: FUZZY PROJECT NAME MATCHING
+FEATURE 6: FUZZY PROJECT NAME MATCHING
 
 Misspelled a project name? No problem!
 
 Example: You type "Rafles Jakarta"
 ┌─────────────────────────────────────────────────────────────────┐
-│ ⚠️ Did you mean one of these?                                   │
+│ Did you mean one of these?                                      │
 │                                                                 │
-│ 1. Hotel Raffles Jakarta (95% match) ⭐                         │
-│ 2. Hotel Raffles Surabaya (87% match)                          │
-│ 3. Raffles Residence (82% match)                               │
+│ 1. Hotel Raffles Jakarta (95% match)                            │
+│ 2. Hotel Raffles Surabaya (87% match)                           │
+│ 3. Raffles Residence (82% match)                                │
 └─────────────────────────────────────────────────────────────────┘
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🔤 FEATURE 7: DEPARTMENT SMART MATCHING
+FEATURE 7: DEPARTMENT SMART MATCHING
 
 I understand department abbreviations and variations!
 
@@ -2118,112 +2178,112 @@ Automatic Expansions:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🔀 FEATURE 8: CUSTOM SORTING
+FEATURE 8: CUSTOM SORTING
 
 Sort results by any field!
 
 Examples:
 ┌─────────────────────────────────────────────────────────────────┐
 │ • "findings from hospitals, highest score first"                │
-│ • "temuan IT 2024 dari value tertinggi"                        │
+│ • "temuan IT 2024 dari value tertinggi"                         │
 │ • "projects sorted by finding count descending"                 │
 └─────────────────────────────────────────────────────────────────┘
 
 Supported sort fields:
-📊 value • ⚖️ weight • 🔥 severity • 📅 year • 🏢 projectName
+value • weight • severity • year • projectName
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📁 FEATURE 9: AUTOMATIC EXCEL EXPORT
+FEATURE 9: AUTOMATIC EXCEL EXPORT
 
 Every query generates a downloadable Excel file!
 
 File Format:
 ┌─────────────────────────────────────────────────────────────────┐
-│ 📊 Formatted columns with proper widths                         │
-│ 📋 All result fields included                                   │
-│ 📅 Timestamped filename                                         │
-│ 💾 Ready for analysis in Excel/Google Sheets                    │
+│ Formatted columns with proper widths                            │
+│ All result fields included                                      │
+│ Timestamped filename                                            │
+│ Ready for analysis in Excel/Google Sheets                       │
 └─────────────────────────────────────────────────────────────────┘
 
 Example: bernard-temuan-it-2024-2026-01-30.xlsx
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-💬 FEATURE 10: SESSION MANAGEMENT
+FEATURE 10: SESSION MANAGEMENT
 
 All your conversations are saved!
 
 Features:
 ┌─────────────────────────────────────────────────────────────────┐
-│ ✅ Auto-generated session titles                                │
-│ ✅ Chat history sidebar                                         │
-│ ✅ Switch between sessions seamlessly                           │
-│ ✅ Context maintained per session                               │
-│ ✅ Persistent across app restarts                               │
+│ Auto-generated session titles                                   │
+│ Chat history sidebar                                            │
+│ Switch between sessions seamlessly                              │
+│ Context maintained per session                                  │
+│ Persistent across app restarts                                  │
 └─────────────────────────────────────────────────────────────────┘
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📊 DATA COVERAGE
+DATA COVERAGE
 
 ┌─────────────────────────────────────────────────────────────────┐
-│ 📋 8,840+ audit findings                                        │
-│ 🏢 110+ real estate projects                                    │
-│ 📂 20 department categories                                     │
-│ 🏗️ 5 project types                                              │
-│ 🏛️ 15+ project subtypes                                         │
-│ 🏷️ 200+ Indonesian real estate terms                            │
+│ 8,840+ audit findings                                           │
+│ 110+ real estate projects                                       │
+│ 20 department categories                                        │
+│ 5 project types                                                 │
+│ 15+ project subtypes                                            │
+│ 200+ Indonesian real estate terms                               │
 └─────────────────────────────────────────────────────────────────┘
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🎯 QUICK START EXAMPLES
+QUICK START EXAMPLES
 
 Ready to try? Here are some queries to get you started:
 
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ 1️⃣ BASIC QUERY                                                 ┃
+┃ 1. BASIC QUERY                                                 ┃
 ┃    "show all IT findings 2024"                                 ┃
 ┃                                                                ┃
-┃ 2️⃣ WITH FILTERS                                                ┃
-┃    "temuan HC 2024 dengan value >= 10"                        ┃
+┃ 2. WITH FILTERS                                                ┃
+┃    "temuan HC 2024 dengan value >= 10"                         ┃
 ┃                                                                ┃
-┃ 3️⃣ OR LOGIC                                                    ┃
+┃ 3. OR LOGIC                                                    ┃
 ┃    "findings from IT or Finance 2024"                          ┃
 ┃                                                                ┃
-┃ 4️⃣ PROJECT TYPE                                                ┃
+┃ 4. PROJECT TYPE                                                ┃
 ┃    "temuan dari hospital, highest score first"                 ┃
 ┃                                                                ┃
-┃ 5️⃣ SPECIFIC PROJECT                                            ┃
+┃ 5. SPECIFIC PROJECT                                            ┃
 ┃    "findings from Mall Ciputra Cibubur"                        ┃
 ┃                                                                ┃
-┃ 6️⃣ TAG SEARCH                                                  ┃
+┃ 6. TAG SEARCH                                                  ┃
 ┃    "temuan APAR atau Hydrant"                                  ┃
 ┃                                                                ┃
-┃ 7️⃣ PROJECT LIST                                                ┃
+┃ 7. PROJECT LIST                                                ┃
 ┃    "list all projects"                                         ┃
 ┃                                                                ┃
-┃ 8️⃣ DEPARTMENT INFO                                             ┃
+┃ 8. DEPARTMENT INFO                                             ┃
 ┃    "show all departments"                                      ┃
 ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-💡 PRO TIPS
+PRO TIPS
 
 ┌─────────────────────────────────────────────────────────────────┐
-│ ✨ Use natural language - I understand context!                 │
-│ ✨ Mix English and Indonesian - both work!                      │
-│ ✨ I remember previous filters in the conversation              │
-│ ✨ Misspellings are OK - I'll suggest corrections               │
-│ ✨ Every result includes Excel export                           │
-│ ✨ Type "reset" to clear conversation context                   │
+│ Use natural language - I understand context!                    │
+│ Mix English and Indonesian - both work!                         │
+│ I remember previous filters in the conversation                 │
+│ Misspellings are OK - I'll suggest corrections                  │
+│ Every result includes Excel export                              │
+│ Type "reset" to clear conversation context                      │
 └─────────────────────────────────────────────────────────────────┘
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🚀 READY TO START?
+READY TO START?
 
 Just type your question naturally, and I'll handle the rest!
 
@@ -2235,7 +2295,7 @@ Examples to try right now:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Powered by Google Gemini 2.0 Flash Exp 🤖
+Powered by Google Gemini 2.0 Flash Exp
 Bernard AI Assistant v1.0 | FIRST-AID Audit System
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;

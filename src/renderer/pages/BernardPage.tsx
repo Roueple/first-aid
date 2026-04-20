@@ -831,7 +831,7 @@ export default function BernardPage() {
           {messages.length === 0 ? (
             /* Welcome Screen */
             <div className="bernard-welcome" data-tutorial="welcome-screen">
-              <img src="/beranrdfull-v2.png" alt="Bernard" className="bernard-welcome-logo" />
+              <img src="./logoFull.png" alt="Bernard" className="bernard-welcome-logo" />
               {greeting !== null && (
                 <h1 className={`bernard-greeting ${getGreetingClass()}`}>
                   {renderGreeting(greeting)}
@@ -862,24 +862,23 @@ export default function BernardPage() {
                     ) : (
                       <div className="bernard-assistant-message">
                         <div className="bernard-assistant-content">
-                        {message.content && !isStreaming ? (
+                        {message.content ? (
                           <div className="bernard-message-text">{message.content}</div>
-                        ) : isStreaming && loadingStatus && index === messages.length - 1 ? (
-                          <>
-                            {message.content && (
-                              <div className="bernard-message-text">{message.content}</div>
-                            )}
-                            <div className="bernard-loading-status-inline" data-tutorial="loading-indicator">
-                              <WavyLoadingText className="bernard-loading-text" loadingKey={loadingKey} />
-                            </div>
-                          </>
-                        ) : isStreaming ? (
+                        ) : null}
+                        
+                        {/* Show loading indicator for the last assistant message when streaming */}
+                        {isStreaming && index === messages.length - 1 && loadingStatus && (
+                          <div className="bernard-loading-status-inline" data-tutorial="loading-indicator">
+                            <WavyLoadingText className="bernard-loading-text" loadingKey={loadingKey} />
+                          </div>
+                        )}
+                        
+                        {/* Show typing dots only when streaming but no content yet */}
+                        {isStreaming && index === messages.length - 1 && !message.content && !loadingStatus && (
                           <div className="bernard-typing">
                             <span></span><span></span><span></span>
                           </div>
-                        ) : message.content ? (
-                          <div className="bernard-message-text">{message.content}</div>
-                        ) : null}
+                        )}
                         
                         {message.queryResult?.needsConfirmation && message.queryResult.suggestions && (
                           <ProjectSelectionDialog

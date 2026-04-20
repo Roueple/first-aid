@@ -17,7 +17,6 @@
     "dist/**/*",
     "package.json"
   ],
-  "includeSubNodeModules": false,
   "asarUnpack": [
     "node_modules/jszip/**/*",
     "node_modules/electron-updater/**/*"
@@ -45,9 +44,7 @@
       }
     ],
     "icon": "build/icon.ico",
-    "publisherName": "FIRST-AID Team",
     "verifyUpdateCodeSignature": false,
-    "sign": null,
     "signAndEditExecutable": false,
     "publish": ["github"]
   },
