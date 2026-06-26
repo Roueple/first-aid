@@ -61,3 +61,18 @@ archive/
 # Kiro AI settings (local only)
 .kiro/
 .claude/
+
+# Data files (not for version control)
+*.xlsx
+*.xls
+
+# Standalone scripts / one-off tools
+photo_metadata_auditor*.py
+
+# Temp implementation summary docs (auto-generated, not source)
+BUILD-SUMMARY-*.md
+*-COMPLETE.md
+*-SUCCESS.md
+*-QUICK-REF.md
+PHOTO-AUDITOR-IMPLEMENTATION.md
+PHOTO-AUDITOR-PRIVACY-CONFIRMATION.md
