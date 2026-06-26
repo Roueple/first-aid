@@ -12,12 +12,13 @@ import { ReportChatDialog } from '../../components/ReportChatDialog';
 import { ConfirmDeleteDialog } from '../../components/ConfirmDeleteDialog';
 import { UserSettingsDialog } from '../../components/UserSettingsDialog';
 import { FirstTimeSetupDialog } from '../../components/FirstTimeSetupDialog';
-import { OnboardingTutorial } from '../../components/OnboardingTutorial';
+// import { OnboardingTutorial } from '../../components/OnboardingTutorial'; // archived
 import { ThemeSwitcher } from '../../components/ThemeSwitcher';
 import { ProjectSelectionDialog } from '../../components/ProjectSelectionDialog';
+import { PhotoAuditorDialog } from '../../components/PhotoAuditorDialog';
 import { BernardVanishInput } from '../../components/ui/bernard-vanish-input';
 import { WavyLoadingText } from '../../components/ui/wavy-loading-text';
-import { PanelLeftClose, PanelLeft, Plus, Download, Copy, ChevronUp, MessageSquare, Trash2, X, Flag, Settings } from 'lucide-react';
+import { PanelLeftClose, PanelLeft, Plus, Download, Copy, ChevronUp, MessageSquare, Trash2, X, Flag, Settings, Camera } from 'lucide-react';
 
 interface ProjectSuggestion {
   name: string;
@@ -74,6 +75,7 @@ export default function BernardPage() {
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [showFirstTimeSetup, setShowFirstTimeSetup] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
+  const [showPhotoAuditor, setShowPhotoAuditor] = useState(false);
   const [tutorialDemoQuery, setTutorialDemoQuery] = useState<string | undefined>(undefined);
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -87,6 +89,7 @@ export default function BernardPage() {
   const chatAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const tutorialOnQuerySentRef = useRef<(() => void) | null>(null);
+  const isNearBottomRef = useRef(true);
 
   // Note: Auto-auth removed - users must authenticate via passwordless login
 
@@ -119,12 +122,16 @@ export default function BernardPage() {
     if (!currentUser) return;
     
     try {
+      // Tutorial temporarily hidden - will be re-enabled in future release
       // Check if tutorial should be shown (Requirements 9.2-9.5, 10.2-10.5)
-      const shouldShow = await OnboardingService.shouldShowTutorial(currentUser.uid);
+      // const shouldShow = await OnboardingService.shouldShowTutorial(currentUser.uid);
       
-      if (shouldShow) {
-        setShowTutorial(true);
-      }
+      // if (shouldShow) {
+      //   setShowTutorial(true);
+      // }
+      
+      // Force tutorial to be hidden
+      setShowTutorial(false);
     } catch (error) {
       console.error('Error checking tutorial status:', error);
       // Don't show tutorial on error
@@ -136,8 +143,9 @@ export default function BernardPage() {
       localStorage.setItem(`firstTimeSetup_${currentUser.uid}`, 'true');
     }
     setShowFirstTimeSetup(false);
+    // Tutorial temporarily hidden - will be re-enabled in future release
     // Start tutorial after setup completes (Requirements 1.1-1.3)
-    setShowTutorial(true);
+    // setShowTutorial(true);
   };
 
   const handleTutorialComplete = async () => {
@@ -155,17 +163,8 @@ export default function BernardPage() {
   };
 
   const handleTutorialRestart = async () => {
-    if (!currentUser) return;
-    
-    try {
-      // Reset tutorial state for manual restart (Requirements 10.1-10.5)
-      await OnboardingService.resetTutorial(currentUser.uid);
-      setShowTutorial(true);
-      setShowSettingsDialog(false);
-    } catch (error) {
-      console.error('Error restarting tutorial:', error);
-      // Could show error toast here
-    }
+    // Tutorial archived - no-op. OnboardingTutorial component is commented out.
+    setShowSettingsDialog(false);
   };
 
   const loadPersonalizedGreeting = async () => {
@@ -239,11 +238,22 @@ export default function BernardPage() {
     }
   };
 
+  // Track whether user is near the bottom of the chat
   useEffect(() => {
-    if (chatAreaRef.current) {
-      chatAreaRef.current.scrollTop = chatAreaRef.current.scrollHeight;
-    }
-  }, [messages, isLoading]);
+    const el = chatAreaRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      isNearBottomRef.current = (el.scrollHeight - el.scrollTop - el.clientHeight) < 100;
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // Auto-scroll only when user is already near the bottom (don't hijack manual scrolling)
+  useEffect(() => {
+    if (!chatAreaRef.current || !isNearBottomRef.current) return;
+    chatAreaRef.current.scrollTop = chatAreaRef.current.scrollHeight;
+  }, [messages]);
 
   useEffect(() => {
     if (inputRef.current) {
@@ -251,6 +261,13 @@ export default function BernardPage() {
       inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 120) + 'px';
     }
   }, [input]);
+
+  const scrollToBottom = () => {
+    isNearBottomRef.current = true;
+    if (chatAreaRef.current) {
+      chatAreaRef.current.scrollTop = chatAreaRef.current.scrollHeight;
+    }
+  };
 
   const handleSend = async (query?: string) => {
     const messageContent = query || input.trim();
@@ -278,7 +295,8 @@ export default function BernardPage() {
     setIsStreaming(true);
     setLoadingStatus('Bernard sedang berpikir...');
     setLoadingKey(Date.now().toString()); // Unique key for this loading session
-    
+    scrollToBottom(); // Always scroll to bottom when user sends
+
     setMessages(prev => [...prev, userMessage]);
     setInput('');
 
@@ -305,7 +323,8 @@ export default function BernardPage() {
       const stream = bernardService.streamChat(
         userMessage.content,
         currentUser.uid,
-        currentSessionId || undefined
+        currentSessionId || undefined,
+        currentUser.role // Pass user role for field filtering
       );
 
       let result: { sessionId: string; queryResult?: any } | undefined;
@@ -449,6 +468,7 @@ export default function BernardPage() {
       if (currentSessionId) {
         await BernardSessionService.deactivateSession(currentSessionId);
       }
+      isNearBottomRef.current = true; // Scroll to bottom when loading a session
       setCurrentSessionId(sessionId);
       await loadSessionMessages(sessionId);
       await BernardSessionService.updateActivity(sessionId);
@@ -546,7 +566,8 @@ export default function BernardPage() {
         originalQuery,
         projectName,
         currentUser.uid,
-        currentSessionId
+        currentSessionId,
+        currentUser.role // Pass user role for field filtering
       );
 
       if (result.queryResult) {
@@ -595,7 +616,8 @@ export default function BernardPage() {
         originalQuery,
         projectNames, // Pass array of project names
         currentUser.uid,
-        currentSessionId
+        currentSessionId,
+        currentUser.role // Pass user role for field filtering
       );
 
       if (result.queryResult) {
@@ -667,13 +689,14 @@ export default function BernardPage() {
   };
 
   const handleAggregationRowClick = async (aggregationResult: AggregationResult) => {
-    if (!aggregationResult.filters) return;
+    if (!aggregationResult.filters || !currentUser) return;
     
     setIsLoading(true);
     try {
       const details = await bernardService.fetchAggregationGroupDetails(
         aggregationResult.filters,
-        'audit-results'
+        'audit-results',
+        currentUser.role // Pass user role for field filtering
       );
       
       setAggregationDetails({
@@ -788,6 +811,14 @@ export default function BernardPage() {
         <div className="bernard-sidebar-footer">
           <button 
             className="bernard-settings-btn"
+            onClick={() => setShowPhotoAuditor(true)}
+            title="Photo Auditor"
+          >
+            <Camera size={18} />
+            <span>Photo Auditor</span>
+          </button>
+          <button 
+            className="bernard-settings-btn"
             onClick={() => setShowSettingsDialog(true)}
             title="User Settings"
           >
@@ -827,6 +858,7 @@ export default function BernardPage() {
 
       {/* Main Content */}
       <div className="bernard-main">
+        {/* Scrollable chat area */}
         <div className="bernard-content" ref={chatAreaRef} data-tutorial="chat-area">
           {messages.length === 0 ? (
             /* Welcome Screen */
@@ -843,7 +875,7 @@ export default function BernardPage() {
                     <WavyLoadingText className="bernard-loading-text" loadingKey={loadingKey} />
                   </div>
                 )}
-                <BernardVanishInput 
+                <BernardVanishInput
                   onSubmit={handleSend}
                   disabled={isLoading}
                   initialValue={tutorialDemoQuery}
@@ -852,34 +884,33 @@ export default function BernardPage() {
               </div>
             </div>
           ) : (
-            /* Chat View */
-            <>
-              <div className="bernard-messages">
-                {messages.map((message, index) => (
-                  <div key={message.id} className={`bernard-message ${message.role}`}>
-                    {message.role === 'user' ? (
-                      <div className="bernard-user-message">{message.content}</div>
-                    ) : (
-                      <div className="bernard-assistant-message">
-                        <div className="bernard-assistant-content">
+            /* Chat Messages */
+            <div className="bernard-messages">
+              {messages.map((message, index) => (
+                <div key={message.id} className={`bernard-message ${message.role}`}>
+                  {message.role === 'user' ? (
+                    <div className="bernard-user-message">{message.content}</div>
+                  ) : (
+                    <div className="bernard-assistant-message">
+                      <div className="bernard-assistant-content">
                         {message.content ? (
                           <div className="bernard-message-text">{message.content}</div>
                         ) : null}
-                        
-                        {/* Show loading indicator for the last assistant message when streaming */}
+
+                        {/* Loading indicator for the last assistant message while streaming */}
                         {isStreaming && index === messages.length - 1 && loadingStatus && (
                           <div className="bernard-loading-status-inline" data-tutorial="loading-indicator">
                             <WavyLoadingText className="bernard-loading-text" loadingKey={loadingKey} />
                           </div>
                         )}
-                        
-                        {/* Show typing dots only when streaming but no content yet */}
+
+                        {/* Typing dots when streaming but no content yet */}
                         {isStreaming && index === messages.length - 1 && !message.content && !loadingStatus && (
                           <div className="bernard-typing">
                             <span></span><span></span><span></span>
                           </div>
                         )}
-                        
+
                         {message.queryResult?.needsConfirmation && message.queryResult.suggestions && (
                           <ProjectSelectionDialog
                             suggestions={message.queryResult.suggestions}
@@ -892,7 +923,6 @@ export default function BernardPage() {
 
                         {message.queryResult?.results && message.queryResult.results.length > 0 && !message.queryResult.isAggregated && (
                           <div className="bernard-results">
-                            {/* Auto-generated year chart for audit-results */}
                             {message.queryResult.yearAggregation && message.queryResult.yearAggregation.length > 0 && (
                               <div className="bernard-auto-chart mb-4">
                                 <BernardAggregationChart
@@ -902,8 +932,7 @@ export default function BernardPage() {
                                 />
                               </div>
                             )}
-                            
-                            <BernardResultsTable 
+                            <BernardResultsTable
                               results={message.queryResult.results}
                               table={message.queryResult.table || 'audit-results'}
                               maxRows={20}
@@ -921,14 +950,11 @@ export default function BernardPage() {
                                 {message.queryResult.aggregationType}
                               </span>
                             </div>
-                            
-                            {/* Smart Chart Visualization */}
                             <BernardAggregationChart
                               data={message.queryResult.aggregatedResults}
                               groupByField={message.queryResult.groupByField || 'group'}
                               aggregationType={message.queryResult.aggregationType}
                             />
-                            
                             <div className="bernard-aggregation-table">
                               <table>
                                 <thead>
@@ -950,12 +976,11 @@ export default function BernardPage() {
                                 <tbody>
                                   {message.queryResult.aggregatedResults.map((row, idx) => {
                                     const isMultiDimensional = typeof row.groupValue === 'object' && !Array.isArray(row.groupValue);
-                                    const groupByFields = Array.isArray(message.queryResult?.groupByField) 
-                                      ? message.queryResult.groupByField 
+                                    const groupByFields = Array.isArray(message.queryResult?.groupByField)
+                                      ? message.queryResult.groupByField
                                       : [message.queryResult?.groupByField || 'group'];
-                                    
                                     return (
-                                      <tr 
+                                      <tr
                                         key={idx}
                                         onClick={() => handleAggregationRowClick(row)}
                                         className="bernard-aggregation-row-clickable"
@@ -987,11 +1012,11 @@ export default function BernardPage() {
                             </div>
                           </div>
                         )}
-                        
+
                         {(message.content || message.queryResult?.excelBuffer) && !message.queryResult?.needsConfirmation && (
                           <div className="bernard-message-actions" data-tutorial="message-actions">
                             {message.content && (
-                              <button 
+                              <button
                                 className="bernard-action-btn"
                                 onClick={() => handleCopyMessage(message)}
                                 data-tutorial="copy-button"
@@ -1020,53 +1045,54 @@ export default function BernardPage() {
                             </button>
                           </div>
                         )}
-                        </div>
                       </div>
-                    )}
-                  </div>
-                ))}
-                
-                {isLoading && !isStreaming && (
-                  <div className="bernard-message assistant">
-                    <div className="bernard-assistant-message">
-                      <div className="bernard-assistant-content">
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {isLoading && !isStreaming && (
+                <div className="bernard-message assistant">
+                  <div className="bernard-assistant-message">
+                    <div className="bernard-assistant-content">
                       <div className="bernard-typing">
                         <span></span><span></span><span></span>
                       </div>
-                      </div>
                     </div>
                   </div>
-                )}
-              </div>
-
-              {/* Bottom Input */}
-              <div className="bernard-bottom-input">
-                <div className="bernard-input-container">
-                  <textarea
-                    ref={inputRef}
-                    className="bernard-input"
-                    placeholder="How can I help you today?"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    rows={1}
-                    disabled={isLoading}
-                  />
-                  <div className="bernard-input-actions">
-                    <button 
-                      className="bernard-send-btn"
-                      onClick={() => handleSend()}
-                      disabled={!input.trim() || isLoading}
-                      data-tutorial="send-button"
-                    >
-                      <ChevronUp size={18} />
-                    </button>
-                  </div>
                 </div>
-              </div>
-            </>
+              )}
+            </div>
           )}
         </div>
+
+        {/* Bottom Input — outside scroll area so it never scrolls with messages */}
+        {messages.length > 0 && (
+          <div className="bernard-bottom-input">
+            <div className="bernard-input-container">
+              <textarea
+                ref={inputRef}
+                className="bernard-input"
+                placeholder="How can I help you today?"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                rows={1}
+                disabled={isLoading}
+              />
+              <div className="bernard-input-actions">
+                <button
+                  className="bernard-send-btn"
+                  onClick={() => handleSend()}
+                  disabled={!input.trim() || isLoading}
+                  data-tutorial="send-button"
+                >
+                  <ChevronUp size={18} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Aggregation Details Modal */}
@@ -1141,14 +1167,20 @@ export default function BernardPage() {
         onComplete={handleFirstTimeSetupComplete}
       />
 
-      {/* Onboarding Tutorial */}
-      <OnboardingTutorial
+      {/* Onboarding Tutorial - archived, not shown to users */}
+      {/* <OnboardingTutorial
         isActive={showTutorial}
         onComplete={handleTutorialComplete}
         onSetDemoQuery={setTutorialDemoQuery}
         onQuerySent={(callback) => { tutorialOnQuerySentRef.current = callback; }}
         isSidebarOpen={sidebarOpen}
         hasResults={messages.some(m => m.queryResult?.results && m.queryResult.results.length > 0)}
+      /> */}
+
+      {/* Photo Auditor Dialog */}
+      <PhotoAuditorDialog
+        isOpen={showPhotoAuditor}
+        onClose={() => setShowPhotoAuditor(false)}
       />
     </div>
   );

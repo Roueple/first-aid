@@ -101,7 +101,8 @@ export function UserSettingsDialog({ isOpen, onClose, onRestartTutorial }: UserS
             </p>
           </div>
 
-          <div className="bernard-settings-section">
+          {/* Tutorial section temporarily hidden - will be re-enabled in future release */}
+          {/* <div className="bernard-settings-section">
             <label className="bernard-settings-label">
               Tutorial
             </label>
@@ -116,7 +117,7 @@ export function UserSettingsDialog({ isOpen, onClose, onRestartTutorial }: UserS
             <p className="bernard-settings-hint">
               Replay the onboarding tutorial to refresh your knowledge of Bernard features
             </p>
-          </div>
+          </div> */}
 
           {error && (
             <div className="bernard-settings-error">

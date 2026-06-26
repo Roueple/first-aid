@@ -9,14 +9,14 @@
 export function levenshteinDistance(str1: string, str2: string): number {
   const m = str1.length;
   const n = str2.length;
-  
+
   // Create distance matrix
   const dp: number[][] = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
-  
+
   // Initialize first row and column
   for (let i = 0; i <= m; i++) dp[i][0] = i;
   for (let j = 0; j <= n; j++) dp[0][j] = j;
-  
+
   // Fill the matrix
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
@@ -31,7 +31,7 @@ export function levenshteinDistance(str1: string, str2: string): number {
       }
     }
   }
-  
+
   return dp[m][n];
 }
 
@@ -42,12 +42,12 @@ export function levenshteinDistance(str1: string, str2: string): number {
 export function similarityScore(str1: string, str2: string): number {
   const s1 = str1.toLowerCase();
   const s2 = str2.toLowerCase();
-  
+
   if (s1 === s2) return 1;
-  
+
   const maxLen = Math.max(s1.length, s2.length);
   if (maxLen === 0) return 1;
-  
+
   const distance = levenshteinDistance(s1, s2);
   return 1 - (distance / maxLen);
 }
@@ -68,18 +68,18 @@ export function findClosestMatch(
   minScore: number = 0.6
 ): SimilarityMatch | null {
   if (!query || candidates.length === 0) return null;
-  
+
   let bestMatch: SimilarityMatch | null = null;
-  
+
   for (const candidate of candidates) {
     const score = similarityScore(query, candidate);
     const distance = levenshteinDistance(query.toLowerCase(), candidate.toLowerCase());
-    
+
     if (score >= minScore && (!bestMatch || score > bestMatch.score)) {
       bestMatch = { value: candidate, score, distance };
     }
   }
-  
+
   return bestMatch;
 }
 
@@ -94,14 +94,26 @@ export function findAllMatches(
   maxResults: number = 5
 ): SimilarityMatch[] {
   if (!query || candidates.length === 0) return [];
-  
-  const matches: SimilarityMatch[] = [];
+
   const queryLower = query.toLowerCase();
-  
+  const queryWords = queryLower.split(/\s+/).filter(w => w.length > 0);
+
+  // Pre-compute word frequency: how many candidates contain each significant query word
+  // as an exact word boundary match. Used to detect distinctive (rare) keywords.
+  const significantWords = queryWords.filter(w => w.length >= 4);
+  const wordFrequency: Record<string, number> = {};
+  for (const qw of significantWords) {
+    wordFrequency[qw] = candidates.filter(c =>
+      c.toLowerCase().split(/\s+/).some(cw => cw === qw)
+    ).length;
+  }
+
+  const matches: SimilarityMatch[] = [];
+
   for (const candidate of candidates) {
     const candidateLower = candidate.toLowerCase();
     let score = similarityScore(query, candidate);
-    
+
     // Boost score for substring matches
     if (candidateLower.includes(queryLower)) {
       // If query is contained in candidate, boost score significantly
@@ -110,13 +122,31 @@ export function findAllMatches(
       // If candidate is contained in query, also boost
       score = Math.max(score, 0.80);
     }
-    
-    // Check for word-level matches (all words in query appear in candidate)
-    const queryWords = queryLower.split(/\s+/).filter(w => w.length > 0);
+
     const candidateWords = candidateLower.split(/\s+/).filter(w => w.length > 0);
-    
+
+    // Distinctive keyword boost: if a query word (4+ chars) appears as an exact
+    // word in very few candidates, matching candidates get a strong score boost.
+    // This prevents common words like "city" from drowning out rare unique words
+    // like "sampali" that precisely identify one project.
+    for (const qw of significantWords) {
+      const freq = wordFrequency[qw] ?? 0;
+      if (freq === 0) continue;
+      const hasExactMatch = candidateWords.some(cw => cw === qw);
+      if (hasExactMatch) {
+        if (freq === 1) {
+          // Word appears in exactly one candidate — nearly certain match
+          score = Math.max(score, 0.92);
+        } else if (freq <= 3) {
+          // Word appears in very few candidates — strong signal
+          score = Math.max(score, 0.82);
+        }
+      }
+    }
+
+    // Check for word-level matches (all words in query appear in candidate)
     // Count matching words
-    const matchingWords = queryWords.filter(qw => 
+    const matchingWords = queryWords.filter(qw =>
       candidateWords.some(cw => {
         // Exact word match
         if (cw === qw) return true;
@@ -126,10 +156,10 @@ export function findAllMatches(
         return similarityScore(qw, cw) >= 0.8;
       })
     );
-    
+
     if (matchingWords.length > 0 && queryWords.length > 0) {
       const wordMatchRatio = matchingWords.length / queryWords.length;
-      
+
       // If all query words found in candidate, boost significantly
       if (wordMatchRatio === 1.0) {
         score = Math.max(score, 0.75);
@@ -143,17 +173,17 @@ export function findAllMatches(
         score = Math.max(score, 0.55);
       }
     }
-    
+
     // Check for acronym/initials match (e.g., "CL" matches "CitraLand")
     const candidateInitials = candidateWords
       .map(w => w[0])
       .join('')
       .toLowerCase();
-    
+
     if (queryLower === candidateInitials || candidateInitials.includes(queryLower)) {
       score = Math.max(score, 0.70);
     }
-    
+
     // Check for partial acronym match (e.g., "Citra" matches "CitraLand")
     const queryInitial = queryWords[0]?.[0]?.toLowerCase();
     const candidateInitial = candidateWords[0]?.[0]?.toLowerCase();
@@ -161,13 +191,13 @@ export function findAllMatches(
       // First letter matches, give small boost (capped at 1.0)
       score = Math.min(1.0, Math.max(score, score * 1.05));
     }
-    
+
     if (score >= minScore) {
       const distance = levenshteinDistance(queryLower, candidateLower);
       matches.push({ value: candidate, score, distance });
     }
   }
-  
+
   // Sort by score descending, then by distance ascending (lower distance = better)
   matches.sort((a, b) => {
     if (Math.abs(a.score - b.score) < 0.01) {
@@ -175,6 +205,6 @@ export function findAllMatches(
     }
     return b.score - a.score;
   });
-  
+
   return matches.slice(0, maxResults);
 }

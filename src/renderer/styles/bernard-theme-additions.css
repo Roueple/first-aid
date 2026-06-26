@@ -48,15 +48,10 @@
   left: 0.75rem;
 }
 
-/* Bottom Input Gradient */
+/* Bottom Input */
 .bernard-bottom-input {
-  position: fixed;
-  bottom: 0;
-  right: 0;
-  left: 260px;
-  padding: 1rem 2rem 1.5rem;
-  background: linear-gradient(transparent, var(--calico-primary) 30%);
-  transition: left 0.3s ease;
+  background: var(--calico-primary);
+  border-top: 1px solid var(--calico-border);
 }
 
 /* Typing Indicator */

@@ -73,6 +73,9 @@ export class BernardService {
     return this.MODELS[this.currentModelIndex];
   }
 
+  // Restricted fields for tier-2 users
+  private readonly TIER2_RESTRICTED_FIELDS = ['bobot', 'kadar', 'nilai'];
+
   // Table structure for AI context (NO DATA, structure only)
   // 1:1 mirror of Master_Audit_Data.xlsx
   private readonly TABLE_SCHEMA = `
@@ -194,13 +197,40 @@ COMMON KEYWORDS (search in deskripsi field):
   }
 
   /**
+   * Filter sensitive fields from results based on user tier
+   * Tier-2 users cannot see: bobot, kadar, nilai
+   */
+  private filterSensitiveFields(results: any[], userRole: string): any[] {
+    // Only filter for tier-2 users
+    if (userRole !== 'tier-2') {
+      return results;
+    }
+
+    console.log(`🔒 Filtering sensitive fields for tier-2 user: ${this.TIER2_RESTRICTED_FIELDS.join(', ')}`);
+
+    return results.map(result => {
+      const filtered = { ...result };
+      
+      // Remove restricted fields
+      this.TIER2_RESTRICTED_FIELDS.forEach(field => {
+        if (field in filtered) {
+          delete filtered[field];
+        }
+      });
+      
+      return filtered;
+    });
+  }
+
+  /**
    * Execute a confirmed query with selected project name
    */
   async executeConfirmedQuery(
     originalQuery: string,
     selectedProjectName: string | string[],
     userId: string,
-    sessionId: string
+    sessionId: string,
+    userRole: string = 'tier-2' // Default to most restrictive
   ): Promise<{ response: string; sessionId: string; queryResult?: QueryResult }> {
     const startTime = Date.now();
 
@@ -286,8 +316,14 @@ Return ONLY the JSON object.`;
       console.log('🔍 executeConfirmedQuery - Final filters to execute:', JSON.stringify(filters, null, 2));
 
       // Execute query with original user query for context (no custom sorting for confirmed queries)
-      const results = await this.executeQuery(filters, targetTable, originalQuery);
-      const { excelBuffer, excelFilename } = await this.generateExcel(results, targetTable, userIntent);
+      let results = await this.executeQuery(filters, targetTable, originalQuery);
+      
+      // Filter sensitive fields for tier-2 users
+      if (targetTable === 'audit_results') {
+        results = this.filterSensitiveFields(results, userRole);
+      }
+      
+      const { excelBuffer, excelFilename } = await this.generateExcel(results, targetTable, userIntent, userRole);
 
       // AUTO-GENERATE YEAR CHART for audit_results queries with multiple results
       let yearAggregation: AggregationResult[] | undefined;
@@ -370,7 +406,8 @@ Return ONLY the JSON object.`;
   async chat(
     message: string,
     userId: string,
-    sessionId?: string
+    sessionId?: string,
+    userRole: string = 'tier-2' // Default to most restrictive
   ): Promise<{ response: string; sessionId: string; queryResult?: QueryResult }> {
     const startTime = Date.now();
 
@@ -410,7 +447,7 @@ Return ONLY the JSON object.`;
       }
 
       // Process query through Gemini with session context
-      const queryResult = await this.processQuery(message, activeSessionId);
+      const queryResult = await this.processQuery(message, activeSessionId, userRole);
 
       // Save assistant response with compact summary for context and queryResult
       const compactMessage = this.createCompactContextMessage(queryResult);
@@ -468,7 +505,8 @@ Return ONLY the JSON object.`;
   async *streamChat(
     message: string,
     userId: string,
-    sessionId?: string
+    sessionId?: string,
+    userRole: string = 'tier-2' // Default to most restrictive
   ): AsyncGenerator<string, { sessionId: string; queryResult?: QueryResult }> {
     const startTime = Date.now();
 
@@ -521,7 +559,7 @@ Return ONLY the JSON object.`;
       }
 
       // Process query with session context
-      const queryResult = await this.processQuery(message, activeSessionId);
+      const queryResult = await this.processQuery(message, activeSessionId, userRole);
 
       // Stream the response word by word for typing effect
       const words = queryResult.message.split(' ');
@@ -654,20 +692,30 @@ Return ONLY the JSON object.`;
   /**
    * Core query processing - uses Gemini to understand intent, extract filters, and execute query
    */
-  private async processQuery(query: string, sessionId?: string): Promise<QueryResult> {
+  private async processQuery(query: string, sessionId?: string, userRole: string = 'tier-2'): Promise<QueryResult> {
     try {
       // Fetch department_tags from Firestore for LLM context
       let departmentTagsContext = '';
+      let departmentList: string[] = [];
       try {
         const tagsDb = new DatabaseService('department_tags');
         const allDepartmentTags = await tagsDb.getAll();
 
         if (allDepartmentTags.length > 0) {
+          // Build context for LLM with clear instructions
           departmentTagsContext = '\n\nDEPARTMENT_TAGS (CRITICAL - Use originalNames for filters, NOT departmentName):\n' +
             allDepartmentTags.map(dept =>
               `- departmentName: "${dept.departmentName}" (DISPLAY ONLY)\n  originalNames: [${dept.originalNames?.map((n: string) => `"${n}"`).join(', ') || ''}] (USE THESE IN FILTERS)\n  tags: [${dept.tags.map((t: string) => `"${t}"`).join(', ')}]\n  category: "${dept.category}"`
             ).join('\n\n');
+          
+          // Extract unique department names for the list
+          departmentList = allDepartmentTags
+            .map(dept => dept.departmentName)
+            .filter((name): name is string => Boolean(name))
+            .sort();
+          
           console.log(`🏢 Loaded ${allDepartmentTags.length} department tags for LLM context`);
+          console.log(`📋 Department list: ${departmentList.slice(0, 5).join(', ')}... (${departmentList.length} total)`);
         }
       } catch (error) {
         console.warn('Failed to fetch department_tags:', error);
@@ -714,12 +762,41 @@ ${conversationContext}
 USER QUERY: "${query}"
 
 CRITICAL RULES FOR ACCURATE QUERIES:
-1. DEPARTMENT MATCHING (MOST IMPORTANT): 
-   - User says "IT" → Find department where tags contain "IT" → Use ALL originalNames values from that department
-   - Example: User says "IT" → Match department with tags ["IT", "ICT"] → Use originalNames: ["IT", "ICT", "Teknologi Informasi"] in filter
-   - ALWAYS use originalNames array values, NEVER use departmentName
-   - Use IN operator with ALL originalNames: {"field": "department", "operator": "in", "value": ["IT", "ICT", "Teknologi Informasi"]}
-   - The audit_results table stores RAW department names from Excel, NOT normalized names
+1. DEPARTMENT MATCHING (MOST IMPORTANT - STEP-BY-STEP PROCESS):
+   
+   STEP 1: Identify department keywords in user query
+   - Look for department names, abbreviations, or categories (e.g., "IT", "Finance", "HR", "HRD")
+   
+   STEP 2: Match against DEPARTMENT_TAGS list above
+   - Search through the tags array of each department
+   - Find departments where ANY tag matches the user's keyword
+   - Example: User says "IT" → Find department where tags contain "IT"
+   
+   STEP 3: Extract ALL originalNames from matched department(s)
+   - Use ALL values from the originalNames array, NOT just the departmentName
+   - Example: Department with tags ["IT", "ICT"] has originalNames: ["IT", "ICT", "Teknologi Informasi"]
+   
+   STEP 4: Build filter with IN operator
+   - Use "in" operator with ALL originalNames values
+   - Format: {"field": "department", "operator": "in", "value": ["IT", "ICT", "Teknologi Informasi"]}
+   
+   CRITICAL: The audit_results table stores RAW department names from Excel (originalNames), NOT normalized departmentName
+   
+   EXAMPLES:
+   - User: "Show all findings in department HRD 2025"
+     → Match "HRD" in tags → Find department with tags containing "HRD"
+     → Extract originalNames: ["HR", "HRD", "HCM", "SDM", "Human Capital"]
+     → Filter: {"field": "department", "operator": "in", "value": ["HR", "HRD", "HCM", "SDM", "Human Capital"]}
+   
+   - User: "Temuan IT 2024"
+     → Match "IT" in tags → Find department with tags containing "IT"
+     → Extract originalNames: ["IT", "ICT", "Teknologi Informasi"]
+     → Filter: {"field": "department", "operator": "in", "value": ["IT", "ICT", "Teknologi Informasi"]}
+   
+   - User: "Finance findings"
+     → Match "Finance" in tags → Find department with tags containing "Finance"
+     → Extract originalNames: ["Finance", "Keuangan", "FAD", "Accounting"]
+     → Filter: {"field": "department", "operator": "in", "value": ["Finance", "Keuangan", "FAD", "Accounting"]}
 
 2. FIELD NAMES (MUST BE EXACT):
    - audit_results: projectName, subholding, year, department, riskArea, description, code, weight, severity, value
@@ -1184,6 +1261,11 @@ Return ONLY the JSON object.`;
       // Execute query with original user query for context
       let results = await this.executeQuery(filters, targetTable, query, sortBy, sortOrder, limit);
       
+      // Filter sensitive fields for tier-2 users
+      if (targetTable === 'audit_results') {
+        results = this.filterSensitiveFields(results, userRole);
+      }
+      
       // SMART RETRY: If 0 results, ask AI to reflect and try again
       if (results.length === 0 && filters.length > 0) {
         console.log('⚠️ Got 0 results, asking AI to reflect and retry...');
@@ -1238,6 +1320,11 @@ Return ONLY the JSON object.`;
             console.log('🔄 Retrying with corrected filters:', JSON.stringify(retryFilters, null, 2));
             results = await this.executeQuery(retryFilters, targetTable, query, sortBy, sortOrder, limit);
             
+            // Filter sensitive fields for tier-2 users after retry
+            if (targetTable === 'audit_results') {
+              results = this.filterSensitiveFields(results, userRole);
+            }
+            
             if (results.length > 0) {
               console.log(`✅ Retry successful! Found ${results.length} results`);
               filters = retryFilters; // Use corrected filters for response
@@ -1255,7 +1342,7 @@ Return ONLY the JSON object.`;
       if (groupBy) {
         const aggregatedResults = await this.aggregateResults(results, groupBy, aggregationType, aggregateField, sortOrder, filters);
         // Generate Excel with ALL detailed findings (not just aggregation summary)
-        const { excelBuffer, excelFilename } = await this.generateExcel(results, targetTable, userIntent);
+        const { excelBuffer, excelFilename } = await this.generateExcel(results, targetTable, userIntent, userRole);
         
         const groupByDisplay = Array.isArray(groupBy) ? groupBy.join(' + ') : groupBy;
         const isMultiDimensional = Array.isArray(groupBy);
@@ -1281,7 +1368,7 @@ Return ONLY the JSON object.`;
       }
       
       // Generate Excel file for non-aggregated results
-      const { excelBuffer, excelFilename } = await this.generateExcel(results, targetTable, userIntent);
+      const { excelBuffer, excelFilename } = await this.generateExcel(results, targetTable, userIntent, userRole);
 
       // AUTO-GENERATE YEAR CHART for audit_results queries with multiple results
       let yearAggregation: AggregationResult[] | undefined;
@@ -1711,7 +1798,8 @@ Return ONLY the JSON object.`;
   private async generateExcel(
     results: any[],
     table: string,
-    userIntent: string
+    userIntent: string,
+    userRole: string = 'tier-2' // Default to most restrictive
   ): Promise<{ excelBuffer: ArrayBuffer; excelFilename: string }> {
     try {
       // Prepare data based on table type
@@ -1721,24 +1809,36 @@ Return ONLY the JSON object.`;
       if (table === 'audit_results') {
         sheetName = 'Audit Results';
         // 1:1 mirror of Master_Audit_Data.xlsx columns
-        excelData = results.map(r => ({
-          'Unique ID': r.auditResultId || '',
-          'Filename': r.filename || '',
-          'Proyek': r.proyek || '',
-          'Category': r.category || '',
-          'Subholding': r.subholding || '',
-          'Year': r.year || '',
-          'Department': r.department || '',
-          'Department(ori)': r.departmentOri || '',
-          'Risk Area': r.riskArea || '',
-          'Deskripsi': r.deskripsi || '',
-          'Kode': r.kode || '',
-          'Bobot': r.bobot || 0,
-          'Kadar': r.kadar || 0,
-          'Nilai': r.nilai || 0,
-          'Kategori': r.kategori || '',
-          'Temuan Ulangan Count': r.temuanUlanganCount || 0,
-        }));
+        // Filter sensitive fields for tier-2 users
+        const isTier2 = userRole === 'tier-2';
+        
+        excelData = results.map(r => {
+          const row: any = {
+            'Unique ID': r.auditResultId || '',
+            'Filename': r.filename || '',
+            'Proyek': r.proyek || '',
+            'Category': r.category || '',
+            'Subholding': r.subholding || '',
+            'Year': r.year || '',
+            'Department': r.department || '',
+            'Department(ori)': r.departmentOri || '',
+            'Risk Area': r.riskArea || '',
+            'Deskripsi': r.deskripsi || '',
+            'Kode': r.kode || '',
+          };
+          
+          // Only include bobot, kadar, nilai for non-tier-2 users
+          if (!isTier2) {
+            row['Bobot'] = r.bobot || 0;
+            row['Kadar'] = r.kadar || 0;
+            row['Nilai'] = r.nilai || 0;
+          }
+          
+          row['Kategori'] = r.kategori || '';
+          row['Temuan Ulangan Count'] = r.temuanUlanganCount || 0;
+          
+          return row;
+        });
       } else if (table === 'projects') {
         sheetName = 'Projects';
         excelData = results.map(r => ({
@@ -1777,11 +1877,46 @@ Return ONLY the JSON object.`;
 
       // Set column widths
       if (table === 'audit_results') {
-        worksheet['!cols'] = [
-          { wch: 10 }, { wch: 15 }, { wch: 40 }, { wch: 15 },
-          { wch: 25 }, { wch: 25 }, { wch: 60 }, { wch: 10 },
-          { wch: 10 }, { wch: 10 }, { wch: 10 }
-        ];
+        const isTier2 = userRole === 'tier-2';
+        
+        if (isTier2) {
+          // Tier-2: No Bobot, Kadar, Nilai columns
+          worksheet['!cols'] = [
+            { wch: 20 }, // Unique ID
+            { wch: 15 }, // Filename
+            { wch: 40 }, // Proyek
+            { wch: 15 }, // Category
+            { wch: 12 }, // Subholding
+            { wch: 8 },  // Year
+            { wch: 25 }, // Department
+            { wch: 25 }, // Department(ori)
+            { wch: 30 }, // Risk Area
+            { wch: 60 }, // Deskripsi
+            { wch: 8 },  // Kode
+            { wch: 15 }, // Kategori
+            { wch: 20 }, // Temuan Ulangan Count
+          ];
+        } else {
+          // Tier-0 and Tier-1: All columns
+          worksheet['!cols'] = [
+            { wch: 20 }, // Unique ID
+            { wch: 15 }, // Filename
+            { wch: 40 }, // Proyek
+            { wch: 15 }, // Category
+            { wch: 12 }, // Subholding
+            { wch: 8 },  // Year
+            { wch: 25 }, // Department
+            { wch: 25 }, // Department(ori)
+            { wch: 30 }, // Risk Area
+            { wch: 60 }, // Deskripsi
+            { wch: 8 },  // Kode
+            { wch: 8 },  // Bobot
+            { wch: 8 },  // Kadar
+            { wch: 8 },  // Nilai
+            { wch: 15 }, // Kategori
+            { wch: 20 }, // Temuan Ulangan Count
+          ];
+        }
       } else if (table === 'projects') {
         worksheet['!cols'] = [
           { wch: 40 }, // Project Name
@@ -2584,18 +2719,24 @@ Bernard AI Assistant v1.0 | FIRST-AID Audit System
    */
   async fetchAggregationGroupDetails(
     filters: QueryFilter[],
-    table: string = 'audit_results'
+    table: string = 'audit_results',
+    userRole: string = 'tier-2' // Default to most restrictive
   ): Promise<{ results: any[]; excelBuffer: ArrayBuffer; excelFilename: string }> {
     try {
       console.log('📊 Fetching aggregation group details with filters:', filters);
       
       // Execute query to get the underlying findings
-      const results = await this.executeQuery(filters, table);
+      let results = await this.executeQuery(filters, table);
+      
+      // Filter sensitive fields for tier-2 users
+      if (table === 'audit_results') {
+        results = this.filterSensitiveFields(results, userRole);
+      }
       
       // Generate Excel for this specific group
       const groupValue = filters.find(f => f.field !== 'code' && f.field !== 'year' && f.field !== 'department')?.value || 'group';
       const userIntent = `Details for ${groupValue}`;
-      const { excelBuffer, excelFilename } = await this.generateExcel(results, table, userIntent);
+      const { excelBuffer, excelFilename } = await this.generateExcel(results, table, userIntent, userRole);
       
       return { results, excelBuffer, excelFilename };
     } catch (error) {

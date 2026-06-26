@@ -38,6 +38,7 @@
     "migrate:remove-batchid": "node scripts/migrate-remove-batchid.mjs",
     "seed:department-tags": "node scripts/seed-department-tags.mjs",
     "update:department-counts": "node scripts/update-department-findings-count.mjs",
+    "import:department-master": "node scripts/import-department-master.mjs",
     "test:hybrid-rag": "node test-hybrid-rag.mjs",
     "audit:prod": "node scripts/check-production-vulnerabilities.mjs",
     "icon:convert": "node scripts/convert-logo-to-icon.mjs"
